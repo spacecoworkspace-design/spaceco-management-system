@@ -399,6 +399,7 @@
     <button class="nav-item" id="nav-reservations" onclick="showPage(&#39;reservations&#39;,this);renderReservations();"><span class="nav-icon">📅</span> Reservations <span id="pending-res-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" id="nav-packagerequests" onclick="showPage(&#39;packagerequests&#39;,this);renderPackageRequests();"><span class="nav-icon">📦</span> Package Requests <span id="pending-pkg-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;clients&#39;,this)"><span class="nav-icon">☰</span> Client Log</button>
+    <button class="nav-item" id="nav-claimrequests" onclick="showPage(&#39;claimrequests&#39;,this);renderClaimRequests();"><span class="nav-icon">🔗</span> Claim Requests <span id="claim-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;topclients&#39;,this);renderTopClients();"><span class="nav-icon">🏆</span> Top Performers</button>
     <button class="nav-item active" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
@@ -631,6 +632,21 @@
       <table>
         <thead><tr><th>#</th><th>Client</th><th>Tier</th><th>Phone</th><th>Visits</th><th>Total Spent</th><th>Last Visit</th><th>Last Room</th><th>Actions</th></tr></thead>
         <tbody id="clients-tbody"><tr class="empty-row"><td colspan="9">No clients registered yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CLAIM REQUESTS -->
+<div id="page-claimrequests" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">Unmatched / Claim Requests</div><div class="page-sub">New client accounts that name+phone-matched an old guest visit, reservation, or an existing unlinked client number — confirm only if you're sure it's the same person</div></div>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>New Account</th><th>Matched Against</th><th>Details</th><th>Requested</th><th>Actions</th></tr></thead>
+        <tbody id="claimrequests-tbody"><tr class="empty-row"><td colspan="5">No pending claim requests</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2477,6 +2493,117 @@ function clearAllTrialData(){
 // ============================================================
 function getClientVisits(profileId){
   return clients.filter(function(c){return c.profileId===profileId;});
+}
+
+// ============================================================
+// PHASE 6 — CLAIM REQUESTS (Unmatched / Claim Requests tab)
+// ============================================================
+// Lists pending name+phone matches for staff to confirm or reject.
+// Confirming actually links the data (sets client_id on a check-in /
+// reservation, or moves an auth account onto an older unlinked client
+// row). Rejecting just marks the request rejected — nothing changes.
+async function fetchClaimRequests(){
+  var res=await fetch(SUPABASE_URL+'/rest/v1/claim_requests?status=eq.pending&select=*,clients!claim_requests_client_id_fkey(id,name,phone)',{
+    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+  });
+  if(!res.ok)return [];
+  return await res.json();
+}
+
+async function renderClaimRequests(){
+  var tbody=document.getElementById('claimrequests-tbody');
+  if(!tbody)return;
+  tbody.innerHTML='<tr class="empty-row"><td colspan="5">Loading…</td></tr>';
+  var rows=await fetchClaimRequests();
+  var badge=document.getElementById('claim-badge');
+  if(badge){
+    if(rows.length){badge.style.display='inline-block';badge.textContent=rows.length;}
+    else{badge.style.display='none';}
+  }
+  if(!rows.length){
+    tbody.innerHTML='<tr class="empty-row"><td colspan="5">No pending claim requests</td></tr>';
+    return;
+  }
+  tbody.innerHTML=rows.map(function(r){
+    var acct=r.clients?r.clients.name+' (new #'+r.clients.id+')':'#'+r.client_id;
+    var against, details;
+    if(r.match_type==='client_duplicate'){
+      against='Existing unlinked client #'+r.duplicate_client_id;
+      details=r.matched_name+' · '+r.matched_phone+' <br><span style="color:var(--amber);font-size:11px;">Confirming moves this login onto #'+r.duplicate_client_id+' instead of keeping new #'+(r.clients?r.clients.id:'?')+'</span>';
+    }else if(r.match_type==='check_in'){
+      against='Guest check-in #'+r.check_in_id;
+      details=r.matched_name+' · '+r.matched_phone;
+    }else{
+      against='Guest reservation #'+r.reservation_id;
+      details=r.matched_name+' · '+r.matched_phone;
+    }
+    return '<tr>'
+      +'<td>'+acct+'</td>'
+      +'<td>'+against+'</td>'
+      +'<td>'+details+'</td>'
+      +'<td>'+new Date(r.created_at).toLocaleString()+'</td>'
+      +'<td style="white-space:nowrap;">'
+      +'<button class="btn btn-success btn-sm" onclick="confirmClaimRequest('+r.id+')" style="margin-right:6px;">✓ Confirm Link</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="rejectClaimRequest('+r.id+')">✕ Not the Same Person</button>'
+      +'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+async function sbPatch(table,filter,body){
+  return fetch(SUPABASE_URL+'/rest/v1/'+table+'?'+filter,{
+    method:'PATCH',
+    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(body)
+  });
+}
+
+async function confirmClaimRequest(id){
+  var rows=await fetchClaimRequests();
+  var r=rows.find(function(x){return x.id===id;});
+  if(!r){showToast('Claim request not found',true);return;}
+
+  try{
+    if(r.match_type==='check_in'){
+      var ciRes=await sbPatch('check_ins','id=eq.'+r.check_in_id,{client_id:r.client_id,is_guest:false});
+      if(!ciRes.ok)throw new Error('check_ins update failed ('+ciRes.status+')');
+    }else if(r.match_type==='reservation'){
+      var rsRes=await sbPatch('reservations','id=eq.'+r.reservation_id,{client_id:r.client_id,is_guest:false});
+      if(!rsRes.ok)throw new Error('reservations update failed ('+rsRes.status+')');
+    }else if(r.match_type==='client_duplicate'){
+      // auth_user_id is unique, so the new duplicate row must be deleted
+      // FIRST to free it up — only then can it be moved onto the older,
+      // existing client number. Note: deleting the duplicate row cascades
+      // to this very claim_requests row (client_id references clients on
+      // delete cascade), so its audit trail won't persist after this —
+      // an accepted trade-off for now.
+      var res=await fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+r.client_id+'&select=auth_user_id',{
+        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      });
+      if(!res.ok)throw new Error('could not read new account\'s auth id ('+res.status+')');
+      var rows2=await res.json();
+      var authId=rows2&&rows2[0]?rows2[0].auth_user_id:null;
+      var delRes=await fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+r.client_id,{
+        method:'DELETE',
+        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      });
+      if(!delRes.ok)throw new Error('removing duplicate #'+r.client_id+' failed ('+delRes.status+')');
+      var linkRes=await sbPatch('clients','id=eq.'+r.duplicate_client_id,{auth_user_id:authId});
+      if(!linkRes.ok)throw new Error('linking auth account to #'+r.duplicate_client_id+' failed ('+linkRes.status+')');
+    }
+    var claimRes=await sbPatch('claim_requests','id=eq.'+id,{status:'confirmed',resolved_at:new Date().toISOString(),resolved_by:currentStaffName||'staff'});
+    if(!claimRes.ok)throw new Error('marking claim request confirmed failed ('+claimRes.status+')');
+    showToast('Link confirmed ✅');
+  }catch(e){
+    showToast('Could not confirm link — nothing changed: '+e.message,true);
+  }
+  renderClaimRequests();
+}
+
+async function rejectClaimRequest(id){
+  await sbPatch('claim_requests','id=eq.'+id,{status:'rejected',resolved_at:new Date().toISOString(),resolved_by:currentStaffName||'staff'});
+  showToast('Marked as not the same person');
+  renderClaimRequests();
 }
 
 function renderClients(){
