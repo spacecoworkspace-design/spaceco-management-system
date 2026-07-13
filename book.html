@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>SpaceCo — Book a Space</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap');
   :root {
@@ -107,6 +108,13 @@ const SUPABASE_URL = 'https://vfevpvfaeiwltixgdmln.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZXZwdmZhZWl3bHRpeGdkbWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzk1OTksImV4cCI6MjA5MzE1NTU5OX0.6cdMfW5rfVD_vA7nI-K6OjLKQrnsTJZflT7QXG4uyF4';
 const TABLE = 'spaceco_kv';
 
+// ── Phase 7: client accounts ──
+// If the visitor is logged in (same Supabase Auth session used on the
+// main site / client dashboard), we auto-fill their details and tag the
+// reservation with their client ID. Guests (no session) see exactly the
+// same form as before — nothing changes for them.
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 const ROOM_LIST = ['Room 4 Persons (1)','Room 4 Persons (2)','Room 6 Persons','Room 8 Persons','Class Room','Shared Space','Drawing Room'];
 const OPEN_START_WEEKDAY='09:00', OPEN_END='23:00', OPEN_START_FRIDAY='11:00';
 
@@ -122,7 +130,8 @@ var state = {
   submitted: false,
   pkgLines: [],
   pkgSubmitting: false,
-  pkgSubmitted: false
+  pkgSubmitted: false,
+  loggedInClient: null
 };
 
 function todayStr(){
@@ -215,10 +224,25 @@ function rangeIsFree(startMin, endMin, busyRanges){
   return !busyRanges.some(function(b){ return startMin < b.to && endMin > b.from; });
 }
 
+async function checkLoggedInClient(){
+  if(!sb) return null;
+  try{
+    var { data } = await sb.auth.getSession();
+    if(!data.session) return null;
+    var { data: client } = await sb.from('clients').select('id,name,phone,email').eq('auth_user_id', data.session.user.id).maybeSingle();
+    return client || null;
+  }catch(e){ console.warn('client session check failed', e); return null; }
+}
+
 async function init(){
-  var res = await Promise.all([sbFetchKey('reservations'), sbFetchKey('roomBlocks')]);
+  var res = await Promise.all([sbFetchKey('reservations'), sbFetchKey('roomBlocks'), checkLoggedInClient()]);
   state.reservations = res[0] || [];
   state.blocks = res[1] || [];
+  state.loggedInClient = res[2];
+  if(state.loggedInClient){
+    state._name = state.loggedInClient.name;
+    state._phone = state.loggedInClient.phone;
+  }
   render();
   startLiveSync();
 }
@@ -319,6 +343,9 @@ function renderBookingForm(busy, dayEndMin){
 
   var html = '<div class="card">';
   html += '<div class="card-title">Your details</div>';
+  if(state.loggedInClient){
+    html += '<div style="margin-bottom:14px;padding:8px 12px;background:var(--green-bg);border-radius:var(--radius-sm);color:var(--green);font-size:12px;">✅ Booking as verified client — '+state.loggedInClient.name+', #'+state.loggedInClient.id+'</div>';
+  }
   html += '<div class="row"><div>';
   html += '<label>Full name *</label><input type="text" id="f-name" placeholder="e.g. Nour Ahmed" value="'+(state._name||'')+'">';
   html += '</div><div>';
@@ -543,6 +570,28 @@ function onDateChange(v){ if(v<todayStr())v=todayStr(); state.date=v; state.sele
 function selectStart(m){ state.selectedStart=m; state.duration=60; render(); }
 function onDurationChange(v){ state.duration=parseInt(v,10); render(); }
 
+// Mirrors a new online booking into the real "reservations" table
+// (Phase 1 schema) so the client dashboard can query it securely.
+// Fire-and-forget — the booking itself is already saved into
+// spaceco_kv above either way, staff still see it exactly as before.
+async function syncReservationToSupabase(res){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/reservations',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({
+        client_id:res.clientId||null,
+        is_guest:!res.clientId,
+        guest_name:res.client,guest_phone:res.phone,guest_email:null,
+        room:res.room,room_key:null,
+        reservation_date:res.date,time_in:res.from,time_out:res.to,
+        status:res.status,notes:res.notes,
+        legacy_kv_id:res.id
+      })
+    });
+  }catch(e){ console.warn('reservations mirror failed (non-fatal)',e); }
+}
+
 async function submitBooking(){
   var name=(document.getElementById('f-name').value||'').trim();
   var phone=(document.getElementById('f-phone').value||'').trim();
@@ -582,7 +631,9 @@ async function submitBooking(){
     notes: notes,
     created_by: 'online',
     source: 'online',
-    status: 'pending'
+    status: 'pending',
+    clientId: state.loggedInClient ? state.loggedInClient.id : null,
+    isGuest: !state.loggedInClient
   };
   reservations.push(newRes);
 
@@ -592,6 +643,7 @@ async function submitBooking(){
     state.submitting=false;
     state.submitted=true;
     render();
+    syncReservationToSupabase(newRes);
   }catch(e){
     state.submitting=false;
     state._error='Something went wrong submitting your request. Please try again.';
