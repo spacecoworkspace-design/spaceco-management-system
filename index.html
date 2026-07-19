@@ -399,7 +399,6 @@
     <button class="nav-item" id="nav-reservations" onclick="showPage(&#39;reservations&#39;,this);renderReservations();"><span class="nav-icon">📅</span> Reservations <span id="pending-res-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" id="nav-packagerequests" onclick="showPage(&#39;packagerequests&#39;,this);renderPackageRequests();"><span class="nav-icon">📦</span> Package Requests <span id="pending-pkg-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;clients&#39;,this)"><span class="nav-icon">☰</span> Client Log</button>
-    <button class="nav-item" id="nav-claimrequests" onclick="showPage(&#39;claimrequests&#39;,this);renderClaimRequests();"><span class="nav-icon">🔗</span> Claim Requests <span id="claim-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;topclients&#39;,this);renderTopClients();"><span class="nav-icon">🏆</span> Top Performers</button>
     <button class="nav-item active" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
@@ -497,13 +496,6 @@
     <div>
       <div class="card">
         <div class="card-title">➕ New Check-in</div>
-        <div class="form-row" style="grid-template-columns:1fr;">
-          <div class="form-group">
-            <label>Client ID (optional — leave blank for a guest)</label>
-            <input type="text" id="ci-clientid" placeholder="e.g. 123" oninput="lookupClientId(this.value)" autocomplete="off">
-            <div id="ci-client-verified" style="display:none;margin-top:6px;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;"></div>
-          </div>
-        </div>
         <div class="form-row" style="grid-template-columns:1fr 1fr;">
           <div class="form-group">
             <label>Guest Name *</label>
@@ -632,21 +624,6 @@
       <table>
         <thead><tr><th>#</th><th>Client</th><th>Tier</th><th>Phone</th><th>Visits</th><th>Total Spent</th><th>Last Visit</th><th>Last Room</th><th>Actions</th></tr></thead>
         <tbody id="clients-tbody"><tr class="empty-row"><td colspan="9">No clients registered yet</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- CLAIM REQUESTS -->
-<div id="page-claimrequests" class="page">
-  <div class="page-header flex-between">
-    <div><div class="page-title">Unmatched / Claim Requests</div><div class="page-sub">New client accounts that name+phone-matched an old guest visit, reservation, or an existing unlinked client number — confirm only if you're sure it's the same person</div></div>
-  </div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>New Account</th><th>Matched Against</th><th>Details</th><th>Requested</th><th>Actions</th></tr></thead>
-        <tbody id="claimrequests-tbody"><tr class="empty-row"><td colspan="5">No pending claim requests</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1996,13 +1973,10 @@ function renderActiveSessions(){
   }
   el.innerHTML=activeSessions.map(function(s){
     var elapsed=calcHours(s.timeIn, nowTime());
-    var tag=s.clientId
-      ?'<span class="badge badge-green" style="font-size:10px;margin-left:6px;">Member #'+s.clientId+'</span>'
-      :'<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg3);color:var(--text3);">Guest</span>';
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>'
       +'<div style="flex:1;">'
-      +'<div style="font-size:14px;font-weight:600;">'+s.name+tag+'</div>'
+      +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+' · '+elapsed.toFixed(1)+' hrs so far</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
       +'</div>'
@@ -2014,63 +1988,6 @@ function renderActiveSessions(){
 function nowTime(){
   var n=new Date();
   return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
-}
-
-// ── CLIENT ID VERIFICATION ──
-// Looks up a client by their number against the real Supabase "clients"
-// table (Phase 1 schema) and auto-fills name/phone/email when found.
-// Leaving Client ID blank keeps check-in working exactly as before —
-// manual entry, tagged as a Guest.
-var _ciVerifiedClient=null;
-var _ciLookupTimer=null;
-
-function lookupClientId(val){
-  clearTimeout(_ciLookupTimer);
-  val=(val||'').trim();
-  var badge=document.getElementById('ci-client-verified');
-  if(!val){
-    _ciVerifiedClient=null;
-    badge.style.display='none';
-    return;
-  }
-  _ciLookupTimer=setTimeout(function(){doClientLookup(val);},350);
-}
-
-async function doClientLookup(val){
-  var badge=document.getElementById('ci-client-verified');
-  var id=parseInt(val,10);
-  if(!id||id<1){
-    _ciVerifiedClient=null;
-    showCiBadge(badge,false,'⚠ Enter a valid client number');
-    return;
-  }
-  try{
-    var res=await fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+id+'&select=id,name,phone,email',{
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-    });
-    var rows=await res.json();
-    if(Array.isArray(rows)&&rows.length){
-      var c=rows[0];
-      _ciVerifiedClient=c;
-      document.getElementById('ci-name').value=c.name||'';
-      document.getElementById('ci-phone').value=c.phone||'';
-      document.getElementById('ci-email').value=c.email||'';
-      showCiBadge(badge,true,'✅ Verified Client — '+c.name+', #'+c.id);
-    }else{
-      _ciVerifiedClient=null;
-      showCiBadge(badge,false,'⚠ No client found with #'+id+' — will check in as Guest');
-    }
-  }catch(e){
-    _ciVerifiedClient=null;
-    showCiBadge(badge,false,'⚠ Lookup failed — will check in as Guest');
-  }
-}
-
-function showCiBadge(badge,ok,msg){
-  badge.style.display='block';
-  badge.style.background=ok?'var(--green-bg)':'var(--red-bg)';
-  badge.style.color=ok?'var(--green)':'var(--red)';
-  badge.textContent=msg;
 }
 
 function checkInGuest(){
@@ -2090,24 +2007,19 @@ function checkInGuest(){
     name:name,phone:phone,email:email,
     guests:guests,room:selectedRoom.name,roomKey:selectedRoom.key,
     timeIn:tin,cashier:cashier,notes:notes,
-    date:today(),tab:[],
-    clientId:_ciVerifiedClient?_ciVerifiedClient.id:null,
-    isGuest:!_ciVerifiedClient
+    date:today(),tab:[]
   };
   activeSessions.push(session);
   saveData('activeSessions',activeSessions);
 
-  showToast(name+' checked in! 🟢'+(session.clientId?' (Member #'+session.clientId+')':''));
+  showToast(name+' checked in! 🟢');
 
   // Reset form
-  ['ci-name','ci-phone','ci-email','ci-notes','ci-clientid'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['ci-name','ci-phone','ci-email','ci-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ci-guests').value=1;
   document.getElementById('ci-timein').value='';
   document.querySelectorAll('.room-card').forEach(function(r){r.classList.remove('selected');});
   selectedRoom=null;
-  _ciVerifiedClient=null;
-  var badge=document.getElementById('ci-client-verified');
-  if(badge)badge.style.display='none';
   var pkgStatusEl=document.getElementById('ci-package-status');
   if(pkgStatusEl)pkgStatusEl.style.display='none';
 
@@ -2258,29 +2170,6 @@ function calcCheckoutTotal(){
   document.getElementById('co-grand-total').textContent=grand+' LE';
 }
 
-// Mirrors a finished visit into the real "check_ins" table (Phase 1 schema)
-// so the client dashboard can query it securely. Guest visits (clientId
-// null) are still recorded with is_guest=true so they're linkable later
-// via the Phase 6 claim workflow — nothing here touches spaceco_kv.
-async function syncCheckInToSupabase(visit){
-  try{
-    await fetch(SUPABASE_URL+'/rest/v1/check_ins',{
-      method:'POST',
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({
-        client_id:visit.clientId||null,
-        is_guest:!visit.clientId,
-        guest_name:visit.name,guest_phone:visit.phone,guest_email:visit.email,
-        room:visit.room,room_key:visit.roomKey,
-        visit_date:visit.date,time_in:visit.timeIn,time_out:visit.timeOut,
-        hours:visit.hours,cost:visit.cost,cash:visit.cash,instapay:visit.instapay,
-        cashier:visit.cashier,notes:visit.notes,rating:visit.rating,feedback:visit.feedback,
-        legacy_kv_id:visit.id
-      })
-    });
-  }catch(e){ console.warn('check_ins mirror failed (non-fatal)',e); }
-}
-
 function submitCheckout(){
   activeSessions=loadData('activeSessions',[]);
   var s=activeSessions.find(function(x){return x.id===_checkoutSessionId;});
@@ -2328,16 +2217,10 @@ function submitCheckout(){
     cost:roomCost,cash:roomCash,instapay:roomIP,cashier:checkoutCashier,
     notes:s.notes,usedPackage:usedPackage,
     rating:_coRating||0,feedback:(document.getElementById('co-feedback-comment')||{}).value||'',
-    created_by:currentUser?currentUser.id:null,
-    clientId:s.clientId||null,isGuest:s.isGuest!==false
+    created_by:currentUser?currentUser.id:null
   };
   clients.push(visit);
   saveData('clients',clients);
-
-  // Mirror this visit into the real check_ins table (Phase 1 schema) so the
-  // client dashboard has a securely-queryable copy. Fire-and-forget — the
-  // staff app's own record of the visit (above) is already saved either way.
-  syncCheckInToSupabase(visit);
 
   _coRating=0;
 
@@ -2493,117 +2376,6 @@ function clearAllTrialData(){
 // ============================================================
 function getClientVisits(profileId){
   return clients.filter(function(c){return c.profileId===profileId;});
-}
-
-// ============================================================
-// PHASE 6 — CLAIM REQUESTS (Unmatched / Claim Requests tab)
-// ============================================================
-// Lists pending name+phone matches for staff to confirm or reject.
-// Confirming actually links the data (sets client_id on a check-in /
-// reservation, or moves an auth account onto an older unlinked client
-// row). Rejecting just marks the request rejected — nothing changes.
-async function fetchClaimRequests(){
-  var res=await fetch(SUPABASE_URL+'/rest/v1/claim_requests?status=eq.pending&select=*,clients!claim_requests_client_id_fkey(id,name,phone)',{
-    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-  });
-  if(!res.ok)return [];
-  return await res.json();
-}
-
-async function renderClaimRequests(){
-  var tbody=document.getElementById('claimrequests-tbody');
-  if(!tbody)return;
-  tbody.innerHTML='<tr class="empty-row"><td colspan="5">Loading…</td></tr>';
-  var rows=await fetchClaimRequests();
-  var badge=document.getElementById('claim-badge');
-  if(badge){
-    if(rows.length){badge.style.display='inline-block';badge.textContent=rows.length;}
-    else{badge.style.display='none';}
-  }
-  if(!rows.length){
-    tbody.innerHTML='<tr class="empty-row"><td colspan="5">No pending claim requests</td></tr>';
-    return;
-  }
-  tbody.innerHTML=rows.map(function(r){
-    var acct=r.clients?r.clients.name+' (new #'+r.clients.id+')':'#'+r.client_id;
-    var against, details;
-    if(r.match_type==='client_duplicate'){
-      against='Existing unlinked client #'+r.duplicate_client_id;
-      details=r.matched_name+' · '+r.matched_phone+' <br><span style="color:var(--amber);font-size:11px;">Confirming moves this login onto #'+r.duplicate_client_id+' instead of keeping new #'+(r.clients?r.clients.id:'?')+'</span>';
-    }else if(r.match_type==='check_in'){
-      against='Guest check-in #'+r.check_in_id;
-      details=r.matched_name+' · '+r.matched_phone;
-    }else{
-      against='Guest reservation #'+r.reservation_id;
-      details=r.matched_name+' · '+r.matched_phone;
-    }
-    return '<tr>'
-      +'<td>'+acct+'</td>'
-      +'<td>'+against+'</td>'
-      +'<td>'+details+'</td>'
-      +'<td>'+new Date(r.created_at).toLocaleString()+'</td>'
-      +'<td style="white-space:nowrap;">'
-      +'<button class="btn btn-success btn-sm" onclick="confirmClaimRequest('+r.id+')" style="margin-right:6px;">✓ Confirm Link</button>'
-      +'<button class="btn btn-outline btn-sm" onclick="rejectClaimRequest('+r.id+')">✕ Not the Same Person</button>'
-      +'</td>'
-      +'</tr>';
-  }).join('');
-}
-
-async function sbPatch(table,filter,body){
-  return fetch(SUPABASE_URL+'/rest/v1/'+table+'?'+filter,{
-    method:'PATCH',
-    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify(body)
-  });
-}
-
-async function confirmClaimRequest(id){
-  var rows=await fetchClaimRequests();
-  var r=rows.find(function(x){return x.id===id;});
-  if(!r){showToast('Claim request not found',true);return;}
-
-  try{
-    if(r.match_type==='check_in'){
-      var ciRes=await sbPatch('check_ins','id=eq.'+r.check_in_id,{client_id:r.client_id,is_guest:false});
-      if(!ciRes.ok)throw new Error('check_ins update failed ('+ciRes.status+')');
-    }else if(r.match_type==='reservation'){
-      var rsRes=await sbPatch('reservations','id=eq.'+r.reservation_id,{client_id:r.client_id,is_guest:false});
-      if(!rsRes.ok)throw new Error('reservations update failed ('+rsRes.status+')');
-    }else if(r.match_type==='client_duplicate'){
-      // auth_user_id is unique, so the new duplicate row must be deleted
-      // FIRST to free it up — only then can it be moved onto the older,
-      // existing client number. Note: deleting the duplicate row cascades
-      // to this very claim_requests row (client_id references clients on
-      // delete cascade), so its audit trail won't persist after this —
-      // an accepted trade-off for now.
-      var res=await fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+r.client_id+'&select=auth_user_id',{
-        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-      });
-      if(!res.ok)throw new Error('could not read new account\'s auth id ('+res.status+')');
-      var rows2=await res.json();
-      var authId=rows2&&rows2[0]?rows2[0].auth_user_id:null;
-      var delRes=await fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+r.client_id,{
-        method:'DELETE',
-        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-      });
-      if(!delRes.ok)throw new Error('removing duplicate #'+r.client_id+' failed ('+delRes.status+')');
-      var linkRes=await sbPatch('clients','id=eq.'+r.duplicate_client_id,{auth_user_id:authId});
-      if(!linkRes.ok)throw new Error('linking auth account to #'+r.duplicate_client_id+' failed ('+linkRes.status+')');
-    }
-    var claimRes=await sbPatch('claim_requests','id=eq.'+id,{status:'confirmed',resolved_at:new Date().toISOString(),resolved_by:currentStaffName||'staff'});
-    if(!claimRes.ok)throw new Error('marking claim request confirmed failed ('+claimRes.status+')');
-    showToast('Link confirmed ✅');
-  }catch(e){
-    showToast('Could not confirm link — nothing changed: '+e.message,true);
-  }
-  renderClaimRequests();
-}
-
-async function rejectClaimRequest(id){
-  await sbPatch('claim_requests','id=eq.'+id,{status:'rejected',resolved_at:new Date().toISOString(),resolved_by:currentStaffName||'staff'});
-  showToast('Marked as not the same person');
-  renderClaimRequests();
 }
 
 function renderClients(){
@@ -6817,13 +6589,10 @@ renderActiveSessions=function(){
     return;
   }
   el.innerHTML=activeSessions.map(function(s){
-    var tag=s.clientId
-      ?'<span class="badge badge-green" style="font-size:10px;margin-left:6px;">Member #'+s.clientId+'</span>'
-      :'<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg3);color:var(--text3);">Guest</span>';
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 1.5s infinite;"></div>'
       +'<div style="flex:1;">'
-      +'<div style="font-size:14px;font-weight:600;">'+s.name+tag+'</div>'
+      +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
