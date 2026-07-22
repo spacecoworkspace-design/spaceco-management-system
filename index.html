@@ -401,6 +401,7 @@
     <button class="nav-item" onclick="showPage(&#39;clients&#39;,this)"><span class="nav-icon">☰</span> Client Log</button>
     <button class="nav-item" onclick="showPage(&#39;topclients&#39;,this);renderTopClients();"><span class="nav-icon">🏆</span> Top Performers</button>
     <button class="nav-item active" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
+    <button class="nav-item" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
     <button class="nav-item" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
     <button class="nav-item" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
@@ -1004,6 +1005,25 @@
   </div>
 </div>
 
+<!-- STAFF DEBTS PAGE -->
+<div id="page-staffdebts" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">🤝 Staff Debts</div><div class="page-sub">Shift coverage owed between staff — when someone covers a day off, it stays here until repaid with a shift back</div></div>
+    <button class="btn btn-primary" onclick="openAddStaffDebtModal()">+ Log Coverage</button>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Outstanding Balances</div>
+    <div id="staffdebts-balances" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">All Coverage Records</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Shift Covered</th><th>Covered By</th><th>Owed By</th><th>Status</th><th>Settled</th><th></th></tr></thead>
+      <tbody id="staffdebts-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
 <!-- SHARED SPACE PACKAGES PAGE -->
 <div id="page-sharedpkgs" class="page">
   <div class="page-header flex-between">
@@ -1477,7 +1497,7 @@ function saveData(key, val) {
 
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
 var _appReady = false;
-var ALL_KEYS = ['clients','clientProfiles','shiftPayments','academies','academyOrder','pricing','adminPass','drinkOrders','recycleBin','staff','snacksMenu','drinksMenuData','reservations','archivedAcademies','expenses','dismissedNotifs','activeSessions','sharedSpacePackages','roomBlocks','packageRequests'];
+var ALL_KEYS = ['clients','clientProfiles','shiftPayments','academies','academyOrder','pricing','adminPass','drinkOrders','recycleBin','staff','snacksMenu','drinksMenuData','reservations','archivedAcademies','expenses','dismissedNotifs','activeSessions','sharedSpacePackages','roomBlocks','packageRequests','staffDebts'];
 
 async function bootApp() {
   // ── Auth: restore existing session, register state-change listener ──
@@ -1582,7 +1602,7 @@ function openModal(id){
 // DATA
 // ============================================================
 var _archivePending=null;
-var clients, clientProfiles, shiftPayments, academies, academyOrder, pricing, adminPass, isAdmin=false, staff, snacksMenu, drinksMenuData, reservations, recycleBin, archivedAcademies, dismissedNotifs, sharedSpacePackages;
+var clients, clientProfiles, shiftPayments, academies, academyOrder, pricing, adminPass, isAdmin=false, staff, snacksMenu, drinksMenuData, reservations, recycleBin, archivedAcademies, dismissedNotifs, sharedSpacePackages, staffDebts;
 
 // ============================================================
 // SHARED SPACE MONTHLY PACKAGES — tiers & helpers
@@ -1674,12 +1694,14 @@ function initData(){
   packageRequests=loadData('packageRequests',[]);
   expenses=loadData('expenses',[]);
   sharedSpacePackages=loadData('sharedSpacePackages',{});
+  staffDebts=loadData('staffDebts',[]);
   // Migrate: ensure clientProfiles have notes/noShows fields
   clientProfiles.forEach(function(p){if(p.notes===undefined)p.notes='';if(p.noShows===undefined)p.noShows=0;});
   // Migrate: ensure reservations have a status field (online bookings already arrive as 'pending' and are left alone)
   reservations.forEach(function(r){if(r.status===undefined)r.status='upcoming';});
   updatePendingResBadge();
   updatePendingPkgBadge();
+  renderStaffDebts();
   dismissedNotifs=loadData('dismissedNotifs',[]);
   migrateClientProfiles();
   // Ensure old academies have color
@@ -3243,6 +3265,125 @@ function renderExpenses(){
       +'<td style="font-size:12px;color:var(--text3);">'+eNote+'</td>'
       +'<td><button class="btn btn-danger btn-sm" onclick="deleteExpense('+e.id+')">Del</button></td></tr>';
   }).join('');
+}
+
+// ============================================================
+// STAFF DEBTS — shift coverage IOUs between staff
+// ============================================================
+var _sdSettleId=null;
+
+function sdStaffOptions(){
+  return (staff||[]).map(function(s){return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
+}
+
+function openAddStaffDebtModal(){
+  var opts=sdStaffOptions();
+  document.getElementById('sd-covered-by').innerHTML=opts;
+  document.getElementById('sd-owed-by').innerHTML=opts;
+  document.getElementById('sd-date').value=today();
+  openModal('add-staffdebt-modal');
+}
+
+function saveStaffDebt(){
+  var date=document.getElementById('sd-date').value||today();
+  var shift=document.getElementById('sd-shift').value;
+  var coveredBy=document.getElementById('sd-covered-by').value;
+  var owedBy=document.getElementById('sd-owed-by').value;
+  if(!coveredBy||!owedBy){showToast('Pick who covered and who owes',true);return;}
+  if(coveredBy===owedBy){showToast("Covered By and Owed By can't be the same person",true);return;}
+  staffDebts=loadData('staffDebts',[]);
+  staffDebts.push({id:Date.now(),date:date,shift:shift,coveredBy:coveredBy,owedBy:owedBy,status:'owed',settledDate:null,settledShift:null,createdAt:new Date().toISOString()});
+  saveData('staffDebts',staffDebts);
+  closeModal('add-staffdebt-modal');
+  renderStaffDebts();
+  showToast(coveredBy+' covered for '+owedBy+' — logged');
+}
+
+function openSettleDebtModal(id){
+  _sdSettleId=id;
+  document.getElementById('sd-settle-date').value=today();
+  openModal('settle-staffdebt-modal');
+}
+
+function confirmSettleDebt(){
+  var date=document.getElementById('sd-settle-date').value||today();
+  var shift=document.getElementById('sd-settle-shift').value;
+  staffDebts=loadData('staffDebts',[]);
+  var rec=staffDebts.find(function(d){return d.id===_sdSettleId;});
+  if(!rec){showToast('Record not found',true);return;}
+  rec.status='settled';
+  rec.settledDate=date;
+  rec.settledShift=shift;
+  saveData('staffDebts',staffDebts);
+  closeModal('settle-staffdebt-modal');
+  _sdSettleId=null;
+  renderStaffDebts();
+  showToast('Marked settled ✅');
+}
+
+function deleteStaffDebt(id){
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    staffDebts=loadData('staffDebts',[]).filter(function(d){return d.id!==id;});
+    saveData('staffDebts',staffDebts);closeModal('confirm-modal');renderStaffDebts();showToast('Deleted');
+  };openModal('confirm-modal');
+}
+
+// Nets opposite-direction debts between the same two people down to a
+// single balance (e.g. Youssef owes Aya 2, Aya owes Youssef 1 → Youssef
+// owes Aya 1), computed from unsettled ('owed') records only.
+function sdNetBalances(){
+  var outstanding=(staffDebts||[]).filter(function(d){return d.status==='owed';});
+  var pairs={};
+  outstanding.forEach(function(d){
+    var key=[d.owedBy,d.coveredBy].sort().join('|');
+    if(!pairs[key])pairs[key]={a:d.owedBy,b:d.coveredBy,aOwesB:0,bOwesA:0};
+    var p=pairs[key];
+    if(d.owedBy===p.a)p.aOwesB++;else p.bOwesA++;
+  });
+  var out=[];
+  Object.keys(pairs).forEach(function(k){
+    var p=pairs[k],net=p.aOwesB-p.bOwesA;
+    if(net>0)out.push({owes:p.a,to:p.b,shifts:net});
+    else if(net<0)out.push({owes:p.b,to:p.a,shifts:-net});
+  });
+  return out;
+}
+
+function renderStaffDebts(){
+  staffDebts=loadData('staffDebts',[]);
+  var balEl=document.getElementById('staffdebts-balances');
+  if(balEl){
+    var balances=sdNetBalances();
+    balEl.innerHTML=balances.length?balances.map(function(b){
+      return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;">'
+        +'<div style="font-size:13px;"><strong>'+b.owes+'</strong> owes <strong>'+b.to+'</strong></div>'
+        +'<div style="font-size:20px;font-weight:600;color:var(--amber);margin-top:4px;">'+b.shifts+' shift'+(b.shifts>1?'s':'')+'</div>'
+        +'</div>';
+    }).join(''):'<div style="color:var(--text3);font-size:13px;">All settled up — no outstanding coverage.</div>';
+  }
+  var tbody=document.getElementById('staffdebts-tbody');
+  if(tbody){
+    var sorted=staffDebts.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+    if(!sorted.length){
+      tbody.innerHTML='<tr class="empty-row"><td colspan="7">No coverage logged yet</td></tr>';
+    }else{
+      tbody.innerHTML=sorted.map(function(d){
+        var statusBadge=d.status==='settled'?'<span class="badge badge-green">Settled</span>':'<span class="badge badge-amber">Owed</span>';
+        var settledInfo=d.status==='settled'?formatDate(d.settledDate)+' · '+d.settledShift:'-';
+        var actionBtn=d.status==='owed'?'<button class="btn btn-success btn-sm" onclick="openSettleDebtModal('+d.id+')">Mark Settled</button> ':'';
+        return '<tr><td>'+formatDate(d.date)+'</td><td>'+d.shift+'</td><td><strong>'+d.coveredBy+'</strong></td><td><strong>'+d.owedBy+'</strong></td>'
+          +'<td>'+statusBadge+'</td>'
+          +'<td style="font-size:12px;color:var(--text3);">'+settledInfo+'</td>'
+          +'<td style="white-space:nowrap;">'+actionBtn+'<button class="btn btn-danger btn-sm" onclick="deleteStaffDebt('+d.id+')">Del</button></td></tr>';
+      }).join('');
+    }
+  }
+  var badge=document.getElementById('staffdebts-badge');
+  if(badge){
+    var count=staffDebts.filter(function(d){return d.status==='owed';}).length;
+    if(count){badge.style.display='inline-block';badge.textContent=count;}
+    else{badge.style.display='none';}
+  }
 }
 
 // ============================================================
@@ -7445,6 +7586,52 @@ refreshDashboard=function(){
 </div>
 
 <!-- ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="add-staffdebt-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header"><div class="modal-title">🤝 Log Coverage</div><button class="close-btn" onclick="closeModal('add-staffdebt-modal')">✕</button></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Date *</label><input type="date" id="sd-date"></div>
+      <div class="form-group"><label>Shift *</label>
+        <select id="sd-shift">
+          <option value="9:00 AM – 4:00 PM">9:00 AM – 4:00 PM</option>
+          <option value="4:00 PM – 11:00 PM">4:00 PM – 11:00 PM</option>
+          <option value="Both Shifts">Both Shifts</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Covered By (worked the extra shift) *</label>
+        <select id="sd-covered-by"></select>
+      </div>
+      <div class="form-group"><label>Owed By (got the day off) *</label>
+        <select id="sd-owed-by"></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal('add-staffdebt-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaffDebt()">💾 Log Coverage</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settle-staffdebt-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">✅ Mark Settled</div><button class="close-btn" onclick="closeModal('settle-staffdebt-modal')">✕</button></div>
+    <div class="form-group"><label>Date the shift was covered back *</label><input type="date" id="sd-settle-date"></div>
+    <div class="form-group"><label>Shift covered back *</label>
+      <select id="sd-settle-shift">
+        <option value="9:00 AM – 4:00 PM">9:00 AM – 4:00 PM</option>
+        <option value="4:00 PM – 11:00 PM">4:00 PM – 11:00 PM</option>
+        <option value="Both Shifts">Both Shifts</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal('settle-staffdebt-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="confirmSettleDebt()">✓ Confirm Settled</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="add-expense-modal">
   <div class="modal" style="width:480px;">
     <div class="modal-header"><div class="modal-title">💸 Add Expense</div><button class="close-btn" onclick="closeModal(&#39;add-expense-modal&#39;)">✕</button></div>
