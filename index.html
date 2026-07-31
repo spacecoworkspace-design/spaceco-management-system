@@ -178,7 +178,7 @@
   .toast.show{transform:translateY(0);opacity:1;}
   .toast.error{background:var(--red);color:white;}
   .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-  .pos-tile{transition:transform 0.15s cubic-bezier(0.4,0,0.2,1),box-shadow 0.15s ease;}
+  .pos-tile{transition:transform 0.15s cubic-bezier(0.4,0,0.2,1),box-shadow 0.15s ease;min-height:48px;display:flex;flex-direction:column;justify-content:center;}
   .pos-tile:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,0.25);}
   .pos-tile:active{transform:scale(0.97);}
   .room-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all 0.18s;text-align:center;}
@@ -429,9 +429,12 @@
   <div style="padding:8px 16px 4px;">
     <button class="admin-btn" onclick="openAdminLogin()">🔐 Admin Panel</button>
   </div>
-  <div style="padding:8px 16px 16px;border-top:1px solid var(--border);margin-top:4px;">
-    <div style="font-size:11px;color:var(--text3);">Today</div>
-    <div style="font-size:13px;font-weight:500;color:var(--text2);" id="sidebar-date">Thu, Jul 9</div>
+  <div style="padding:8px 16px 16px;border-top:1px solid var(--border);margin-top:4px;display:flex;justify-content:space-between;align-items:baseline;">
+    <div>
+      <div style="font-size:11px;color:var(--text3);">Today</div>
+      <div style="font-size:13px;font-weight:500;color:var(--text2);" id="sidebar-date">Thu, Jul 9</div>
+    </div>
+    <div class="money" style="font-size:13px;color:var(--accent2);" id="sidebar-clock">--:--:--</div>
   </div>
 </div>
 
@@ -2207,6 +2210,7 @@ async function bootApp() {
   document.getElementById('sidebar-date').textContent=nowTime.toLocaleDateString('en-EG',{weekday:'short',day:'numeric',month:'short'});
   var h=nowTime.getHours().toString().padStart(2,'0'),m=nowTime.getMinutes().toString().padStart(2,'0');
   document.getElementById('ci-timein').value=h+':'+m;
+  startSidebarClock();
   refreshDashboard();
 
   // ── Show simple role selector login screen ──
@@ -2241,6 +2245,17 @@ async function bootApp() {
 function normalizeStr(s){return (s||'').trim().toLowerCase();}
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function formatDate(d){if(!d)return '-';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+
+function startSidebarClock(){
+  var el=document.getElementById('sidebar-clock');
+  if(!el)return;
+  function tick(){
+    var n=new Date();
+    el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0');
+  }
+  tick();
+  setInterval(tick,1000);
+}
 
 function animateNumberTo(el,target,suffix){
   if(!el)return;
