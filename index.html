@@ -405,6 +405,7 @@
     <button class="nav-item" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
     <button class="nav-item" id="nav-productcatalog" onclick="showPage(&#39;productcatalog&#39;,this);renderProductCatalog();"><span class="nav-icon">🗂</span> Product Catalog <span id="low-stock-badge" style="display:none;background:var(--red);color:white;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
+    <button class="nav-item" id="nav-stockmgmt" onclick="showPage(&#39;stockmgmt&#39;,this);renderStockManagement();"><span class="nav-icon">📦</span> Stock Management</button>
     <button class="nav-item" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
     <button class="nav-item" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     <button class="nav-item" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
@@ -1086,6 +1087,69 @@
   </div>
 </div>
 
+<!-- STOCK MANAGEMENT PAGE -->
+<div id="page-stockmgmt" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">📦 Stock Management</div><div class="page-sub">Receive incoming orders and track bulk ingredients for hot drinks</div></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <button class="btn btn-primary" id="sm-tab-btn-receive" onclick="switchStockMgmtTab('receive')">📥 Receive Stock</button>
+    <button class="btn btn-outline" id="sm-tab-btn-containers" onclick="switchStockMgmtTab('containers')">🧃 Bulk Containers</button>
+  </div>
+
+  <!-- RECEIVE STOCK TAB -->
+  <div id="sm-tab-receive">
+    <div class="card mb-16">
+      <div class="card-title">📥 Receive New Stock Order</div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Supplier</label><input type="text" id="sr-supplier" placeholder="e.g. Metro Market"></div>
+        <div class="form-group"><label>Received By</label><select id="sr-received-by"></select></div>
+      </div>
+      <div class="form-group">
+        <label>Add Product</label>
+        <div style="position:relative;">
+          <input type="text" id="sr-product-search" placeholder="Search retail products by name..." oninput="renderSrProductSuggestions()" autocomplete="off">
+          <div id="sr-product-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:10;max-height:220px;overflow-y:auto;"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="openAddProductModal()">+ Add New Product</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin:-6px 0 10px;">Only retail-mode products are received here — prepared items (hot drinks) are tracked via Bulk Containers below.</div>
+      <div class="table-wrap mb-16">
+        <table>
+          <thead><tr><th>Product</th><th>Qty</th><th>Unit Cost (LE, optional)</th><th></th></tr></thead>
+          <tbody id="sr-items-tbody"><tr class="empty-row"><td colspan="4">No items added yet</td></tr></tbody>
+        </table>
+      </div>
+      <div class="form-group"><label>Notes</label><input type="text" id="sr-notes" placeholder="Any extra details..."></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(108,99,255,0.1);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:14px;">
+        <span style="font-size:14px;font-weight:600;">Order Total:</span>
+        <span class="money" style="font-size:18px;color:var(--accent2);" id="sr-order-total">0 LE</span>
+      </div>
+      <button class="btn btn-success btn-full btn-lg" onclick="saveStockReceipt()">✓ Save &amp; Update Stock</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent Receipts</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Supplier</th><th>Received By</th><th>Items</th><th>Total</th></tr></thead>
+          <tbody id="sr-history-tbody"><tr class="empty-row"><td colspan="5">No receipts logged yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK CONTAINERS TAB -->
+  <div id="sm-tab-containers" style="display:none;">
+    <div class="card">
+      <div class="card-title flex-between">
+        <span>🧃 Bulk Containers</span>
+        <button class="btn btn-primary" onclick="openNewContainerModal()">+ Open New Container</button>
+      </div>
+      <div id="bc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- end .main -->
 
 <!-- CONFIRM DELETE MODAL -->
@@ -1693,6 +1757,250 @@ async function toggleProductActive(id){
   await updateProduct(id,{is_active:p.is_active});
   renderProductCatalog();
   if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+}
+
+// ============================================================
+// STOCK MANAGEMENT — receiving (retail products) + bulk containers
+// (prepared-mode ingredients like Nescafe, sugar, milk, tea)
+// ============================================================
+var srItems=[]; // items in the receipt currently being built: {productId,name,qty,unitCost}
+var bulkContainers=[];
+
+function renderStockManagement(){
+  switchStockMgmtTab('receive');
+  populateSrReceivedByOptions();
+  renderSrItemsTable();
+  loadStockReceiptHistory();
+  loadBulkContainers().then(renderBulkContainers);
+}
+
+function switchStockMgmtTab(tab){
+  document.getElementById('sm-tab-receive').style.display=tab==='receive'?'block':'none';
+  document.getElementById('sm-tab-containers').style.display=tab==='containers'?'block':'none';
+  document.getElementById('sm-tab-btn-receive').className='btn '+(tab==='receive'?'btn-primary':'btn-outline');
+  document.getElementById('sm-tab-btn-containers').className='btn '+(tab==='containers'?'btn-primary':'btn-outline');
+}
+
+function populateSrReceivedByOptions(){
+  var sel=document.getElementById('sr-received-by');
+  if(!sel)return;
+  sel.innerHTML=(staff||[]).map(function(s){return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
+}
+
+// ── Receive Stock ──
+function renderSrProductSuggestions(){
+  var box=document.getElementById('sr-product-suggestions');
+  var q=(document.getElementById('sr-product-search').value||'').toLowerCase().trim();
+  if(!q){box.style.display='none';box.innerHTML='';return;}
+  var matches=products.filter(function(p){return p.is_active&&p.inventory_mode==='retail'&&p.display_name.toLowerCase().indexOf(q)!==-1;}).slice(0,8);
+  box.style.display='block';
+  if(!matches.length){box.innerHTML='<div style="padding:10px;font-size:12px;color:var(--text3);">No matching retail products</div>';return;}
+  box.innerHTML=matches.map(function(p){
+    return '<div style="padding:8px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" onclick="addSrItem(\''+p.id+'\')">'+(p.emoji?p.emoji+' ':'')+p.display_name+' <span style="color:var(--text3);font-size:11px;">('+p.stock_quantity+' '+p.unit+' in stock)</span></div>';
+  }).join('');
+}
+
+function addSrItem(productId){
+  var p=products.find(function(x){return x.id===productId;});
+  if(!p)return;
+  var existing=srItems.find(function(x){return x.productId===productId;});
+  if(existing)existing.qty+=1;
+  else srItems.push({productId:p.id,name:p.display_name,qty:1,unitCost:null});
+  document.getElementById('sr-product-search').value='';
+  document.getElementById('sr-product-suggestions').style.display='none';
+  renderSrItemsTable();
+}
+
+function removeSrItem(productId){
+  srItems=srItems.filter(function(x){return x.productId!==productId;});
+  renderSrItemsTable();
+}
+
+function updateSrItemQty(productId,val){
+  var it=srItems.find(function(x){return x.productId===productId;});
+  if(it)it.qty=Math.max(1,parseInt(val)||1);
+  updateSrTotal();
+}
+
+function updateSrItemCost(productId,val){
+  var it=srItems.find(function(x){return x.productId===productId;});
+  if(it)it.unitCost=val===''?null:(parseFloat(val)||0);
+  updateSrTotal();
+}
+
+function renderSrItemsTable(){
+  var tbody=document.getElementById('sr-items-tbody');
+  if(!tbody)return;
+  if(!srItems.length){tbody.innerHTML='<tr class="empty-row"><td colspan="4">No items added yet</td></tr>';updateSrTotal();return;}
+  tbody.innerHTML=srItems.map(function(it){
+    return '<tr><td>'+it.name+'</td>'
+      +'<td><input type="number" min="1" value="'+it.qty+'" style="width:70px;" onchange="updateSrItemQty(\''+it.productId+'\',this.value)"></td>'
+      +'<td><input type="number" min="0" placeholder="—" value="'+(it.unitCost===null?'':it.unitCost)+'" style="width:90px;" onchange="updateSrItemCost(\''+it.productId+'\',this.value)"></td>'
+      +'<td><button class="btn btn-danger btn-sm" onclick="removeSrItem(\''+it.productId+'\')">Remove</button></td></tr>';
+  }).join('');
+  updateSrTotal();
+}
+
+function updateSrTotal(){
+  var total=srItems.reduce(function(a,x){return a+(x.unitCost||0)*x.qty;},0);
+  var el=document.getElementById('sr-order-total');
+  if(el)el.textContent=total+' LE';
+}
+
+async function saveStockReceipt(){
+  if(!srItems.length){showToast('Add at least one item',true);return;}
+  var supplier=document.getElementById('sr-supplier').value.trim();
+  var receivedBy=document.getElementById('sr-received-by').value;
+  var notes=document.getElementById('sr-notes').value.trim();
+  var total=srItems.reduce(function(a,x){return a+(x.unitCost||0)*x.qty;},0);
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/stock_receipts',{
+      method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+      body:JSON.stringify({supplier:supplier||null,received_by:receivedBy||null,total_value:total||null,notes:notes||null})
+    });
+    var rows=await res.json();
+    var receipt=Array.isArray(rows)?rows[0]:null;
+    if(!receipt)throw new Error('Failed to create receipt');
+
+    var itemRows=srItems.map(function(it){return {receipt_id:receipt.id,product_id:it.productId,quantity:it.qty,unit_cost:it.unitCost};});
+    await fetch(SUPABASE_URL+'/rest/v1/stock_receipt_items',{
+      method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify(itemRows)
+    });
+
+    for(var i=0;i<srItems.length;i++){
+      var it=srItems[i];
+      var p=products.find(function(x){return x.id===it.productId;});
+      if(p){
+        p.stock_quantity=(p.stock_quantity||0)+it.qty;
+        await updateProduct(p.id,{stock_quantity:p.stock_quantity});
+      }
+    }
+    updateLowStockBadges();
+    renderProductCatalog();
+    if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+
+    srItems=[];
+    document.getElementById('sr-supplier').value='';
+    document.getElementById('sr-notes').value='';
+    renderSrItemsTable();
+    loadStockReceiptHistory();
+    showToast('Stock received — inventory updated ✅');
+  }catch(e){
+    console.warn('saveStockReceipt failed',e);
+    showToast('Failed to save receipt',true);
+  }
+}
+
+async function loadStockReceiptHistory(){
+  var tbody=document.getElementById('sr-history-tbody');
+  if(!tbody)return;
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/stock_receipts?select=*,stock_receipt_items(quantity)&order=received_at.desc&limit=15',{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    var rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length){tbody.innerHTML='<tr class="empty-row"><td colspan="5">No receipts logged yet</td></tr>';return;}
+    tbody.innerHTML=rows.map(function(r){
+      var items=r.stock_receipt_items||[];
+      var qtySum=items.reduce(function(a,x){return a+(x.quantity||0);},0);
+      return '<tr><td>'+new Date(r.received_at).toLocaleDateString('en-GB')+'</td><td>'+(r.supplier||'-')+'</td><td>'+(r.received_by||'-')+'</td>'
+        +'<td>'+items.length+' SKU'+(items.length!==1?'s':'')+' · '+qtySum+' units</td>'
+        +'<td>'+(r.total_value!=null?r.total_value+' LE':'-')+'</td></tr>';
+    }).join('');
+  }catch(e){console.warn('loadStockReceiptHistory failed',e);}
+}
+
+// ── Bulk Containers ──
+async function loadBulkContainers(){
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/bulk_containers?select=*&order=created_at.desc',{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    var rows=await res.json();
+    bulkContainers=Array.isArray(rows)?rows:[];
+  }catch(e){console.warn('loadBulkContainers failed',e);bulkContainers=[];}
+}
+
+async function createContainer(fields){
+  var res=await fetch(SUPABASE_URL+'/rest/v1/bulk_containers',{
+    method:'POST',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+    body:JSON.stringify(fields)
+  });
+  var rows=await res.json();
+  return Array.isArray(rows)?rows[0]:null;
+}
+
+async function updateContainer(id,fields){
+  await fetch(SUPABASE_URL+'/rest/v1/bulk_containers?id=eq.'+encodeURIComponent(id),{
+    method:'PATCH',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify(fields)
+  });
+}
+
+function daysSince(dateStr){
+  if(!dateStr)return 0;
+  return Math.floor((Date.now()-new Date(dateStr).getTime())/86400000);
+}
+
+function renderBulkContainers(){
+  var el=document.getElementById('bc-list');
+  if(!el)return;
+  if(!bulkContainers.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;grid-column:1/-1;">No containers tracked yet — open one to start.</div>';return;}
+  var order={open:0,unopened:1,empty:2};
+  var sorted=bulkContainers.slice().sort(function(a,b){
+    return (order[a.status]-order[b.status])||(new Date(b.created_at)-new Date(a.created_at));
+  });
+  el.innerHTML=sorted.map(function(c){
+    var statusColor=c.status==='open'?'var(--green)':c.status==='empty'?'var(--text3)':'var(--amber)';
+    var statusLabel=c.status==='open'?'Open':c.status==='empty'?'Empty':'Unopened';
+    var sub=c.status==='open'?('Opened '+daysSince(c.opened_at)+' day'+(daysSince(c.opened_at)!==1?'s':'')+' ago')
+      :c.status==='empty'?('Finished '+formatDate((c.finished_at||'').slice(0,10)))
+      :'Not opened yet';
+    return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;border-left:3px solid '+statusColor+';">'
+      +'<div style="font-weight:600;font-size:13px;">'+c.ingredient_name+'</div>'
+      +(c.container_size?'<div style="font-size:11px;color:var(--text3);">'+c.container_size+'</div>':'')
+      +'<div style="font-size:12px;color:'+statusColor+';margin-top:6px;font-weight:600;">'+statusLabel+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+sub+'</div>'
+      +(c.notes?'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic;">'+c.notes+'</div>':'')
+      +(c.status==='open'?'<div style="margin-top:10px;"><button class="btn btn-danger btn-sm" onclick="markContainerEmpty(\''+c.id+'\')">Mark Empty</button></div>':'')
+      +'</div>';
+  }).join('');
+}
+
+function openNewContainerModal(){
+  document.getElementById('bc-ingredient').value='';
+  document.getElementById('bc-size').value='';
+  document.getElementById('bc-notes').value='';
+  openModal('new-container-modal');
+}
+
+async function saveNewContainer(){
+  var name=document.getElementById('bc-ingredient').value.trim();
+  if(!name){showToast('Ingredient name is required',true);return;}
+  var fields={
+    ingredient_name:name,
+    container_size:document.getElementById('bc-size').value.trim()||null,
+    notes:document.getElementById('bc-notes').value.trim()||null,
+    status:'open',
+    opened_at:new Date().toISOString()
+  };
+  var created=await createContainer(fields);
+  if(created)bulkContainers.unshift(created);
+  closeModal('new-container-modal');
+  renderBulkContainers();
+  showToast('Container opened ✅');
+}
+
+async function markContainerEmpty(id){
+  await updateContainer(id,{status:'empty',finished_at:new Date().toISOString()});
+  var c=bulkContainers.find(function(x){return x.id===id;});
+  if(c){c.status='empty';c.finished_at=new Date().toISOString();}
+  renderBulkContainers();
 }
 
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
@@ -8166,6 +8474,19 @@ refreshDashboard=function(){
       <button class="btn btn-outline" onclick="skipReceiptWhatsapp()">Skip</button>
       <button class="btn btn-outline" onclick="sendPdfReceiptWhatsapp()">📄 Send PDF Receipt</button>
       <button class="btn btn-primary" onclick="sendReceiptWhatsapp()">💬 Send Text Receipt</button>
+    </div>
+  </div>
+</div>
+<!-- OPEN NEW CONTAINER MODAL -->
+<div class="modal-overlay" id="new-container-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">🧃 Open New Container</div><button class="close-btn" onclick="closeModal(&#39;new-container-modal&#39;)">✕</button></div>
+    <div class="form-group"><label>Ingredient *</label><input type="text" id="bc-ingredient" placeholder="e.g. Nescafe Gold 200g"></div>
+    <div class="form-group"><label>Container Size</label><input type="text" id="bc-size" placeholder="e.g. 200g jar, 5kg sack, 1L bottle"></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="bc-notes" placeholder="Any extra details..."></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal(&#39;new-container-modal&#39;)">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewContainer()">💾 Open Container</button>
     </div>
   </div>
 </div>
