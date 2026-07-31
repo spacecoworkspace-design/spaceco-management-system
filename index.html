@@ -406,6 +406,7 @@
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
     <button class="nav-item" id="nav-productcatalog" onclick="showPage(&#39;productcatalog&#39;,this);renderProductCatalog();"><span class="nav-icon">🗂</span> Product Catalog <span id="low-stock-badge" style="display:none;background:var(--red);color:white;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" id="nav-stockmgmt" onclick="showPage(&#39;stockmgmt&#39;,this);renderStockManagement();"><span class="nav-icon">📦</span> Stock Management</button>
+    <button class="nav-item" id="nav-watemplates" onclick="showPage(&#39;watemplates&#39;,this);renderWaTemplates();"><span class="nav-icon">📱</span> WhatsApp Messages</button>
     <button class="nav-item" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
     <button class="nav-item" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     <button class="nav-item" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
@@ -1175,6 +1176,22 @@
           <tbody id="sc-history-tbody"><tr class="empty-row"><td colspan="7">No counts logged yet</td></tr></tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHATSAPP MESSAGES MANAGER PAGE -->
+<div id="page-watemplates" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">📱 WhatsApp Messages</div><div class="page-sub">Every message the system sends — edit wording anytime, no code changes needed</div></div>
+    <button class="btn btn-primary" onclick="openCreateTemplateModal()">+ Create New Template</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Template Name</th><th>Category</th><th>Status</th><th>Default</th><th>Actions</th></tr></thead>
+        <tbody id="wat-tbody"><tr class="empty-row"><td colspan="5">Loading templates…</td></tr></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2160,6 +2177,7 @@ async function bootApp() {
     // Fall through — loadData will use localStorage cache
   }
   await loadProducts();
+  await loadWaTemplates();
   document.getElementById('boot-overlay').style.display = 'none';
   _appReady = true;
   // Run the original app init
@@ -2862,6 +2880,44 @@ function logWhatsapp(fields){
   }).catch(function(e){console.warn('logWhatsapp failed',e);});
 }
 
+// ── Editable message templates (whatsapp_templates table) ──
+// Every {{variable}} in a template body is replaced at send time. If no
+// active/default template exists for a key, each builder below falls back
+// to a hardcoded default so the feature never silently breaks.
+var waTemplates=[];
+
+async function loadWaTemplates(){
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/whatsapp_templates?select=*&order=category,template_name',{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    var rows=await res.json();
+    waTemplates=Array.isArray(rows)?rows:[];
+  }catch(e){console.warn('loadWaTemplates failed',e);waTemplates=[];}
+}
+
+function getActiveTemplate(key){
+  return waTemplates.find(function(t){return t.template_key===key&&t.is_active&&t.is_default;});
+}
+
+function renderTemplate(body,vars){
+  return (body||'').replace(/\{\{(\w+)\}\}/g,function(match,k){
+    return (vars&&vars[k]!==undefined&&vars[k]!==null)?String(vars[k]):match;
+  });
+}
+
+function buildRoomPricingBlock(){
+  var p=pricing;
+  return '🏠 Rooms:\n'
+    +'• Room 1 (4 persons): '+p.room1.first+' LE 1st hr, +'+p.room1.extra+' LE/hr\n'
+    +'• Room 2 (4 persons): '+p.room2.first+' LE 1st hr, +'+p.room2.extra+' LE/hr\n'
+    +'• Room 3 (6 persons): '+p.room3.first+' LE 1st hr, +'+p.room3.extra+' LE/hr\n'
+    +'• Room 4 (8 persons): '+p.room4.first+' LE 1st hr, +'+p.room4.extra+' LE/hr\n'
+    +'• Drawing Room: '+p.drawingRoom.tier1+'/'+p.drawingRoom.tier2+'/'+p.drawingRoom.tierMax+' LE\n'
+    +'• Classroom: '+p.classRoom.perHour+' LE/hr\n'
+    +'• Shared Space: '+p.sharedSpace.tier1+'/'+p.sharedSpace.tier2+'/'+p.sharedSpace.tierMax+' LE';
+}
+
 // ── New client welcome message (check-in) ──
 function checkNewClientWhatsapp(){
   var banner=document.getElementById('ci-whatsapp-banner');
@@ -2873,23 +2929,22 @@ function checkNewClientWhatsapp(){
 }
 
 function buildWelcomeMessage(){
-  var p=pricing;
+  var vars={
+    business_address:BUSINESS_INFO.address,
+    business_phone:formatPhoneDisplay(BUSINESS_INFO.phone),
+    business_hours:BUSINESS_INFO.hours,
+    room_pricing:buildRoomPricingBlock()
+  };
+  var tmpl=getActiveTemplate('welcome_new_client');
+  if(tmpl)return renderTemplate(tmpl.message_body,vars);
   return 'Welcome to Space-Co Workspace! 🚀\n\n'
-    +'Here are our packages & pricing:\n\n'
-    +'🏠 Rooms:\n'
-    +'• Room 1 (4 persons): '+p.room1.first+' LE 1st hr, +'+p.room1.extra+' LE/hr\n'
-    +'• Room 2 (4 persons): '+p.room2.first+' LE 1st hr, +'+p.room2.extra+' LE/hr\n'
-    +'• Room 3 (6 persons): '+p.room3.first+' LE 1st hr, +'+p.room3.extra+' LE/hr\n'
-    +'• Room 4 (8 persons): '+p.room4.first+' LE 1st hr, +'+p.room4.extra+' LE/hr\n'
-    +'• Drawing Room: '+p.drawingRoom.tier1+'/'+p.drawingRoom.tier2+'/'+p.drawingRoom.tierMax+' LE\n'
-    +'• Classroom: '+p.classRoom.perHour+' LE/hr\n'
-    +'• Shared Space: '+p.sharedSpace.tier1+'/'+p.sharedSpace.tier2+'/'+p.sharedSpace.tierMax+' LE\n\n'
+    +'Here are our packages & pricing:\n\n'+vars.room_pricing+'\n\n'
     +'📦 Academy Packages:\n'
     +'• Custom hour packages available\n'
     +'• Ask our staff for details!\n\n'
-    +'📍 Location: '+BUSINESS_INFO.address+'\n'
-    +'📞 Call us: '+formatPhoneDisplay(BUSINESS_INFO.phone)+'\n'
-    +'🕐 Hours: '+BUSINESS_INFO.hours+'\n\n'
+    +'📍 Location: '+vars.business_address+'\n'
+    +'📞 Call us: '+vars.business_phone+'\n'
+    +'🕐 Hours: '+vars.business_hours+'\n\n'
     +'We hope you enjoy your session! ☕';
 }
 
@@ -2899,7 +2954,7 @@ function sendWelcomeWhatsapp(){
   var name=(document.getElementById('ci-name').value||'').trim();
   var msg=buildWelcomeMessage();
   openWhatsapp(phone,msg);
-  logWhatsapp({client_phone:phone,client_name:name,message_type:'welcome',message_content:msg,status:'sent'});
+  logWhatsapp({client_phone:phone,client_name:name,message_type:'welcome',message_content:msg,status:'sent',template_key:'welcome_new_client'});
   document.getElementById('ci-whatsapp-banner').style.display='none';
   showToast('WhatsApp opened — tap Send in the chat to deliver it 📱');
 }
@@ -2915,14 +2970,21 @@ function formatDurationLabel(hrsStr){
 
 function buildReceiptMessage(visit,grand,payment){
   var drinksCost=grand-(visit.cost||0);
-  return 'Hi '+visit.name+', thanks for visiting Space-Co!\n\n'
-    +'📅 Date: '+formatDate(visit.date)+'\n'
-    +'🏠 Room: '+visit.room+'\n'
-    +'⏱️ Duration: '+formatDurationLabel(visit.hours)+'\n'
-    +'💰 Room Cost: '+visit.cost+' LE\n'
-    +'☕ Drinks & Snacks: '+drinksCost+' LE\n'
-    +'🎯 Grand Total: '+grand+' LE\n'
-    +'💳 Paid via: '+(payment==='cash'?'Cash':'Instapay')+'\n\n'
+  var vars={
+    client_name:visit.name,date:formatDate(visit.date),room:visit.room,
+    duration:formatDurationLabel(visit.hours),room_cost:visit.cost,snacks_cost:drinksCost,
+    total:grand,payment_method:payment==='cash'?'Cash':'Instapay',cashier_name:visit.cashier||''
+  };
+  var tmpl=getActiveTemplate('checkout_receipt_text');
+  if(tmpl)return renderTemplate(tmpl.message_body,vars);
+  return 'Hi '+vars.client_name+', thanks for visiting Space-Co!\n\n'
+    +'📅 Date: '+vars.date+'\n'
+    +'🏠 Room: '+vars.room+'\n'
+    +'⏱️ Duration: '+vars.duration+'\n'
+    +'💰 Room Cost: '+vars.room_cost+' LE\n'
+    +'☕ Drinks & Snacks: '+vars.snacks_cost+' LE\n'
+    +'🎯 Grand Total: '+vars.total+' LE\n'
+    +'💳 Paid via: '+vars.payment_method+'\n\n'
     +'See you next time! 🌟\nSpace-Co Workspace';
 }
 
@@ -2943,7 +3005,7 @@ function sendReceiptWhatsapp(){
   if(phone.length<8){showToast('No valid phone on file for this client',true);closeModal('whatsapp-receipt-modal');_waReceiptCtx=null;return;}
   var msg=buildReceiptMessage(visit,grand,payment);
   openWhatsapp(phone,msg);
-  logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_text',message_content:msg,status:'sent',session_id:String(visit.id)});
+  logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_text',message_content:msg,status:'sent',session_id:String(visit.id),template_key:'checkout_receipt_text'});
   closeModal('whatsapp-receipt-modal');
   _waReceiptCtx=null;
 }
@@ -3015,15 +3077,215 @@ async function sendPdfReceiptWhatsapp(){
     var blob=generateReceiptPdf(visit,grand,payment);
     var path=visit.date+'/'+visit.id+'.pdf';
     var url=await uploadReceiptPdf(blob,path);
-    var msg='Hi '+visit.name+', your receipt from Space-Co is ready!\n\n📅 Date: '+formatDate(visit.date)+'\n💰 Total: '+grand+' LE\n\nDownload receipt: '+url+'\n\nThank you! 🌟';
+    var pdfVars={client_name:visit.name,date:formatDate(visit.date),total:grand,pdf_url:url};
+    var pdfTmpl=getActiveTemplate('checkout_receipt_pdf');
+    var msg=pdfTmpl?renderTemplate(pdfTmpl.message_body,pdfVars)
+      :('Hi '+pdfVars.client_name+', your receipt from Space-Co is ready!\n\n📅 Date: '+pdfVars.date+'\n💰 Total: '+pdfVars.total+' LE\n\nDownload receipt: '+pdfVars.pdf_url+'\n\nThank you! 🌟');
     openWhatsapp(phone,msg);
-    logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_pdf',message_content:msg,status:'sent',session_id:String(visit.id),pdf_url:url});
+    logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_pdf',message_content:msg,status:'sent',session_id:String(visit.id),pdf_url:url,template_key:'checkout_receipt_pdf'});
   }catch(e){
     console.warn('PDF receipt failed',e);
     showToast('PDF generation failed — try Text Receipt instead',true);
   }
   closeModal('whatsapp-receipt-modal');
   _waReceiptCtx=null;
+}
+
+// ============================================================
+// WHATSAPP MESSAGES MANAGER — CRUD for whatsapp_templates
+// ============================================================
+var WA_CATEGORY_LABELS={checkin:'Check-in',checkout:'Checkout',marketing:'Marketing',alert:'Alert'};
+
+var WA_VARIABLES=[
+  {token:'client_name',label:'Client Name'},
+  {token:'phone',label:'Phone'},
+  {token:'date',label:'Date'},
+  {token:'time',label:'Time'},
+  {token:'room',label:'Room'},
+  {token:'duration',label:'Duration'},
+  {token:'room_cost',label:'Room Cost'},
+  {token:'snacks_cost',label:'Snacks Cost'},
+  {token:'total',label:'Total'},
+  {token:'payment_method',label:'Payment Method'},
+  {token:'cashier_name',label:'Cashier'},
+  {token:'pdf_url',label:'PDF URL'},
+  {token:'business_address',label:'Business Address'},
+  {token:'business_phone',label:'Business Phone'},
+  {token:'business_hours',label:'Business Hours'},
+  {token:'room_pricing',label:'Room Pricing Block'},
+  {token:'hours_remaining',label:'Hours Remaining'},
+  {token:'academy_name',label:'Academy Name'}
+];
+
+function waSampleVars(){
+  return {
+    client_name:'Ahmed Mostafa',phone:'01012345678',date:'31/07/2026',time:'18:30',
+    room:'Room 1 (4 persons)',duration:'2h 30min',room_cost:'330',snacks_cost:'55',total:'385',
+    payment_method:'Cash',cashier_name:'Aya',pdf_url:'https://example.com/receipt.pdf',
+    business_address:BUSINESS_INFO.address,business_phone:formatPhoneDisplay(BUSINESS_INFO.phone),business_hours:BUSINESS_INFO.hours,
+    room_pricing:buildRoomPricingBlock(),hours_remaining:'4.5',academy_name:'IMA Academy'
+  };
+}
+
+function renderWaTemplates(){
+  loadWaTemplates().then(function(){
+    var tbody=document.getElementById('wat-tbody');
+    if(!tbody)return;
+    if(!waTemplates.length){tbody.innerHTML='<tr class="empty-row"><td colspan="5">No templates yet</td></tr>';return;}
+    var sorted=waTemplates.slice().sort(function(a,b){return a.category.localeCompare(b.category)||a.template_name.localeCompare(b.template_name);});
+    tbody.innerHTML=sorted.map(function(t){
+      return '<tr'+(t.is_active?'':' style="opacity:0.5;"')+'>'
+        +'<td><strong>'+t.template_name+'</strong><div style="font-size:11px;color:var(--text3);">'+t.template_key+'</div></td>'
+        +'<td>'+(WA_CATEGORY_LABELS[t.category]||t.category)+'</td>'
+        +'<td>'+(t.is_active?'<span style="color:var(--green);">✅ Active</span>':'<span style="color:var(--text3);">⬜ Off</span>')+'</td>'
+        +'<td>'+(t.is_default?'<span class="badge badge-green">Default</span>':'')+'</td>'
+        +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditTemplateModal(\''+t.id+'\')">Edit</button></td>'
+        +'</tr>';
+    }).join('');
+  });
+}
+
+function renderWatVariableButtons(){
+  var el=document.getElementById('wat-variable-buttons');
+  if(!el)return;
+  el.innerHTML=WA_VARIABLES.map(function(v){
+    return '<button type="button" class="btn btn-outline btn-sm" onclick="insertWatVariable(\''+v.token+'\')" title="'+v.label+'">{{'+v.token+'}}</button>';
+  }).join('');
+}
+
+function insertWatVariable(token){
+  var ta=document.getElementById('wat-body');
+  var start=ta.selectionStart,end=ta.selectionEnd;
+  var text=ta.value;
+  var insert='{{'+token+'}}';
+  ta.value=text.slice(0,start)+insert+text.slice(end);
+  ta.focus();
+  ta.selectionStart=ta.selectionEnd=start+insert.length;
+  updateWatCharCount();
+  renderWatPreview();
+}
+
+function updateWatCharCount(){
+  var len=(document.getElementById('wat-body').value||'').length;
+  var el=document.getElementById('wat-char-count');
+  el.textContent=len+' / 4096';
+  el.style.color=len>4096?'var(--red)':'var(--text3)';
+}
+
+function renderWatPreview(){
+  var body=document.getElementById('wat-body').value;
+  document.getElementById('wat-preview').textContent=renderTemplate(body,waSampleVars());
+}
+
+function openCreateTemplateModal(){
+  document.getElementById('wat-modal-title').textContent='Create Template';
+  document.getElementById('wat-id').value='';
+  document.getElementById('wat-name').value='';
+  document.getElementById('wat-key').value='';
+  document.getElementById('wat-key').readOnly=false;
+  document.getElementById('wat-category').value='marketing';
+  document.getElementById('wat-description').value='';
+  document.getElementById('wat-body').value='';
+  document.getElementById('wat-active').checked=true;
+  document.getElementById('wat-default').checked=false;
+  document.getElementById('wat-delete-btn').style.display='none';
+  renderWatVariableButtons();
+  updateWatCharCount();
+  renderWatPreview();
+  openModal('wat-modal');
+}
+
+function openEditTemplateModal(id){
+  var t=waTemplates.find(function(x){return x.id===id;});
+  if(!t)return;
+  document.getElementById('wat-modal-title').textContent='Edit Template';
+  document.getElementById('wat-id').value=t.id;
+  document.getElementById('wat-name').value=t.template_name;
+  document.getElementById('wat-key').value=t.template_key;
+  document.getElementById('wat-key').readOnly=true;
+  document.getElementById('wat-category').value=t.category;
+  document.getElementById('wat-description').value=t.description||'';
+  document.getElementById('wat-body').value=t.message_body;
+  document.getElementById('wat-active').checked=t.is_active;
+  document.getElementById('wat-default').checked=t.is_default;
+  document.getElementById('wat-delete-btn').style.display='inline-block';
+  renderWatVariableButtons();
+  updateWatCharCount();
+  renderWatPreview();
+  openModal('wat-modal');
+}
+
+async function saveWaTemplate(){
+  var id=document.getElementById('wat-id').value;
+  var name=document.getElementById('wat-name').value.trim();
+  var key=document.getElementById('wat-key').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g,'_');
+  var body=document.getElementById('wat-body').value;
+  if(!name||!key||!body.trim()){showToast('Name, key, and message body are required',true);return;}
+  var fields={
+    template_name:name,
+    template_key:key,
+    category:document.getElementById('wat-category').value,
+    description:document.getElementById('wat-description').value.trim()||null,
+    message_body:body,
+    is_active:document.getElementById('wat-active').checked,
+    is_default:document.getElementById('wat-default').checked
+  };
+  try{
+    if(fields.is_default){
+      var unsetUrl=SUPABASE_URL+'/rest/v1/whatsapp_templates?template_key=eq.'+encodeURIComponent(key)+(id?'&id=neq.'+encodeURIComponent(id):'');
+      await fetch(unsetUrl,{
+        method:'PATCH',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body:JSON.stringify({is_default:false})
+      });
+    }
+    if(id){
+      var res=await fetch(SUPABASE_URL+'/rest/v1/whatsapp_templates?id=eq.'+encodeURIComponent(id),{
+        method:'PATCH',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body:JSON.stringify(Object.assign({},fields,{updated_at:new Date().toISOString()}))
+      });
+      if(!res.ok)throw new Error('Save failed ('+res.status+')');
+    } else {
+      var createRes=await fetch(SUPABASE_URL+'/rest/v1/whatsapp_templates',{
+        method:'POST',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+        body:JSON.stringify(fields)
+      });
+      if(!createRes.ok){
+        var errBody=await createRes.json().catch(function(){return {};});
+        throw new Error(errBody.message||('Save failed — key "'+key+'" may already exist'));
+      }
+    }
+    closeModal('wat-modal');
+    renderWaTemplates();
+    showToast('Template saved ✅');
+  }catch(e){
+    console.warn('saveWaTemplate failed',e);
+    showToast('Failed to save: '+e.message,true);
+  }
+}
+
+function deleteWaTemplate(){
+  var id=document.getElementById('wat-id').value;
+  if(!id)return;
+  var t=waTemplates.find(function(x){return x.id===id;});
+  document.getElementById('confirm-modal-msg').textContent='Delete "'+(t?t.template_name:'this template')+'"? This cannot be undone.';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    fetch(SUPABASE_URL+'/rest/v1/whatsapp_templates?id=eq.'+encodeURIComponent(id),{
+      method:'DELETE',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    }).then(function(){
+      closeModal('confirm-modal');
+      closeModal('wat-modal');
+      renderWaTemplates();
+      showToast('Template deleted');
+    }).catch(function(e){
+      console.warn('deleteWaTemplate failed',e);
+      showToast('Failed to delete template',true);
+    });
+  };
+  openModal('confirm-modal');
 }
 
 function renderCoTab(s){
@@ -8618,6 +8880,57 @@ refreshDashboard=function(){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;new-container-modal&#39;)">Cancel</button>
       <button class="btn btn-primary" onclick="saveNewContainer()">💾 Open Container</button>
+    </div>
+  </div>
+</div>
+<!-- WHATSAPP TEMPLATE EDIT MODAL -->
+<div class="modal-overlay" id="wat-modal">
+  <div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-header"><div class="modal-title" id="wat-modal-title">📱 Edit Template</div><button class="close-btn" onclick="closeModal(&#39;wat-modal&#39;)">✕</button></div>
+    <input type="hidden" id="wat-id">
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Template Name *</label><input type="text" id="wat-name" placeholder="e.g. Welcome - New Client"></div>
+      <div class="form-group"><label>Template Key *</label><input type="text" id="wat-key" placeholder="e.g. welcome_new_client"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 2fr;">
+      <div class="form-group"><label>Category</label>
+        <select id="wat-category">
+          <option value="checkin">Check-in</option>
+          <option value="checkout">Checkout</option>
+          <option value="marketing">Marketing</option>
+          <option value="alert">Alert</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Description (internal note)</label><input type="text" id="wat-description" placeholder="When is this sent?"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Message Body *</label>
+      <textarea id="wat-body" rows="10" style="font-family:inherit;" oninput="updateWatCharCount();renderWatPreview();" placeholder="Write the message... use {{variables}} for dynamic content"></textarea>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;" id="wat-char-count">0 / 4096</div>
+    </div>
+
+    <div class="form-group">
+      <label>Insert Variable</label>
+      <div id="wat-variable-buttons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Live Preview</label>
+      <div id="wat-preview" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;white-space:pre-wrap;line-height:1.5;min-height:60px;"></div>
+    </div>
+
+    <div style="display:flex;gap:20px;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="wat-active" style="width:auto;"> Active</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="wat-default" style="width:auto;"> Set as Default for this key</label>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;">
+      <button class="btn btn-danger" id="wat-delete-btn" onclick="deleteWaTemplate()">🗑 Delete</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="closeModal(&#39;wat-modal&#39;)">Cancel</button>
+        <button class="btn btn-primary" onclick="saveWaTemplate()">💾 Save Template</button>
+      </div>
     </div>
   </div>
 </div>
