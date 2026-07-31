@@ -14,9 +14,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <title>Space-Co Management System</title>
 <script src="./Space-Co Management System_files/chart.umd.min.js.download" onerror="window._chartLoadFailed=true;"></script>
-<script src="./Space-Co Management System_files/supabase.js.download"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" onerror="window._jspdfLoadFailed=true;"></script>
-<style>
+<script src="./Space-Co Management System_files/supabase.js.download"></script><style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
   :root {
     --bg:#0e0e10;--bg2:#16171c;--bg3:#1c1d24;--card:#22232d;
@@ -3019,78 +3017,6 @@ function skipReceiptWhatsapp(){
   _waReceiptCtx=null;
 }
 
-// ── PDF receipt: generated client-side, uploaded to Storage, linked in WhatsApp ──
-function generateReceiptPdf(visit,grand,payment){
-  var jsPDF=window.jspdf.jsPDF;
-  var doc=new jsPDF({unit:'pt',format:[280,420]});
-  var drinksCost=grand-(visit.cost||0);
-  var y=30;
-  doc.setFont('helvetica','bold');doc.setFontSize(16);
-  doc.text('Space-Co Workspace',140,y,{align:'center'});y+=18;
-  doc.setFont('helvetica','normal');doc.setFontSize(9);
-  doc.text(BUSINESS_INFO.address,140,y,{align:'center',maxWidth:250});y+=22;
-  doc.setDrawColor(200);doc.line(20,y,260,y);y+=20;
-
-  doc.setFontSize(11);
-  function row(label,value){
-    doc.setFont('helvetica','normal');doc.text(label,20,y);
-    doc.setFont('helvetica','bold');doc.text(String(value),260,y,{align:'right'});
-    y+=20;
-  }
-  row('Guest',visit.name);
-  row('Date',formatDate(visit.date));
-  row('Room',visit.room);
-  row('Duration',formatDurationLabel(visit.hours));
-  y+=6;doc.line(20,y,260,y);y+=20;
-  row('Room Cost',visit.cost+' LE');
-  row('Drinks & Snacks',drinksCost+' LE');
-  y+=6;doc.line(20,y,260,y);y+=20;
-  doc.setFontSize(13);
-  row('Grand Total',grand+' LE');
-  doc.setFontSize(11);
-  row('Paid via',payment==='cash'?'Cash':'Instapay');
-  y+=16;
-  doc.setFont('helvetica','italic');doc.setFontSize(10);
-  doc.text('Thank you for visiting — see you next time!',140,y,{align:'center'});
-
-  return doc.output('blob');
-}
-
-async function uploadReceiptPdf(blob,path){
-  var res=await fetch(SUPABASE_URL+'/storage/v1/object/receipts/'+path,{
-    method:'POST',
-    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/pdf'},
-    body:blob
-  });
-  if(!res.ok)throw new Error('Upload failed: '+res.status);
-  return SUPABASE_URL+'/storage/v1/object/public/receipts/'+path;
-}
-
-async function sendPdfReceiptWhatsapp(){
-  if(!_waReceiptCtx)return;
-  var visit=_waReceiptCtx.visit,grand=_waReceiptCtx.grand,payment=_waReceiptCtx.payment;
-  var phone=normalizePhoneDigits(visit.phone);
-  if(phone.length<8){showToast('No valid phone on file for this client',true);closeModal('whatsapp-receipt-modal');_waReceiptCtx=null;return;}
-  if(!window.jspdf||!window.jspdf.jsPDF){showToast('PDF library failed to load — try Text Receipt instead',true);return;}
-  showToast('Generating PDF…');
-  try{
-    var blob=generateReceiptPdf(visit,grand,payment);
-    var path=visit.date+'/'+visit.id+'.pdf';
-    var url=await uploadReceiptPdf(blob,path);
-    var pdfVars={client_name:visit.name,date:formatDate(visit.date),total:grand,pdf_url:url};
-    var pdfTmpl=getActiveTemplate('checkout_receipt_pdf');
-    var msg=pdfTmpl?renderTemplate(pdfTmpl.message_body,pdfVars)
-      :('Hi '+pdfVars.client_name+', your receipt from Space-Co is ready!\n\n📅 Date: '+pdfVars.date+'\n💰 Total: '+pdfVars.total+' LE\n\nDownload receipt: '+pdfVars.pdf_url+'\n\nThank you! 🌟');
-    openWhatsapp(phone,msg);
-    logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_pdf',message_content:msg,status:'sent',session_id:String(visit.id),pdf_url:url,template_key:'checkout_receipt_pdf'});
-  }catch(e){
-    console.warn('PDF receipt failed',e);
-    showToast('PDF generation failed — try Text Receipt instead',true);
-  }
-  closeModal('whatsapp-receipt-modal');
-  _waReceiptCtx=null;
-}
-
 // ============================================================
 // WHATSAPP MESSAGES MANAGER — CRUD for whatsapp_templates
 // ============================================================
@@ -3108,7 +3034,6 @@ var WA_VARIABLES=[
   {token:'total',label:'Total'},
   {token:'payment_method',label:'Payment Method'},
   {token:'cashier_name',label:'Cashier'},
-  {token:'pdf_url',label:'PDF URL'},
   {token:'business_address',label:'Business Address'},
   {token:'business_phone',label:'Business Phone'},
   {token:'business_hours',label:'Business Hours'},
@@ -3121,7 +3046,7 @@ function waSampleVars(){
   return {
     client_name:'Ahmed Mostafa',phone:'01012345678',date:'31/07/2026',time:'18:30',
     room:'Room 1 (4 persons)',duration:'2h 30min',room_cost:'330',snacks_cost:'55',total:'385',
-    payment_method:'Cash',cashier_name:'Aya',pdf_url:'https://example.com/receipt.pdf',
+    payment_method:'Cash',cashier_name:'Aya',
     business_address:BUSINESS_INFO.address,business_phone:formatPhoneDisplay(BUSINESS_INFO.phone),business_hours:BUSINESS_INFO.hours,
     room_pricing:buildRoomPricingBlock(),hours_remaining:'4.5',academy_name:'IMA Academy'
   };
@@ -8863,7 +8788,6 @@ refreshDashboard=function(){
     <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Send <strong id="wa-receipt-name"></strong> their receipt now, or skip.</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="skipReceiptWhatsapp()">Skip</button>
-      <button class="btn btn-outline" onclick="sendPdfReceiptWhatsapp()">📄 Send PDF Receipt</button>
       <button class="btn btn-primary" onclick="sendReceiptWhatsapp()">💬 Send Text Receipt</button>
     </div>
   </div>
