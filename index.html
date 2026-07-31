@@ -2988,11 +2988,11 @@ function buildReceiptMessage(visit,grand,payment){
     +'See you next time! 🌟\nSpace-Co Workspace';
 }
 
-// Only offered to returning clients — new clients already got the welcome
-// message at check-in, so a receipt prompt on their very first visit is
-// redundant.
-function maybeOfferWhatsappReceipt(visit,grand,payment,isReturningClient){
-  if(!isReturningClient||!visit.phone)return;
+// Offered on every checkout with a phone on file — new clients get this
+// too now (not just returning ones), so nobody leaves without a receipt
+// option just because staff missed the welcome-message prompt at check-in.
+function maybeOfferWhatsappReceipt(visit,grand,payment){
+  if(!visit.phone)return;
   _waReceiptCtx={visit:visit,grand:grand,payment:payment};
   document.getElementById('wa-receipt-name').textContent=visit.name;
   openModal('whatsapp-receipt-modal');
@@ -3373,8 +3373,6 @@ function submitCheckout(){
   // Prepared-mode items (hot drinks etc.) are intentionally skipped.
   deductStockForTab(tab);
 
-  var isReturningClient=s.phone&&clients.some(function(c){return normalizePhoneDigits(c.phone)===normalizePhoneDigits(s.phone);});
-
   var visit={
     id:Date.now(),profileId:profile.id,date:s.date,name:profile.name,
     phone:s.phone,guests:s.guests,email:s.email,
@@ -3407,7 +3405,7 @@ function submitCheckout(){
   setTimeout(function(){printInvoice(visit);},400);
   renderShiftCards();calcSettlement();
   if(usedPackage)renderSharedSpacePackages();
-  maybeOfferWhatsappReceipt(visit,grand,payment,isReturningClient);
+  maybeOfferWhatsappReceipt(visit,grand,payment);
 }
 
 // legacy submitGuest kept for any other callers
