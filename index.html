@@ -123,7 +123,8 @@
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
-  .stat-label{font-size:12px;color:var(--text3);margin-bottom:8px;}
+  .stat-label{font-size:12px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;}
+  .stat-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--bg3);margin-right:8px;font-size:13px;flex-shrink:0;}
   .stat-value{font-size:26px;font-weight:600;}
   .stat-sub{font-size:11px;color:var(--text3);margin-top:4px;}
   .form-group{margin-bottom:14px;}
@@ -158,6 +159,10 @@
   .badge-red{background:var(--red-bg);color:var(--red);}
   .badge-blue{background:var(--blue-bg);color:var(--blue);}
   .badge-purple{background:rgba(108,99,255,0.15);color:var(--accent2);}
+  .skeleton-row td{padding:11px 12px;}
+  .skeleton-bar{height:14px;border-radius:4px;background:linear-gradient(90deg,var(--bg3) 25%,var(--border2) 50%,var(--bg3) 75%);background-size:200% 100%;animation:skeletonShimmer 1.4s ease-in-out infinite;}
+  @keyframes skeletonShimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+  .avatar-initials{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent) 0%,var(--pink) 100%);color:#1a1305;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
   .progress-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
   .progress-fill{height:100%;border-radius:4px;transition:width 0.4s;}
   .progress-green{background:var(--green);}
@@ -433,10 +438,10 @@
     <button class="btn btn-outline" onclick="printMonthlyReport()">🖨 Monthly Report</button>
   </div>
   <div class="grid-4 mb-16">
-    <div class="stat"><div class="stat-label">Today's Clients</div><div class="stat-value money money-green" id="dash-today-clients">3</div><div class="stat-sub">checked in today</div></div>
-    <div class="stat"><div class="stat-label">Today's Revenue</div><div class="stat-value money money-green" id="dash-today-revenue">11330 LE</div><div class="stat-sub">all payments</div></div>
-    <div class="stat"><div class="stat-label">Total Clients</div><div class="stat-value" id="dash-total-clients">302</div><div class="stat-sub">unique clients</div></div>
-    <div class="stat"><div class="stat-label">This Month (Net)</div><div class="stat-value money" id="dash-month-rev" title="Cash: 19300 LE + Instapay: 7475 LE − Expenses: 8760 LE" style="color: var(--green);">18015 LE</div><div class="stat-sub">revenue − expenses</div></div>
+    <div class="stat"><div class="stat-label"><span class="stat-icon">👥</span>Today's Clients</div><div class="stat-value money money-green" id="dash-today-clients">3</div><div class="stat-sub">checked in today</div></div>
+    <div class="stat"><div class="stat-label"><span class="stat-icon">💰</span>Today's Revenue</div><div class="stat-value money money-green" id="dash-today-revenue">11330 LE</div><div class="stat-sub">all payments</div></div>
+    <div class="stat"><div class="stat-label"><span class="stat-icon">📇</span>Total Clients</div><div class="stat-value" id="dash-total-clients">302</div><div class="stat-sub">unique clients</div></div>
+    <div class="stat"><div class="stat-label"><span class="stat-icon">📊</span>This Month (Net)</div><div class="stat-value money" id="dash-month-rev" title="Cash: 19300 LE + Instapay: 7475 LE − Expenses: 8760 LE" style="color: var(--green);">18015 LE</div><div class="stat-sub">revenue − expenses</div></div>
   </div>
   <!-- Needs Attention widget -->
   <div class="card mb-16" id="dash-attention-card" style="display: block; border-color: rgba(224, 85, 85, 0.3);">
@@ -1946,6 +1951,7 @@ async function saveStockReceipt(){
 async function loadStockReceiptHistory(){
   var tbody=document.getElementById('sr-history-tbody');
   if(!tbody)return;
+  tbody.innerHTML=skeletonRowsHtml(5,4);
   try{
     var res=await fetch(SUPABASE_URL+'/rest/v1/stock_receipts?select=*,stock_receipt_items(quantity)&order=received_at.desc&limit=15',{
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
@@ -2130,6 +2136,7 @@ async function saveStockCount(){
 async function loadStockCountHistory(){
   var tbody=document.getElementById('sc-history-tbody');
   if(!tbody)return;
+  tbody.innerHTML=skeletonRowsHtml(7,4);
   try{
     var res=await fetch(SUPABASE_URL+'/rest/v1/stock_counts?select=*,products(display_name,unit)&order=counted_at.desc&limit=25',{
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
@@ -2228,6 +2235,22 @@ async function bootApp() {
 function normalizeStr(s){return (s||'').trim().toLowerCase();}
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function formatDate(d){if(!d)return '-';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+
+function getInitials(name){
+  var parts=(name||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length)return '?';
+  if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[1][0]).toUpperCase();
+}
+
+function skeletonRowsHtml(cols,rows){
+  rows=rows||3;
+  var widths=[85,60,70,50,65];
+  var row='<tr class="skeleton-row">'+Array(cols).fill(0).map(function(_,i){
+    return '<td><div class="skeleton-bar" style="width:'+(widths[i%widths.length])+'%;"></div></td>';
+  }).join('')+'</tr>';
+  return Array(rows).fill(row).join('');
+}
 function getDayName(d){if(!d)return '';return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d).getDay()];}
 function calcHours(tin,tout){
   if(!tin||!tout)return 0;
@@ -3053,6 +3076,8 @@ function waSampleVars(){
 }
 
 function renderWaTemplates(){
+  var loadingTbody=document.getElementById('wat-tbody');
+  if(loadingTbody)loadingTbody.innerHTML=skeletonRowsHtml(5,4);
   loadWaTemplates().then(function(){
     var tbody=document.getElementById('wat-tbody');
     if(!tbody)return;
@@ -7740,14 +7765,15 @@ function renderDashRoomGrid(){
     var active=activeSessions.find(function(s){return (s.roomKey||s.room)===rk||(s.room||'').toLowerCase().replace(/\s/g,'_')===rk;});
     var todayRes=reservations.filter(function(r){return r.date===today()&&(r.room===rk||r.room===rName);});
     var status=active?'occupied':todayRes.length?'reserved':'free';
-    var col=status==='occupied'?'var(--green)':status==='reserved'?'var(--amber)':'var(--text3)';
     var bg=status==='occupied'?'rgba(46,201,126,0.1)':status==='reserved'?'rgba(212,168,67,0.08)':'var(--bg3)';
-    var dot=status==='occupied'?'🟢':status==='reserved'?'🟡':'⚪';
-    var label=status==='occupied'?(active.name+' · '+fmt12(active.timeIn||'')):(status==='reserved'?todayRes[0].client+' (reserved)':'Available');
+    var badgeClass=status==='occupied'?'badge-green':status==='reserved'?'badge-amber':'badge-blue';
+    var statusLabel=status==='occupied'?'Occupied':status==='reserved'?'Reserved':'Available';
+    var detail=status==='occupied'?(active.name+' · '+fmt12(active.timeIn||'')):(status==='reserved'?todayRes[0].client:'');
     var timer=status==='occupied'?'<div class="live-timer" data-timein="'+(active.timeIn||'')+'">--:--:--</div>':'';
     return '<div style="background:'+bg+';border-radius:var(--radius-sm);padding:12px;border:1px solid rgba(255,255,255,0.07);">'
-      +'<div style="font-size:11px;color:'+col+';font-weight:700;margin-bottom:4px;">'+dot+' '+rk.replace(/_/g,' ').toUpperCase()+'</div>'
-      +'<div style="font-size:11px;color:var(--text2);margin-bottom:4px;">'+label+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px;">'+rk.replace(/_/g,' ').toUpperCase()+'</div>'
+      +'<span class="badge '+badgeClass+'">'+statusLabel+'</span>'
+      +(detail?'<div style="font-size:11px;color:var(--text2);margin-top:6px;">'+detail+'</div>':'')
       +timer
       +'</div>';
   }).join('');
@@ -7802,7 +7828,10 @@ renderActiveSessions=function(){
   }
   el.innerHTML=activeSessions.map(function(s){
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
-      +'<div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 1.5s infinite;"></div>'
+      +'<div style="position:relative;flex-shrink:0;">'
+      +'<div class="avatar-initials">'+getInitials(s.name)+'</div>'
+      +'<div style="position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid var(--card);animation:pulse 1.5s infinite;"></div>'
+      +'</div>'
       +'<div style="flex:1;">'
       +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
