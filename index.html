@@ -177,17 +177,22 @@
   .toast.show{transform:translateY(0);opacity:1;}
   .toast.error{background:var(--red);color:white;}
   .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .pos-tile{transition:transform 0.15s cubic-bezier(0.4,0,0.2,1),box-shadow 0.15s ease;}
+  .pos-tile:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,0.25);}
+  .pos-tile:active{transform:scale(0.97);}
   .room-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all 0.18s;text-align:center;}
-  .room-card:hover{border-color:var(--border2);}
-  .room-card.selected{border-color:var(--accent);background:rgba(108,99,255,0.12);}
+  .room-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+  .room-card.selected{border-color:var(--accent);background:rgba(108,99,255,0.12);box-shadow:0 0 0 3px rgba(108,99,255,0.25);transform:scale(1.02);}
   .room-card .room-name{font-size:13px;font-weight:600;margin-bottom:3px;}
   .room-card .room-price{font-size:11px;color:var(--text2);}
   .room-card .room-cap{font-size:10px;color:var(--text3);margin-top:2px;}
   .cost-box{background:var(--bg3);border-radius:var(--radius-sm);padding:16px;}
   .cost-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;}
   .cost-row.total{font-size:15px;font-weight:600;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;}
-  .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;}
+  .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(0,0,0,0.7);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);align-items:center;justify-content:center;}
   .modal-overlay.open{display:flex;}
+  .modal-overlay.open .modal{animation:modalPopIn 0.18s ease;}
+  @keyframes modalPopIn{from{opacity:0;transform:scale(0.96) translateY(6px);}to{opacity:1;transform:scale(1) translateY(0);}}
   .modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;}
   .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
   .modal-title{font-size:18px;font-weight:600;}
@@ -2810,7 +2815,7 @@ function renderCoProductGrid(){
   g.innerHTML=list.map(function(p){
     var q=coCart[p.id]||0;
     var out=p.inventory_mode==='retail'&&p.stock_quantity<=0;
-    return '<div onclick="coAddProduct(\''+p.id+'\')" oncontextmenu="event.preventDefault();coRemoveProduct(\''+p.id+'\')" '
+    return '<div class="pos-tile" onclick="coAddProduct(\''+p.id+'\')" oncontextmenu="event.preventDefault();coRemoveProduct(\''+p.id+'\')" '
       +'style="background:var(--bg2);border:1px solid '+(q>0?'var(--accent)':'var(--border)')+';border-radius:var(--radius-sm);padding:8px;text-align:center;cursor:pointer;'+(out?'opacity:0.45;':'')+'">'
       +'<div style="font-size:11px;margin-bottom:2px;">'+(p.emoji?p.emoji+' ':'')+p.display_name+'</div>'
       +'<div style="font-size:10px;color:var(--accent2);margin-bottom:4px;">'+p.sale_price+' LE</div>'
