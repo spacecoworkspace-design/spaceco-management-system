@@ -506,9 +506,13 @@
               <div class="suggestions" id="name-suggestions" style="display: none;"></div>
             </div>
           </div>
-          <div class="form-group"><label>Phone Number</label><input type="text" id="ci-phone" placeholder="01X-XXXXXXXX"></div>
+          <div class="form-group"><label>Phone Number</label><input type="text" id="ci-phone" placeholder="01X-XXXXXXXX" oninput="checkNewClientWhatsapp()"></div>
         </div>
         <div id="ci-package-status" style="display:none;margin:-6px 0 14px;padding:8px 12px;background:var(--green-bg);border-radius:var(--radius-sm);color:var(--green);font-size:12px;"></div>
+        <div id="ci-whatsapp-banner" style="display:none;margin:-6px 0 14px;padding:10px 12px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.35);border-radius:var(--radius-sm);align-items:center;justify-content:space-between;gap:10px;">
+          <span style="font-size:12px;color:var(--text2);">📱 New client — send them our packages &amp; pricing?</span>
+          <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="sendWelcomeWhatsapp()">Send Welcome Package</button>
+        </div>
         <div class="form-row" style="grid-template-columns:1fr 1fr;">
           <div class="form-group"><label>Number of Guests</label><input type="number" id="ci-guests" min="1" value="1" oninput="updateCostCalc()"></div>
           <div class="form-group"><label>Email (optional)</label><input type="email" id="ci-email" placeholder="email@example.com"></div>
@@ -2387,6 +2391,132 @@ function deductStockForTab(tab){
   if(touched)updateLowStockBadges();
 }
 
+// ============================================================
+// WHATSAPP INTEGRATION — free wa.me click-to-chat, no paid Cloud API.
+// The cashier must be logged into the business WhatsApp Web/App; wa.me
+// only pre-fills a chat with the client's number, it doesn't send for us.
+// ============================================================
+var BUSINESS_INFO={
+  phone:'01033104912',
+  address:'47 No. 32 Mantek 3, El Shorouk, Cairo (Sherouk City · Diamond Mall)',
+  hours:'Saturday – Thursday, 9:00 AM – 11:00 PM'
+};
+
+function normalizePhoneDigits(s){ return (s||'').replace(/\D/g,''); }
+
+function formatPhoneDisplay(digits){
+  return digits.length===11?digits.slice(0,3)+'-'+digits.slice(3):digits;
+}
+
+function openWhatsapp(phoneDigits,message){
+  var local=phoneDigits.replace(/^0/,'');
+  window.open('https://wa.me/20'+local+'?text='+encodeURIComponent(message),'_blank');
+}
+
+function logWhatsapp(fields){
+  var body=Object.assign({triggered_by:currentStaffName||'-'},fields);
+  fetch(SUPABASE_URL+'/rest/v1/whatsapp_logs',{
+    method:'POST',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify(body)
+  }).catch(function(e){console.warn('logWhatsapp failed',e);});
+}
+
+// ── New client welcome message (check-in) ──
+function checkNewClientWhatsapp(){
+  var banner=document.getElementById('ci-whatsapp-banner');
+  if(!banner)return;
+  var phone=normalizePhoneDigits(document.getElementById('ci-phone').value);
+  if(phone.length<8){ banner.style.display='none'; return; }
+  var hasVisited=(clients||[]).some(function(c){return normalizePhoneDigits(c.phone)===phone;});
+  banner.style.display=hasVisited?'none':'flex';
+}
+
+function buildWelcomeMessage(){
+  var p=pricing;
+  return 'Welcome to Space-Co Workspace! 🚀\n\n'
+    +'Here are our packages & pricing:\n\n'
+    +'🏠 Rooms:\n'
+    +'• Room 1 (4 persons): '+p.room1.first+' LE 1st hr, +'+p.room1.extra+' LE/hr\n'
+    +'• Room 2 (4 persons): '+p.room2.first+' LE 1st hr, +'+p.room2.extra+' LE/hr\n'
+    +'• Room 3 (6 persons): '+p.room3.first+' LE 1st hr, +'+p.room3.extra+' LE/hr\n'
+    +'• Room 4 (8 persons): '+p.room4.first+' LE 1st hr, +'+p.room4.extra+' LE/hr\n'
+    +'• Drawing Room: '+p.drawingRoom.tier1+'/'+p.drawingRoom.tier2+'/'+p.drawingRoom.tierMax+' LE\n'
+    +'• Classroom: '+p.classRoom.perHour+' LE/hr\n'
+    +'• Shared Space: '+p.sharedSpace.tier1+'/'+p.sharedSpace.tier2+'/'+p.sharedSpace.tierMax+' LE\n\n'
+    +'📦 Academy Packages:\n'
+    +'• Custom hour packages available\n'
+    +'• Ask our staff for details!\n\n'
+    +'📍 Location: '+BUSINESS_INFO.address+'\n'
+    +'📞 Call us: '+formatPhoneDisplay(BUSINESS_INFO.phone)+'\n'
+    +'🕐 Hours: '+BUSINESS_INFO.hours+'\n\n'
+    +'We hope you enjoy your session! ☕';
+}
+
+function sendWelcomeWhatsapp(){
+  var phone=normalizePhoneDigits(document.getElementById('ci-phone').value);
+  if(phone.length<8){showToast('Enter a valid phone number first',true);return;}
+  var name=(document.getElementById('ci-name').value||'').trim();
+  var msg=buildWelcomeMessage();
+  openWhatsapp(phone,msg);
+  logWhatsapp({client_phone:phone,client_name:name,message_type:'welcome',message_content:msg,status:'sent'});
+  document.getElementById('ci-whatsapp-banner').style.display='none';
+  showToast('WhatsApp opened — tap Send in the chat to deliver it 📱');
+}
+
+// ── Receipt message (checkout, returning clients only) ──
+var _waReceiptCtx=null;
+
+function formatDurationLabel(hrsStr){
+  var hrsNum=parseFloat(hrsStr)||0;
+  var h=Math.floor(hrsNum),m=Math.round((hrsNum-h)*60);
+  return h+'h'+(m?' '+m+'min':'');
+}
+
+function buildReceiptMessage(visit,grand,payment){
+  var drinksCost=grand-(visit.cost||0);
+  return 'Hi '+visit.name+', thanks for visiting Space-Co!\n\n'
+    +'📅 Date: '+formatDate(visit.date)+'\n'
+    +'🏠 Room: '+visit.room+'\n'
+    +'⏱️ Duration: '+formatDurationLabel(visit.hours)+'\n'
+    +'💰 Room Cost: '+visit.cost+' LE\n'
+    +'☕ Drinks & Snacks: '+drinksCost+' LE\n'
+    +'🎯 Grand Total: '+grand+' LE\n'
+    +'💳 Paid via: '+(payment==='cash'?'Cash':'Instapay')+'\n\n'
+    +'See you next time! 🌟\nSpace-Co Workspace';
+}
+
+// Only offered to returning clients — new clients already got the welcome
+// message at check-in, so a receipt prompt on their very first visit is
+// redundant.
+function maybeOfferWhatsappReceipt(visit,grand,payment,isReturningClient){
+  if(!isReturningClient||!visit.phone)return;
+  _waReceiptCtx={visit:visit,grand:grand,payment:payment};
+  document.getElementById('wa-receipt-name').textContent=visit.name;
+  openModal('whatsapp-receipt-modal');
+}
+
+function sendReceiptWhatsapp(){
+  if(!_waReceiptCtx)return;
+  var visit=_waReceiptCtx.visit,grand=_waReceiptCtx.grand,payment=_waReceiptCtx.payment;
+  var phone=normalizePhoneDigits(visit.phone);
+  if(phone.length<8){showToast('No valid phone on file for this client',true);closeModal('whatsapp-receipt-modal');_waReceiptCtx=null;return;}
+  var msg=buildReceiptMessage(visit,grand,payment);
+  openWhatsapp(phone,msg);
+  logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'receipt_text',message_content:msg,status:'sent',session_id:String(visit.id)});
+  closeModal('whatsapp-receipt-modal');
+  _waReceiptCtx=null;
+}
+
+function skipReceiptWhatsapp(){
+  if(_waReceiptCtx){
+    var visit=_waReceiptCtx.visit;
+    logWhatsapp({client_phone:normalizePhoneDigits(visit.phone),client_name:visit.name,message_type:'receipt_text',status:'skipped',session_id:String(visit.id)});
+  }
+  closeModal('whatsapp-receipt-modal');
+  _waReceiptCtx=null;
+}
+
 function renderCoTab(s){
   var el=document.getElementById('co-tab-list');
   if(!el)return;
@@ -2472,6 +2602,8 @@ function submitCheckout(){
   // Prepared-mode items (hot drinks etc.) are intentionally skipped.
   deductStockForTab(tab);
 
+  var isReturningClient=s.phone&&clients.some(function(c){return normalizePhoneDigits(c.phone)===normalizePhoneDigits(s.phone);});
+
   var visit={
     id:Date.now(),profileId:profile.id,date:s.date,name:profile.name,
     phone:s.phone,guests:s.guests,email:s.email,
@@ -2504,6 +2636,7 @@ function submitCheckout(){
   setTimeout(function(){printInvoice(visit);},400);
   renderShiftCards();calcSettlement();
   if(usedPackage)renderSharedSpacePackages();
+  maybeOfferWhatsappReceipt(visit,grand,payment,isReturningClient);
 }
 
 // legacy submitGuest kept for any other callers
@@ -7951,6 +8084,17 @@ refreshDashboard=function(){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;product-modal&#39;)">Cancel</button>
       <button class="btn btn-primary" onclick="saveProduct()">💾 Save Product</button>
+    </div>
+  </div>
+</div>
+<!-- WHATSAPP RECEIPT MODAL -->
+<div class="modal-overlay" id="whatsapp-receipt-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">📱 Send Receipt via WhatsApp?</div><button class="close-btn" onclick="skipReceiptWhatsapp()">✕</button></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Send <strong id="wa-receipt-name"></strong> their receipt now, or skip.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="skipReceiptWhatsapp()">Skip</button>
+      <button class="btn btn-primary" onclick="sendReceiptWhatsapp()">💬 Send Text Receipt</button>
     </div>
   </div>
 </div>
