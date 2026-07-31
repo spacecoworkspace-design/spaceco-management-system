@@ -1095,6 +1095,7 @@
   <div style="display:flex;gap:10px;margin-bottom:16px;">
     <button class="btn btn-primary" id="sm-tab-btn-receive" onclick="switchStockMgmtTab('receive')">📥 Receive Stock</button>
     <button class="btn btn-outline" id="sm-tab-btn-containers" onclick="switchStockMgmtTab('containers')">🧃 Bulk Containers</button>
+    <button class="btn btn-outline" id="sm-tab-btn-counts" onclick="switchStockMgmtTab('counts')">🧮 Stock Counts</button>
   </div>
 
   <!-- RECEIVE STOCK TAB -->
@@ -1146,6 +1147,34 @@
         <button class="btn btn-primary" onclick="openNewContainerModal()">+ Open New Container</button>
       </div>
       <div id="bc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
+    </div>
+  </div>
+
+  <!-- STOCK COUNTS TAB -->
+  <div id="sm-tab-counts" style="display:none;">
+    <div class="card mb-16">
+      <div class="card-title">🧮 Weekly Stock Count</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Enter what's physically on the shelf for each product. Saving updates the system stock to match your count and logs the variance.</div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Counted By</label><select id="sc-cashier"></select></div>
+        <div></div>
+      </div>
+      <div class="table-wrap mb-16">
+        <table>
+          <thead><tr><th>Product</th><th>Category</th><th>Expected</th><th>Actual Count</th><th>Variance</th><th>Notes</th></tr></thead>
+          <tbody id="sc-tbody"><tr class="empty-row"><td colspan="6">Loading products…</td></tr></tbody>
+        </table>
+      </div>
+      <button class="btn btn-success btn-full btn-lg" onclick="saveStockCount()">✓ Save Count &amp; Reconcile Stock</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent Counts</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Product</th><th>Expected</th><th>Actual</th><th>Variance</th><th>By</th><th>Notes</th></tr></thead>
+          <tbody id="sc-history-tbody"><tr class="empty-row"><td colspan="7">No counts logged yet</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1772,13 +1801,18 @@ function renderStockManagement(){
   renderSrItemsTable();
   loadStockReceiptHistory();
   loadBulkContainers().then(renderBulkContainers);
+  populateScCashierOptions();
+  renderScTable();
+  loadStockCountHistory();
 }
 
 function switchStockMgmtTab(tab){
   document.getElementById('sm-tab-receive').style.display=tab==='receive'?'block':'none';
   document.getElementById('sm-tab-containers').style.display=tab==='containers'?'block':'none';
+  document.getElementById('sm-tab-counts').style.display=tab==='counts'?'block':'none';
   document.getElementById('sm-tab-btn-receive').className='btn '+(tab==='receive'?'btn-primary':'btn-outline');
   document.getElementById('sm-tab-btn-containers').className='btn '+(tab==='containers'?'btn-primary':'btn-outline');
+  document.getElementById('sm-tab-btn-counts').className='btn '+(tab==='counts'?'btn-primary':'btn-outline');
 }
 
 function populateSrReceivedByOptions(){
@@ -2001,6 +2035,103 @@ async function markContainerEmpty(id){
   var c=bulkContainers.find(function(x){return x.id===id;});
   if(c){c.status='empty';c.finished_at=new Date().toISOString();}
   renderBulkContainers();
+}
+
+// ── Stock Counts ──
+function populateScCashierOptions(){
+  var sel=document.getElementById('sc-cashier');
+  if(!sel)return;
+  sel.innerHTML=(staff||[]).map(function(s){return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
+}
+
+function renderScTable(){
+  var tbody=document.getElementById('sc-tbody');
+  if(!tbody)return;
+  var list=products.filter(function(p){return p.is_active&&p.inventory_mode==='retail';})
+    .sort(function(a,b){return a.category.localeCompare(b.category)||a.display_name.localeCompare(b.display_name);});
+  if(!list.length){tbody.innerHTML='<tr class="empty-row"><td colspan="6">No retail products to count</td></tr>';return;}
+  tbody.innerHTML=list.map(function(p){
+    return '<tr data-product-id="'+p.id+'">'
+      +'<td>'+(p.emoji?p.emoji+' ':'')+p.display_name+'</td>'
+      +'<td>'+(CATEGORY_LABELS[p.category]||p.category)+'</td>'
+      +'<td>'+p.stock_quantity+' '+p.unit+'</td>'
+      +'<td><input type="number" min="0" placeholder="—" style="width:80px;" oninput="updateScVariance(\''+p.id+'\')" id="sc-actual-'+p.id+'"></td>'
+      +'<td id="sc-variance-'+p.id+'" style="color:var(--text3);">—</td>'
+      +'<td><input type="text" placeholder="optional" style="width:140px;" id="sc-notes-'+p.id+'"></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function updateScVariance(productId){
+  var p=products.find(function(x){return x.id===productId;});
+  var input=document.getElementById('sc-actual-'+productId);
+  var cell=document.getElementById('sc-variance-'+productId);
+  if(!p||!input||!cell)return;
+  if(input.value===''){cell.textContent='—';cell.style.color='var(--text3);';return;}
+  var actual=parseInt(input.value)||0;
+  var variance=actual-p.stock_quantity;
+  cell.textContent=(variance>0?'+':'')+variance;
+  cell.style.color=variance===0?'var(--green)':(variance<0?'var(--red)':'var(--amber)');
+}
+
+async function saveStockCount(){
+  var cashier=document.getElementById('sc-cashier').value;
+  var retailProducts=products.filter(function(p){return p.is_active&&p.inventory_mode==='retail';});
+  var counted=[];
+  retailProducts.forEach(function(p){
+    var input=document.getElementById('sc-actual-'+p.id);
+    if(!input||input.value==='')return;
+    var actual=parseInt(input.value)||0;
+    var notes=(document.getElementById('sc-notes-'+p.id)||{}).value||'';
+    counted.push({product_id:p.id,expected_stock:p.stock_quantity,actual_stock:actual,cashier:cashier||null,notes:notes||null});
+  });
+  if(!counted.length){showToast('Enter at least one actual count',true);return;}
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/stock_counts',{
+      method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify(counted)
+    });
+    for(var i=0;i<counted.length;i++){
+      var c=counted[i];
+      var p=products.find(function(x){return x.id===c.product_id;});
+      if(p){
+        p.stock_quantity=c.actual_stock;
+        await updateProduct(p.id,{stock_quantity:c.actual_stock});
+      }
+    }
+    updateLowStockBadges();
+    renderProductCatalog();
+    if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+    renderScTable();
+    loadStockCountHistory();
+    showToast('Stock count saved — '+counted.length+' product(s) reconciled ✅');
+  }catch(e){
+    console.warn('saveStockCount failed',e);
+    showToast('Failed to save stock count',true);
+  }
+}
+
+async function loadStockCountHistory(){
+  var tbody=document.getElementById('sc-history-tbody');
+  if(!tbody)return;
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/stock_counts?select=*,products(display_name,unit)&order=counted_at.desc&limit=25',{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    var rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">No counts logged yet</td></tr>';return;}
+    tbody.innerHTML=rows.map(function(r){
+      var name=r.products?r.products.display_name:'(deleted product)';
+      var unit=r.products?r.products.unit:'';
+      var v=r.variance;
+      var vColor=v===0?'var(--green)':(v<0?'var(--red)':'var(--amber)');
+      return '<tr><td>'+new Date(r.counted_at).toLocaleDateString('en-GB')+'</td><td>'+name+'</td>'
+        +'<td>'+r.expected_stock+' '+unit+'</td><td>'+r.actual_stock+' '+unit+'</td>'
+        +'<td style="color:'+vColor+';font-weight:600;">'+(v>0?'+':'')+v+'</td>'
+        +'<td>'+(r.cashier||'-')+'</td><td style="font-size:12px;color:var(--text3);">'+(r.notes||'-')+'</td></tr>';
+    }).join('');
+  }catch(e){console.warn('loadStockCountHistory failed',e);}
 }
 
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
