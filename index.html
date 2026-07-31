@@ -403,6 +403,7 @@
     <button class="nav-item active" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
     <button class="nav-item" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
+    <button class="nav-item" id="nav-productcatalog" onclick="showPage(&#39;productcatalog&#39;,this);renderProductCatalog();"><span class="nav-icon">🗂</span> Product Catalog <span id="low-stock-badge" style="display:none;background:var(--red);color:white;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
     <button class="nav-item" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     <button class="nav-item" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
@@ -556,16 +557,13 @@
     <!-- Guest info summary -->
     <div id="checkout-guest-info" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;font-size:13px;"></div>
 
-    <!-- Add drinks/snacks tab -->
+    <!-- Add to tab: category grid, backed by the products table -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">☕ Add Drinks &amp; 🍟 Snacks to Tab</div>
-      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Drinks:</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="co-drink-grid"></div>
-      </div>
-      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;">
-        <div style="font-size:11px;color:var(--amber);margin-bottom:6px;">Snacks:</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="co-snack-grid"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">☕ Add to Tab <span style="font-weight:400;color:var(--text3);">(tap to add, right-click to remove one)</span></div>
+      <input type="text" id="co-prod-search" placeholder="Search products..." oninput="renderCoProductGrid()" style="margin-bottom:8px;">
+      <div id="co-cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;max-height:240px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="co-product-grid"></div>
       </div>
     </div>
 
@@ -1054,6 +1052,35 @@
   </div>
 </div>
 
+<!-- PRODUCT CATALOG PAGE -->
+<div id="page-productcatalog" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">🗂 Product Catalog</div><div class="page-sub">Every sellable item behind the POS grid — edit prices, stock, and availability</div></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="text" id="pc-search" placeholder="Search products..." style="width:200px;" oninput="renderProductCatalog()">
+      <select id="pc-filter-cat" onchange="renderProductCatalog()" style="width:160px;">
+        <option value="">All Categories</option>
+        <option value="snacks">Snacks</option>
+        <option value="drinks">Drinks</option>
+        <option value="hot_drinks">Hot Drinks</option>
+        <option value="supplies">Supplies</option>
+        <option value="printing">Printing</option>
+        <option value="stationery">Stationery</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAddProductModal()">+ Add Product</button>
+    </div>
+  </div>
+  <div id="pc-low-stock-banner" style="display:none;background:var(--red-bg);border:1px solid var(--red);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;color:var(--red);font-size:13px;font-weight:600;"></div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Min</th><th>Mode</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="pc-tbody"><tr class="empty-row"><td colspan="9">Loading products…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </div><!-- end .main -->
 
 <!-- CONFIRM DELETE MODAL -->
@@ -1495,6 +1522,174 @@ function saveData(key, val) {
   sbSet(key, val);
 }
 
+// ============================================================
+// PRODUCTS (real Supabase table, not a spaceco_kv blob)
+// ============================================================
+var products = [];
+
+async function loadProducts(){
+  try{
+    var res = await fetch(SUPABASE_URL+'/rest/v1/products?select=*&order=category,subcategory,display_name',{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    var rows = await res.json();
+    products = Array.isArray(rows)?rows:[];
+  }catch(e){ console.warn('loadProducts failed',e); products=[]; }
+}
+
+async function createProduct(fields){
+  var res = await fetch(SUPABASE_URL+'/rest/v1/products',{
+    method:'POST',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+    body:JSON.stringify(fields)
+  });
+  var rows = await res.json();
+  return Array.isArray(rows)?rows[0]:null;
+}
+
+async function updateProduct(id,fields){
+  fields = Object.assign({},fields,{updated_at:new Date().toISOString()});
+  await fetch(SUPABASE_URL+'/rest/v1/products?id=eq.'+encodeURIComponent(id),{
+    method:'PATCH',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify(fields)
+  });
+}
+
+function getLowStockProducts(){
+  return products.filter(function(p){return p.is_active && p.inventory_mode==='retail' && p.stock_quantity<=p.min_stock;});
+}
+
+function updateLowStockBadges(){
+  var low = getLowStockProducts();
+  var navBadge = document.getElementById('low-stock-badge');
+  if(navBadge){
+    if(low.length){navBadge.style.display='inline';navBadge.textContent=low.length;}
+    else navBadge.style.display='none';
+  }
+  var banner = document.getElementById('pc-low-stock-banner');
+  if(banner){
+    if(low.length){
+      banner.style.display='block';
+      banner.textContent='⚠️ Low Stock: '+low.map(function(p){return p.display_name+' ('+p.stock_quantity+' left)';}).join(', ');
+    } else banner.style.display='none';
+  }
+  if(typeof renderAttentionWidget==='function')renderAttentionWidget();
+}
+
+var CATEGORY_LABELS={snacks:'🍟 Snacks',drinks:'🥤 Drinks',hot_drinks:'☕ Hot Drinks',supplies:'🧻 Supplies',printing:'🖨️ Printing',stationery:'✏️ Stationery'};
+
+function renderProductCatalog(){
+  var tbody=document.getElementById('pc-tbody');
+  if(!tbody)return;
+  updateLowStockBadges();
+  var search=(document.getElementById('pc-search').value||'').toLowerCase().trim();
+  var catFilter=document.getElementById('pc-filter-cat').value;
+  var list=products.filter(function(p){
+    if(catFilter && p.category!==catFilter) return false;
+    if(search && p.display_name.toLowerCase().indexOf(search)===-1) return false;
+    return true;
+  });
+  if(!list.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No products found</td></tr>';return;}
+  tbody.innerHTML=list.map(function(p){
+    var low=p.inventory_mode==='retail'&&p.stock_quantity<=p.min_stock;
+    return '<tr'+(p.is_active?'':' style="opacity:0.5;"')+'>'
+      +'<td style="font-size:16px;">'+(p.emoji||'')+'</td>'
+      +'<td><strong>'+p.display_name+'</strong>'+(p.subcategory?'<div style="font-size:11px;color:var(--text3);">'+p.subcategory+'</div>':'')+'</td>'
+      +'<td>'+(CATEGORY_LABELS[p.category]||p.category)+'</td>'
+      +'<td class="money">'+p.sale_price+' LE</td>'
+      +'<td>'+(p.inventory_mode==='retail'?('<span style="'+(low?'color:var(--red);font-weight:700;':'')+'">'+p.stock_quantity+' '+p.unit+'</span>'):'<span style="color:var(--text3);">—</span>')+'</td>'
+      +'<td>'+(p.inventory_mode==='retail'?p.min_stock:'—')+'</td>'
+      +'<td>'+(p.inventory_mode==='retail'?'Retail':'Prepared')+'</td>'
+      +'<td>'+(p.is_active?'<span style="color:var(--green);">Active</span>':'<span style="color:var(--text3);">Inactive</span>')+'</td>'
+      +'<td style="white-space:nowrap;">'
+      +'<button class="btn btn-outline btn-sm" onclick="openEditProductModal(\''+p.id+'\')" style="margin-right:4px;">✏️</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="toggleProductActive(\''+p.id+'\')">'+(p.is_active?'Deactivate':'Activate')+'</button>'
+      +'</td></tr>';
+  }).join('');
+}
+
+function onProductModeChange(){
+  var mode=document.getElementById('prod-mode').value;
+  document.getElementById('prod-stock-row').style.display=mode==='retail'?'grid':'none';
+}
+
+function openAddProductModal(){
+  document.getElementById('product-modal-title').textContent='Add Product';
+  document.getElementById('prod-id').value='';
+  document.getElementById('prod-name').value='';
+  document.getElementById('prod-category').value='snacks';
+  document.getElementById('prod-subcategory').value='';
+  document.getElementById('prod-price').value='';
+  document.getElementById('prod-emoji').value='';
+  document.getElementById('prod-mode').value='retail';
+  document.getElementById('prod-unit').value='piece';
+  document.getElementById('prod-stock').value='0';
+  document.getElementById('prod-min-stock').value='5';
+  onProductModeChange();
+  openModal('product-modal');
+}
+
+function openEditProductModal(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  document.getElementById('product-modal-title').textContent='Edit Product';
+  document.getElementById('prod-id').value=p.id;
+  document.getElementById('prod-name').value=p.display_name;
+  document.getElementById('prod-category').value=p.category;
+  document.getElementById('prod-subcategory').value=p.subcategory||'';
+  document.getElementById('prod-price').value=p.sale_price;
+  document.getElementById('prod-emoji').value=p.emoji||'';
+  document.getElementById('prod-mode').value=p.inventory_mode;
+  document.getElementById('prod-unit').value=p.unit||'piece';
+  document.getElementById('prod-stock').value=p.stock_quantity||0;
+  document.getElementById('prod-min-stock').value=p.min_stock||0;
+  onProductModeChange();
+  openModal('product-modal');
+}
+
+async function saveProduct(){
+  var id=document.getElementById('prod-id').value;
+  var name=document.getElementById('prod-name').value.trim();
+  if(!name){showToast('Name is required',true);return;}
+  var price=parseFloat(document.getElementById('prod-price').value);
+  if(isNaN(price)||price<0){showToast('Enter a valid price',true);return;}
+  var mode=document.getElementById('prod-mode').value;
+  var fields={
+    display_name:name,
+    category:document.getElementById('prod-category').value,
+    subcategory:document.getElementById('prod-subcategory').value.trim()||null,
+    sale_price:price,
+    emoji:document.getElementById('prod-emoji').value.trim()||null,
+    inventory_mode:mode,
+    unit:document.getElementById('prod-unit').value,
+    stock_quantity:mode==='retail'?(parseInt(document.getElementById('prod-stock').value)||0):0,
+    min_stock:mode==='retail'?(parseInt(document.getElementById('prod-min-stock').value)||0):0
+  };
+  if(id){
+    await updateProduct(id,fields);
+    var p=products.find(function(x){return x.id===id;});
+    if(p)Object.assign(p,fields);
+  } else {
+    fields.is_active=true;
+    var created=await createProduct(fields);
+    if(created)products.push(created);
+  }
+  closeModal('product-modal');
+  renderProductCatalog();
+  if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+  showToast('Product saved ✅');
+}
+
+async function toggleProductActive(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  p.is_active=!p.is_active;
+  await updateProduct(id,{is_active:p.is_active});
+  renderProductCatalog();
+  if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+}
+
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
 var _appReady = false;
 var ALL_KEYS = ['clients','clientProfiles','shiftPayments','academies','academyOrder','pricing','adminPass','drinkOrders','recycleBin','staff','snacksMenu','drinksMenuData','reservations','archivedAcademies','expenses','dismissedNotifs','activeSessions','sharedSpacePackages','roomBlocks','packageRequests','staffDebts'];
@@ -1520,10 +1715,12 @@ async function bootApp() {
     console.warn('Supabase boot fetch failed, using localStorage fallback', e);
     // Fall through — loadData will use localStorage cache
   }
+  await loadProducts();
   document.getElementById('boot-overlay').style.display = 'none';
   _appReady = true;
   // Run the original app init
   initData();
+  updateLowStockBadges();
   initExpenses();
   updateBinBadge();
   updateArchiveBadge();
@@ -2050,12 +2247,12 @@ function checkInGuest(){
 
 // ── CHECKOUT ──
 var _checkoutSessionId=null;
-var coDrinkQty={};
-var coSnackQty={};
+var coCart={};      // productId -> qty, backs the new category-grid POS
+var coActiveCat='';
 
 function openCheckout(sessionId){
   _checkoutSessionId=sessionId;
-  coDrinkQty={};coSnackQty={};
+  coCart={};coActiveCat='';
   _coRating=0;
   if(document.getElementById('co-feedback-comment'))document.getElementById('co-feedback-comment').value='';
   updateCoRatingStars();
@@ -2086,64 +2283,108 @@ function openCheckout(sessionId){
     return '<option value="'+st.name+'"'+(st.name===s.cashier?' selected':'')+'>'+st.name+'</option>';
   }).join('');
 
-  renderCoDrinkGrid();
+  document.getElementById('co-prod-search').value='';
+  renderCoCatTabs();
+  renderCoProductGrid();
   renderCoTab(s);
   calcCheckoutTotal();
   openModal('checkout-modal');
 }
 
-function renderCoDrinkGrid(){
-  var dg=document.getElementById('co-drink-grid');
-  var sg=document.getElementById('co-snack-grid');
-  if(!dg||!sg)return;
-  dg.innerHTML=drinksMenu.map(function(d,i){
-    var q=coDrinkQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;text-align:center;">'
-      +'<div style="font-size:11px;margin-bottom:4px;">'+d.name+'</div>'
-      +'<div style="font-size:10px;color:var(--teal);margin-bottom:6px;">'+d.price+' LE</div>'
-      +'<div style="display:flex;align-items:center;justify-content:center;gap:6px;">'
-      +'<button onclick="coChangeDrink('+i+',-1)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">−</button>'
-      +'<span style="font-size:13px;font-weight:600;min-width:16px;text-align:center;">'+q+'</span>'
-      +'<button onclick="coChangeDrink('+i+',1)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">+</button>'
-      +'</div></div>';
-  }).join('');
-  sg.innerHTML=snacksMenu.map(function(d,i){
-    var q=coSnackQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;text-align:center;">'
-      +'<div style="font-size:11px;margin-bottom:4px;">'+d.name+'</div>'
-      +'<div style="font-size:10px;color:var(--amber);margin-bottom:6px;">'+d.price+' LE</div>'
-      +'<div style="display:flex;align-items:center;justify-content:center;gap:6px;">'
-      +'<button onclick="coChangeSnack('+i+',-1)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">−</button>'
-      +'<span style="font-size:13px;font-weight:600;min-width:16px;text-align:center;">'+q+'</span>'
-      +'<button onclick="coChangeSnack('+i+',1)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">+</button>'
-      +'</div></div>';
+// New category-grid product picker, backed by the `products` table
+// (replaces the old flat coDrinkQty/coSnackQty two-column grids).
+function renderCoCatTabs(){
+  var el=document.getElementById('co-cat-tabs');
+  if(!el)return;
+  var order=['snacks','drinks','hot_drinks','supplies','printing','stationery'];
+  var cats=[];
+  products.forEach(function(p){if(p.is_active && cats.indexOf(p.category)===-1)cats.push(p.category);});
+  cats.sort(function(a,b){return order.indexOf(a)-order.indexOf(b);});
+  var btns=['<button type="button" class="btn '+(coActiveCat===''?'btn-primary':'btn-outline')+' btn-sm" onclick="coSelectCat(\'\')">All</button>'];
+  cats.forEach(function(c){
+    btns.push('<button type="button" class="btn '+(coActiveCat===c?'btn-primary':'btn-outline')+' btn-sm" onclick="coSelectCat(\''+c+'\')">'+(CATEGORY_LABELS[c]||c)+'</button>');
+  });
+  el.innerHTML=btns.join('');
+}
+
+function coSelectCat(cat){
+  coActiveCat=cat;
+  renderCoCatTabs();
+  renderCoProductGrid();
+}
+
+function renderCoProductGrid(){
+  var g=document.getElementById('co-product-grid');
+  if(!g)return;
+  var search=(document.getElementById('co-prod-search').value||'').toLowerCase().trim();
+  var list=products.filter(function(p){
+    if(!p.is_active)return false;
+    if(coActiveCat && p.category!==coActiveCat)return false;
+    if(search && p.display_name.toLowerCase().indexOf(search)===-1)return false;
+    return true;
+  });
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:14px;">No products found</div>';return;}
+  g.innerHTML=list.map(function(p){
+    var q=coCart[p.id]||0;
+    var out=p.inventory_mode==='retail'&&p.stock_quantity<=0;
+    return '<div onclick="coAddProduct(\''+p.id+'\')" oncontextmenu="event.preventDefault();coRemoveProduct(\''+p.id+'\')" '
+      +'style="background:var(--bg2);border:1px solid '+(q>0?'var(--accent)':'var(--border)')+';border-radius:var(--radius-sm);padding:8px;text-align:center;cursor:pointer;'+(out?'opacity:0.45;':'')+'">'
+      +'<div style="font-size:11px;margin-bottom:2px;">'+(p.emoji?p.emoji+' ':'')+p.display_name+'</div>'
+      +'<div style="font-size:10px;color:var(--accent2);margin-bottom:4px;">'+p.sale_price+' LE</div>'
+      +(p.inventory_mode==='retail'?'<div style="font-size:9px;color:'+(out?'var(--red)':'var(--text3)')+';">'+(out?'Out of stock':p.stock_quantity+' left')+'</div>':'')
+      +(q>0?'<div style="font-size:12px;font-weight:700;color:var(--accent);margin-top:4px;">× '+q+'</div>':'')
+      +'</div>';
   }).join('');
 }
 
-function coChangeDrink(i,delta){
-  coDrinkQty[i]=Math.max(0,(coDrinkQty[i]||0)+delta);
-  renderCoDrinkGrid();
+function coAddProduct(id){
+  coCart[id]=(coCart[id]||0)+1;
+  renderCoProductGrid();
   calcCheckoutTotal();
-  // update tab on session
   updateSessionTab();
 }
-function coChangeSnack(i,delta){
-  coSnackQty[i]=Math.max(0,(coSnackQty[i]||0)+delta);
-  renderCoDrinkGrid();
+function coRemoveProduct(id){
+  if(!coCart[id])return;
+  coCart[id]=Math.max(0,coCart[id]-1);
+  renderCoProductGrid();
   calcCheckoutTotal();
   updateSessionTab();
+}
+
+function coCartToTabLines(){
+  var tab=[];
+  Object.keys(coCart).forEach(function(id){
+    var qty=coCart[id];
+    if(qty<=0)return;
+    var p=products.find(function(x){return x.id===id;});
+    if(!p)return;
+    tab.push({productId:p.id,name:p.display_name,qty:qty,price:p.sale_price,total:qty*p.sale_price,category:p.category,inventoryMode:p.inventory_mode});
+  });
+  return tab;
 }
 
 function updateSessionTab(){
   activeSessions=loadData('activeSessions',[]);
   var s=activeSessions.find(function(x){return x.id===_checkoutSessionId;});
   if(!s)return;
-  var tab=[];
-  drinksMenu.forEach(function(d,i){if(coDrinkQty[i]>0)tab.push({name:d.name,qty:coDrinkQty[i],price:d.price,total:coDrinkQty[i]*d.price});});
-  snacksMenu.forEach(function(d,i){if(coSnackQty[i]>0)tab.push({name:d.name,qty:coSnackQty[i],price:d.price,total:coSnackQty[i]*d.price});});
-  s.tab=tab;
+  s.tab=coCartToTabLines();
   saveData('activeSessions',activeSessions);
   renderCoTab(s);
+}
+
+// Only decrements items with inventoryMode==='retail' — tab lines from the
+// legacy check-in grid (no productId yet) or prepared-mode items are skipped.
+function deductStockForTab(tab){
+  var touched=false;
+  tab.forEach(function(line){
+    if(line.inventoryMode!=='retail'||!line.productId)return;
+    var p=products.find(function(x){return x.id===line.productId;});
+    if(!p)return;
+    p.stock_quantity=Math.max(0,(p.stock_quantity||0)-line.qty);
+    updateProduct(p.id,{stock_quantity:p.stock_quantity});
+    touched=true;
+  });
+  if(touched)updateLowStockBadges();
 }
 
 function renderCoTab(s){
@@ -2178,12 +2419,8 @@ function calcCheckoutTotal(){
 
   var pkg=spActivePackageForName(s.name,s.roomKey);
 
+  // s.tab is kept live-updated by updateSessionTab() on every add/remove
   var tab=s.tab||[];
-  // also count anything added in current session
-  drinksMenu.forEach(function(d,i){if(coDrinkQty[i]>0){
-    var ex=tab.find(function(x){return x.name===d.name;});
-    if(!ex)tab.push({name:d.name,qty:coDrinkQty[i],price:d.price,total:coDrinkQty[i]*d.price});
-  }});
   var drinksCost=tab.reduce(function(a,x){return a+x.total;},0);
   var grand=(pkg?0:roomCost)+drinksCost;
 
@@ -2230,6 +2467,10 @@ function submitCheckout(){
   // so calcSettlement and renderShiftCards won't double-count
   var roomCash=payment==='cash'?roomCost:0;
   var roomIP=payment==='instapay'?roomCost:0;
+
+  // Auto-deduct stock for retail-mode products sold in this tab.
+  // Prepared-mode items (hot drinks etc.) are intentionally skipped.
+  deductStockForTab(tab);
 
   var visit={
     id:Date.now(),profileId:profile.id,date:s.date,name:profile.name,
@@ -6540,6 +6781,9 @@ function toggleTheme(){
 // ============================================================
 function buildNotifications(){
   var items=[];
+  getLowStockProducts().forEach(function(p){
+    items.push({icon:'📦',text:'Low Stock: '+p.display_name+' ('+p.stock_quantity+' '+p.unit+' left)',color:'var(--red)'});
+  });
   academyOrder.forEach(function(k){
     var a=academies[k];if(!a)return;
     var debt=parseFloat(a.debtHours)||0;
@@ -7656,6 +7900,57 @@ refreshDashboard=function(){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;add-expense-modal&#39;)">Cancel</button>
       <button class="btn btn-primary" onclick="saveExpense()">💾 Save Expense</button>
+    </div>
+  </div>
+</div>
+<!-- ADD/EDIT PRODUCT MODAL -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header"><div class="modal-title" id="product-modal-title">🗂 Add Product</div><button class="close-btn" onclick="closeModal(&#39;product-modal&#39;)">✕</button></div>
+    <input type="hidden" id="prod-id">
+    <div class="form-group"><label>Name *</label><input type="text" id="prod-name" placeholder="e.g. Lays Cheese - Large"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Category *</label>
+        <select id="prod-category">
+          <option value="snacks">Snacks</option>
+          <option value="drinks">Drinks</option>
+          <option value="hot_drinks">Hot Drinks</option>
+          <option value="supplies">Supplies</option>
+          <option value="printing">Printing</option>
+          <option value="stationery">Stationery</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Subcategory</label><input type="text" id="prod-subcategory" placeholder="e.g. chips, molto..."></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Sale Price (LE) *</label><input type="number" id="prod-price" placeholder="0" min="0"></div>
+      <div class="form-group"><label>Emoji</label><input type="text" id="prod-emoji" placeholder="🍟" maxlength="4"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Inventory Mode *</label>
+        <select id="prod-mode" onchange="onProductModeChange()">
+          <option value="retail">Retail (auto-deducts stock)</option>
+          <option value="prepared">Prepared (no stock deduction)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Unit</label>
+        <select id="prod-unit">
+          <option value="piece">piece</option>
+          <option value="pack">pack</option>
+          <option value="bottle">bottle</option>
+          <option value="can">can</option>
+          <option value="sheet">sheet</option>
+          <option value="kg">kg</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="prod-stock-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Stock Quantity</label><input type="number" id="prod-stock" placeholder="0" min="0"></div>
+      <div class="form-group"><label>Low Stock Alert Below</label><input type="number" id="prod-min-stock" placeholder="5" min="0"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal(&#39;product-modal&#39;)">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">💾 Save Product</button>
     </div>
   </div>
 </div>
