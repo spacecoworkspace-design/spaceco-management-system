@@ -13,7 +13,7 @@
 <link rel="icon" href="./icon-512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <title>Space-Co Management System</title>
-<script src="./Space-Co Management System_files/chart.umd.min.js.download" onerror="window._chartLoadFailed=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="window._chartLoadFailed=true;"></script>
 <script src="./Space-Co Management System_files/supabase.js.download"></script><style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
   :root {
@@ -135,6 +135,7 @@
   input:focus,select:focus,textarea:focus{border-color:var(--accent);}
   select option{background:var(--bg3);}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-family:'Sora',sans-serif;font-weight:500;cursor:pointer;border:none;transition:all 0.18s;}
+  .btn:active{transform:scale(0.96);}
   .btn-primary{background:var(--accent);color:white;}
   .btn-primary:hover{background:var(--accent2);transform:translateY(-1px);}
   .btn-success{background:var(--green);color:#0a1f14;}
@@ -2241,6 +2242,23 @@ function normalizeStr(s){return (s||'').trim().toLowerCase();}
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function formatDate(d){if(!d)return '-';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 
+function animateNumberTo(el,target,suffix){
+  if(!el)return;
+  suffix=suffix||'';
+  var start=parseInt((el.textContent||'0').replace(/\D/g,''))||0;
+  if(start===target){el.textContent=target+suffix;return;}
+  var duration=500,startTime=null;
+  function step(ts){
+    if(!startTime)startTime=ts;
+    var progress=Math.min((ts-startTime)/duration,1);
+    var eased=1-Math.pow(1-progress,3);
+    var current=Math.round(start+(target-start)*eased);
+    el.textContent=current+suffix;
+    if(progress<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 function getInitials(name){
   var parts=(name||'').trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return '?';
@@ -4215,11 +4233,11 @@ function refreshDashboard(){
     +_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.instapay||0);},0);
   var _otherMonth=_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.other||0);},0);
   var _netMonth=(_cashMonth+_ipMonth+_otherMonth)-_expMonth;
-  document.getElementById('dash-today-clients').textContent=tc.length;
-  document.getElementById('dash-today-revenue').textContent=(tr+_drkToday+_acToday)+' LE';
-  document.getElementById('dash-total-clients').textContent=clientProfiles.length;
+  animateNumberTo(document.getElementById('dash-today-clients'),tc.length);
+  animateNumberTo(document.getElementById('dash-today-revenue'),tr+_drkToday+_acToday,' LE');
+  animateNumberTo(document.getElementById('dash-total-clients'),clientProfiles.length);
   var _mEl=document.getElementById('dash-month-rev');
-  _mEl.textContent=_netMonth+' LE';
+  animateNumberTo(_mEl,_netMonth,' LE');
   _mEl.title='Cash: '+_cashMonth+' LE + Instapay: '+_ipMonth+' LE'+(_otherMonth?' + Other: '+_otherMonth+' LE':'')+' − Expenses: '+_expMonth+' LE';
   _mEl.style.color=_netMonth>=0?'var(--green)':'var(--red)';
   // Update dashboard staff cards dynamically (cash + instapay + drinks + academy, same as Shift Payments cards)
@@ -7741,7 +7759,10 @@ function renderDashboardCharts(){
   var ctx1=document.getElementById('chart-revenue');
   if(ctx1){
     if(_revenueChart)_revenueChart.destroy();
-    _revenueChart=new Chart(ctx1,{type:'line',data:{labels:labels,datasets:[{label:'Revenue (LE)',data:data,borderColor:'#d4a843',backgroundColor:'rgba(212,168,67,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#d4a843'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9095b0'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#9095b0'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+    var revGradient=ctx1.getContext('2d').createLinearGradient(0,0,0,180);
+    revGradient.addColorStop(0,'rgba(212,168,67,0.35)');
+    revGradient.addColorStop(1,'rgba(212,168,67,0)');
+    _revenueChart=new Chart(ctx1,{type:'line',data:{labels:labels,datasets:[{label:'Revenue (LE)',data:data,borderColor:'#d4a843',backgroundColor:revGradient,borderWidth:2,tension:0.4,fill:true,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:'#d4a843',pointBorderColor:'#0e0e10',pointBorderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1d24',titleColor:'#e6e8f0',bodyColor:'#e6e8f0',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,cornerRadius:8,displayColors:false}},scales:{x:{ticks:{color:'#9095b0'},grid:{display:false}},y:{ticks:{color:'#9095b0'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
   }
   // Room utilization this month
   var ms=today().substring(0,7);
@@ -7754,7 +7775,7 @@ function renderDashboardCharts(){
   var ctx2=document.getElementById('chart-rooms');
   if(ctx2){
     if(_roomChart)_roomChart.destroy();
-    _roomChart=new Chart(ctx2,{type:'bar',data:{labels:rLabels,datasets:[{label:'Hours',data:rData,backgroundColor:['#6c63ff','#34d88b','#f5a623','#4da6ff','#ff6bb5','#1ec8c8']}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9095b0'},grid:{display:false}},y:{ticks:{color:'#9095b0'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+    _roomChart=new Chart(ctx2,{type:'bar',data:{labels:rLabels,datasets:[{label:'Hours',data:rData,backgroundColor:['#6c63ff','#34d88b','#f5a623','#4da6ff','#ff6bb5','#1ec8c8'],borderRadius:6,maxBarThickness:36}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1d24',titleColor:'#e6e8f0',bodyColor:'#e6e8f0',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,cornerRadius:8,displayColors:false}},scales:{x:{ticks:{color:'#9095b0'},grid:{display:false}},y:{ticks:{color:'#9095b0'},grid:{color:'rgba(255,255,255,0.04)'}}}}});
   }
 }
 
