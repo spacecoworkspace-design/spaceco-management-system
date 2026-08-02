@@ -1226,15 +1226,25 @@
     <div class="form-group">
       <label>Send to</label>
       <select id="bc-filter" onchange="onBcFilterChange()">
-        <option value="all">All clients with a phone number</option>
-        <option value="never">Never visited (no session on record)</option>
-        <option value="active_7">Visited in the last 7 days</option>
-        <option value="missing_8_14">Missing 8–14 days</option>
-        <option value="missing_15_30">Missing 15–30 days</option>
-        <option value="missing_31_60">Missing 31–60 days</option>
-        <option value="missing_61_100">Missing 61–100 days</option>
-        <option value="missing_100plus">Missing 100+ days</option>
-        <option value="custom">Custom range…</option>
+        <optgroup label="By recency">
+          <option value="all">All clients with a phone number</option>
+          <option value="never">Never visited (no session on record)</option>
+          <option value="active_7">Visited in the last 7 days</option>
+          <option value="missing_8_14">Missing 8–14 days</option>
+          <option value="missing_15_30">Missing 15–30 days</option>
+          <option value="missing_31_60">Missing 31–60 days</option>
+          <option value="missing_61_100">Missing 61–100 days</option>
+          <option value="missing_100plus">Missing 100+ days</option>
+          <option value="custom">Custom day range…</option>
+        </optgroup>
+        <optgroup label="By engagement">
+          <option value="checked_in_now">Currently checked in (on-site now)</option>
+          <option value="freq_one">One-time visitors (1 visit)</option>
+          <option value="freq_occasional">Occasional visitors (2–4 visits)</option>
+          <option value="freq_frequent">Frequent visitors (5–9 visits)</option>
+          <option value="freq_regular">Regulars (10+ visits)</option>
+          <option value="top_spenders">Top clients by spend…</option>
+        </optgroup>
       </select>
     </div>
     <div class="form-row" id="bc-custom-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1246,6 +1256,10 @@
         <label>Missing at most (days, optional)</label>
         <input type="number" id="bc-custom-max" min="0" placeholder="No limit" oninput="updateBcRecipientCount()">
       </div>
+    </div>
+    <div class="form-group" id="bc-topn-row" style="display:none;">
+      <label>Show top</label>
+      <input type="number" id="bc-topn" min="1" value="20" oninput="updateBcRecipientCount()">
     </div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:14px;" id="bc-recipient-count">Loading recipients…</div>
 
@@ -3367,40 +3381,85 @@ function deleteWaTemplate(){
 // So this steps through recipients one at a time: open their chat,
 // press Send inside WhatsApp yourself, then click Next here.
 // ============================================================
-var BC_FILTER_LABELS={
-  all:'All clients',
-  never:'Never visited',
-  active_7:'Visited in the last 7 days',
-  missing_8_14:'Missing 8–14 days',
-  missing_15_30:'Missing 15–30 days',
-  missing_31_60:'Missing 31–60 days',
-  missing_61_100:'Missing 61–100 days',
-  missing_100plus:'Missing 100+ days',
-  custom:'Custom range'
-};
-
-// Days since a profile's last checkout session, or null if it has none on record.
-function getBcDaysSince(profileId){
-  var lastV=getLastVisit(profileId);
-  return lastV?daysSinceDate(lastV):null;
+// Some clients have more than one profile under the same phone number.
+// Collapse those to one entry per phone before filtering, merging every
+// profile's visit history — otherwise the same person's visits/spend could
+// be split across records and segment totals wouldn't add up correctly.
+function getBcRecipientPool(){
+  var groups={};
+  (clientProfiles||[]).forEach(function(p){
+    var digits=normalizePhoneDigits(p.phone);
+    if(digits.length<8)return;
+    if(!groups[digits])groups[digits]={phone:digits,profiles:[]};
+    groups[digits].profiles.push(p);
+  });
+  var checkedInPhones={};
+  (activeSessions||[]).forEach(function(s){
+    var d=normalizePhoneDigits(s.phone);
+    if(d)checkedInPhones[d]=true;
+  });
+  return Object.keys(groups).map(function(phone){
+    var g=groups[phone];
+    var visits=[];
+    g.profiles.forEach(function(p){visits=visits.concat(getClientVisits(p.id));});
+    visits.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+    var lastVisit=visits.length?visits[visits.length-1]:null;
+    var nameProfile=(lastVisit&&g.profiles.find(function(p){return p.id===lastVisit.profileId;}))||g.profiles[0];
+    return {
+      name:nameProfile.name,
+      phone:phone,
+      days:lastVisit?daysSinceDate(lastVisit.date):null,
+      visitCount:visits.length,
+      totalSpent:visits.reduce(function(s,v){return s+(v.cost||0);},0),
+      checkedInNow:!!checkedInPhones[phone]
+    };
+  });
 }
 
-function matchesBcFilter(days,filter){
+function matchesBcFilter(r,filter){
   switch(filter.type){
-    case 'never': return days===null;
-    case 'active_7': return days!==null&&days<=7;
-    case 'missing_8_14': return days!==null&&days>=8&&days<=14;
-    case 'missing_15_30': return days!==null&&days>=15&&days<=30;
-    case 'missing_31_60': return days!==null&&days>=31&&days<=60;
-    case 'missing_61_100': return days!==null&&days>=61&&days<=100;
-    case 'missing_100plus': return days!==null&&days>100;
+    case 'never': return r.days===null;
+    case 'active_7': return r.days!==null&&r.days<=7;
+    case 'missing_8_14': return r.days!==null&&r.days>=8&&r.days<=14;
+    case 'missing_15_30': return r.days!==null&&r.days>=15&&r.days<=30;
+    case 'missing_31_60': return r.days!==null&&r.days>=31&&r.days<=60;
+    case 'missing_61_100': return r.days!==null&&r.days>=61&&r.days<=100;
+    case 'missing_100plus': return r.days!==null&&r.days>100;
     case 'custom':
-      if(days===null)return false;
+      if(r.days===null)return false;
       var min=filter.min!=null?filter.min:0;
       var max=filter.max!=null?filter.max:Infinity;
-      return days>=min&&days<=max;
+      return r.days>=min&&r.days<=max;
+    case 'checked_in_now': return r.checkedInNow;
+    case 'freq_one': return r.visitCount===1;
+    case 'freq_occasional': return r.visitCount>=2&&r.visitCount<=4;
+    case 'freq_frequent': return r.visitCount>=5&&r.visitCount<=9;
+    case 'freq_regular': return r.visitCount>=10;
     case 'all':
     default: return true;
+  }
+}
+
+function bcFilterSummary(filter){
+  switch(filter.type){
+    case 'never': return 'Never visited';
+    case 'active_7': return 'Visited in the last 7 days';
+    case 'missing_8_14': return 'Missing 8–14 days';
+    case 'missing_15_30': return 'Missing 15–30 days';
+    case 'missing_31_60': return 'Missing 31–60 days';
+    case 'missing_61_100': return 'Missing 61–100 days';
+    case 'missing_100plus': return 'Missing 100+ days';
+    case 'custom':
+      var min=filter.min||0,max=filter.max;
+      return (max&&max!==Infinity)?('Missing '+min+'–'+max+' days'):('Missing '+min+'+ days');
+    case 'checked_in_now': return 'Currently checked in';
+    case 'freq_one': return 'One-time visitors';
+    case 'freq_occasional': return 'Occasional visitors (2–4 visits)';
+    case 'freq_frequent': return 'Frequent visitors (5–9 visits)';
+    case 'freq_regular': return 'Regulars (10+ visits)';
+    case 'top_spenders': return 'Top '+(filter.topN||20)+' spenders';
+    case 'all':
+    default: return 'All clients';
   }
 }
 
@@ -3413,32 +3472,22 @@ function getCurrentBcFilter(){
     filter.min=minEl&&minEl.value!==''?parseInt(minEl.value,10):0;
     filter.max=maxEl&&maxEl.value!==''?parseInt(maxEl.value,10):Infinity;
   }
+  if(type==='top_spenders'){
+    var topnEl=document.getElementById('bc-topn');
+    filter.topN=topnEl&&topnEl.value!==''?parseInt(topnEl.value,10):20;
+  }
   return filter;
-}
-
-// Some clients have more than one profile under the same phone number.
-// Collapse those to one entry per phone before filtering, using whichever
-// profile has the most recent visit — otherwise the same person could be
-// counted in two different day-ranges and segment totals wouldn't add up
-// to "All clients".
-function getBcRecipientPool(){
-  var byPhone={};
-  (clientProfiles||[]).forEach(function(p){
-    var digits=normalizePhoneDigits(p.phone);
-    if(digits.length<8)return;
-    var days=getBcDaysSince(p.id);
-    var existing=byPhone[digits];
-    if(!existing||(days!==null&&(existing.days===null||days<existing.days))){
-      byPhone[digits]={name:p.name,phone:digits,days:days};
-    }
-  });
-  return Object.keys(byPhone).map(function(k){return byPhone[k];});
 }
 
 function getBroadcastRecipients(filter){
   filter=filter||{type:'all'};
-  return getBcRecipientPool()
-    .filter(function(r){return matchesBcFilter(r.days,filter);})
+  var pool=getBcRecipientPool();
+  if(filter.type==='top_spenders'){
+    var n=filter.topN>0?filter.topN:20;
+    return pool.slice().sort(function(a,b){return b.totalSpent-a.totalSpent;})
+      .slice(0,n).map(function(r){return {name:r.name,phone:r.phone};});
+  }
+  return pool.filter(function(r){return matchesBcFilter(r,filter);})
     .map(function(r){return {name:r.name,phone:r.phone};});
 }
 
@@ -3462,6 +3511,8 @@ function onBcFilterChange(){
   var type=document.getElementById('bc-filter').value;
   var customRow=document.getElementById('bc-custom-row');
   if(customRow)customRow.style.display=type==='custom'?'grid':'none';
+  var topnRow=document.getElementById('bc-topn-row');
+  if(topnRow)topnRow.style.display=type==='top_spenders'?'block':'none';
   updateBcRecipientCount();
 }
 
@@ -3490,7 +3541,7 @@ function startBroadcast(){
   var filter=getCurrentBcFilter();
   var recipients=getBroadcastRecipients(filter);
   if(!recipients.length){showToast('No clients match this filter',true);return;}
-  var state={message:msg,queue:recipients,index:0,sentCount:0,startedAt:new Date().toISOString(),filterType:filter.type};
+  var state={message:msg,queue:recipients,index:0,sentCount:0,startedAt:new Date().toISOString(),filterLabel:bcFilterSummary(filter)};
   saveData('waBroadcastState',state);
   renderBroadcastQueueUI(state);
 }
@@ -3499,7 +3550,7 @@ function renderBroadcastQueueUI(state){
   document.getElementById('bc-compose-card').style.display='none';
   document.getElementById('bc-queue-card').style.display='block';
   var current=state.queue[state.index];
-  var label=BC_FILTER_LABELS[state.filterType]||'All clients';
+  var label=state.filterLabel||'All clients';
   document.getElementById('bc-progress').textContent=(state.index+1)+' of '+state.queue.length+' · '+(state.sentCount||0)+' sent · '+label;
   document.getElementById('bc-current-name').textContent=current.name;
   document.getElementById('bc-current-phone').textContent=formatPhoneDisplay(current.phone);
