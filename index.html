@@ -421,6 +421,7 @@
     <button class="nav-item" id="nav-productcatalog" onclick="showPage(&#39;productcatalog&#39;,this);renderProductCatalog();"><span class="nav-icon">🗂</span> Product Catalog <span id="low-stock-badge" style="display:none;background:var(--red);color:white;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
     <button class="nav-item" id="nav-stockmgmt" onclick="showPage(&#39;stockmgmt&#39;,this);renderStockManagement();"><span class="nav-icon">📦</span> Stock Management</button>
     <button class="nav-item" id="nav-watemplates" onclick="showPage(&#39;watemplates&#39;,this);renderWaTemplates();"><span class="nav-icon">📱</span> WhatsApp Messages</button>
+    <button class="nav-item" id="nav-broadcast" onclick="showPage(&#39;broadcast&#39;,this);renderBroadcastRecipients();"><span class="nav-icon">📢</span> Broadcast</button>
     <button class="nav-item" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
     <button class="nav-item" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     <button class="nav-item" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
@@ -1210,6 +1211,47 @@
         <tbody id="wat-tbody"><tr class="empty-row"><td colspan="5">Loading templates…</td></tr></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- BROADCAST PAGE -->
+<div id="page-broadcast" class="page">
+  <div class="page-header">
+    <div class="page-title">📢 Broadcast</div>
+    <div class="page-sub">One message to every client with a phone number on file — WhatsApp only lets us open one chat at a time, so you'll click through the list, hit Send in WhatsApp each time, then Next.</div>
+  </div>
+
+  <div class="card" id="bc-compose-card">
+    <div class="card-title">Compose</div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="bc-message" rows="6" placeholder="e.g. We just launched a new Drawing Room package — come check it out! 🎉" oninput="updateBcPreview()"></textarea>
+    </div>
+    <div style="margin-bottom:10px;">
+      <button type="button" class="btn btn-outline btn-sm" onclick="insertBcVariable('client_name')">{{client_name}}</button>
+      <span style="font-size:11px;color:var(--text3);margin-left:6px;">optional — inserts each client's name</span>
+    </div>
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;white-space:pre-wrap;" id="bc-preview">Preview will appear here…</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;" id="bc-recipient-count">Loading recipients…</div>
+    <button class="btn btn-primary btn-full btn-lg" onclick="startBroadcast()">Start Broadcast</button>
+  </div>
+
+  <div class="card" id="bc-queue-card" style="display:none;">
+    <div class="card-title flex-between">
+      <span>Sending…</span>
+      <span style="font-size:12px;color:var(--text3);font-weight:400;" id="bc-progress"></span>
+    </div>
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:600;margin-bottom:2px;" id="bc-current-name"></div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;" id="bc-current-phone"></div>
+      <div style="font-size:13px;white-space:pre-wrap;color:var(--text2);" id="bc-current-preview"></div>
+    </div>
+    <button class="btn btn-primary btn-full btn-lg" style="margin-bottom:10px;" onclick="broadcastOpenChat()">💬 Open WhatsApp Chat</button>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <button class="btn btn-success" onclick="broadcastNext()">✓ Sent — Next</button>
+      <button class="btn btn-outline" onclick="broadcastSkip()">Skip</button>
+    </div>
+    <button class="btn btn-outline btn-full" style="margin-top:10px;color:var(--red);" onclick="cancelBroadcast()">Cancel Broadcast</button>
   </div>
 </div>
 
@@ -2172,7 +2214,7 @@ async function loadStockCountHistory(){
 
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
 var _appReady = false;
-var ALL_KEYS = ['clients','clientProfiles','shiftPayments','academies','academyOrder','pricing','adminPass','drinkOrders','recycleBin','staff','snacksMenu','drinksMenuData','reservations','archivedAcademies','expenses','dismissedNotifs','activeSessions','sharedSpacePackages','roomBlocks','packageRequests','staffDebts'];
+var ALL_KEYS = ['clients','clientProfiles','shiftPayments','academies','academyOrder','pricing','adminPass','drinkOrders','recycleBin','staff','snacksMenu','drinksMenuData','reservations','archivedAcademies','expenses','dismissedNotifs','activeSessions','sharedSpacePackages','roomBlocks','packageRequests','staffDebts','waBroadcastState'];
 
 async function bootApp() {
   // ── Auth: restore existing session, register state-change listener ──
@@ -3214,6 +3256,15 @@ async function saveWaTemplate(){
   var key=document.getElementById('wat-key').value.trim().toLowerCase().replace(/[^a-z0-9_]+/g,'_');
   var body=document.getElementById('wat-body').value;
   if(!name||!key||!body.trim()){showToast('Name, key, and message body are required',true);return;}
+  // Guard against saving a broken-emoji ("mojibake") template. If text was
+  // pasted from somewhere that already corrupted the emoji into the Unicode
+  // replacement character (�), saving it here would send it to every
+  // client via WhatsApp. Retype the emoji directly (Win+. on Windows) rather
+  // than pasting them from an external source, then save again.
+  if(body.indexOf('�')!==-1){
+    showToast('This message contains broken emoji (�) — retype them directly instead of pasting, then save again',true);
+    return;
+  }
   var fields={
     template_name:name,
     template_key:key,
@@ -3279,6 +3330,111 @@ function deleteWaTemplate(){
     });
   };
   openModal('confirm-modal');
+}
+
+// ============================================================
+// BROADCAST — one message to every client with a phone number.
+// wa.me / WhatsApp Web only ever opens ONE chat pre-filled with text —
+// there's no free way to blast one message to many numbers at once
+// (that requires the paid, Meta-approved WhatsApp Business Cloud API,
+// a different setup than the free click-to-chat this whole app uses).
+// So this steps through recipients one at a time: open their chat,
+// press Send inside WhatsApp yourself, then click Next here.
+// ============================================================
+function getBroadcastRecipients(){
+  var seen={},list=[];
+  (clientProfiles||[]).forEach(function(p){
+    var digits=normalizePhoneDigits(p.phone);
+    if(digits.length<8)return;
+    if(seen[digits])return;
+    seen[digits]=true;
+    list.push({name:p.name,phone:digits});
+  });
+  return list;
+}
+
+function insertBcVariable(token){
+  var ta=document.getElementById('bc-message');
+  var start=ta.selectionStart,end=ta.selectionEnd;
+  var text=ta.value;
+  var insert='{{'+token+'}}';
+  ta.value=text.slice(0,start)+insert+text.slice(end);
+  ta.focus();
+  ta.selectionStart=ta.selectionEnd=start+insert.length;
+  updateBcPreview();
+}
+
+function updateBcPreview(){
+  var body=document.getElementById('bc-message').value;
+  document.getElementById('bc-preview').textContent=body.trim()?renderTemplate(body,{client_name:'Ahmed Mostafa'}):'Preview will appear here…';
+}
+
+function renderBroadcastRecipients(){
+  var recipients=getBroadcastRecipients();
+  var countEl=document.getElementById('bc-recipient-count');
+  if(countEl)countEl.textContent=recipients.length+' client'+(recipients.length===1?'':'s')+' with a phone number on file';
+  updateBcPreview();
+  var state=loadData('waBroadcastState',null);
+  if(state&&state.queue&&state.index<state.queue.length){
+    renderBroadcastQueueUI(state);
+  } else {
+    document.getElementById('bc-compose-card').style.display='block';
+    document.getElementById('bc-queue-card').style.display='none';
+  }
+}
+
+function startBroadcast(){
+  var msg=document.getElementById('bc-message').value.trim();
+  if(!msg){showToast('Write a message first',true);return;}
+  var recipients=getBroadcastRecipients();
+  if(!recipients.length){showToast('No clients with a phone number on file',true);return;}
+  var state={message:msg,queue:recipients,index:0,sentCount:0,startedAt:new Date().toISOString()};
+  saveData('waBroadcastState',state);
+  renderBroadcastQueueUI(state);
+}
+
+function renderBroadcastQueueUI(state){
+  document.getElementById('bc-compose-card').style.display='none';
+  document.getElementById('bc-queue-card').style.display='block';
+  var current=state.queue[state.index];
+  document.getElementById('bc-progress').textContent=(state.index+1)+' of '+state.queue.length+' · '+(state.sentCount||0)+' sent';
+  document.getElementById('bc-current-name').textContent=current.name;
+  document.getElementById('bc-current-phone').textContent=formatPhoneDisplay(current.phone);
+  document.getElementById('bc-current-preview').textContent=renderTemplate(state.message,{client_name:current.name});
+}
+
+function broadcastOpenChat(){
+  var state=loadData('waBroadcastState',null);
+  if(!state)return;
+  var current=state.queue[state.index];
+  var msg=renderTemplate(state.message,{client_name:current.name});
+  openWhatsapp(current.phone,msg);
+  logWhatsapp({client_phone:current.phone,client_name:current.name,message_type:'broadcast',message_content:msg,status:'sent'});
+}
+
+function broadcastAdvance(wasSkipped){
+  var state=loadData('waBroadcastState',null);
+  if(!state)return;
+  state.index++;
+  if(!wasSkipped)state.sentCount=(state.sentCount||0)+1;
+  if(state.index>=state.queue.length){
+    var finalCount=state.sentCount||0;
+    saveData('waBroadcastState',null);
+    document.getElementById('bc-message').value='';
+    renderBroadcastRecipients();
+    showToast('Broadcast finished — '+finalCount+' sent ✅');
+    return;
+  }
+  saveData('waBroadcastState',state);
+  renderBroadcastQueueUI(state);
+}
+
+function broadcastNext(){ broadcastAdvance(false); }
+function broadcastSkip(){ broadcastAdvance(true); }
+
+function cancelBroadcast(){
+  saveData('waBroadcastState',null);
+  renderBroadcastRecipients();
 }
 
 function renderCoTab(s){
@@ -3356,6 +3512,18 @@ function submitCheckout(){
 
   var tab=s.tab||[];
   var drinksCost=tab.reduce(function(a,x){return a+x.total;},0);
+
+  // Discount (Discount field on the checkout screen) is taken out of the
+  // room cost first, then any remainder out of drinks/snacks, so the saved
+  // total always matches what the preview showed and everything downstream
+  // (receipt, invoice, shift settlement) stays consistent automatically.
+  var discount=parseFloat(document.getElementById('co-discount').value)||0;
+  if(discount>0){
+    var roomAfterDiscount=Math.max(0,roomCost-discount);
+    var leftoverDiscount=Math.max(0,discount-roomCost);
+    drinksCost=Math.max(0,drinksCost-leftoverDiscount);
+    roomCost=roomAfterDiscount;
+  }
   var grand=roomCost+drinksCost;
   // Room cash/instapay only — drinks are saved separately in drinkOrders
   // so calcSettlement and renderShiftCards won't double-count
@@ -3372,6 +3540,7 @@ function submitCheckout(){
     room:s.room,roomKey:s.roomKey,
     timeIn:s.timeIn,timeOut:tout,hours:hrs.toFixed(1),
     cost:roomCost,cash:roomCash,instapay:roomIP,cashier:checkoutCashier,
+    discount:discount,
     notes:s.notes,usedPackage:usedPackage,
     rating:_coRating||0,feedback:(document.getElementById('co-feedback-comment')||{}).value||'',
     created_by:currentUser?currentUser.id:null
@@ -7914,18 +8083,6 @@ calcCheckoutTotal=function(){
     var current=parseFloat(grandEl.textContent)||0;
     grandEl.textContent=Math.max(0,current-discount)+' LE';
   } else if(discRow){discRow.style.display='none';}
-};
-
-var _origSubmitCheckout=submitCheckout;
-submitCheckout=function(){
-  var discount=parseFloat(document.getElementById('co-discount').value)||0;
-  if(discount>0){
-    // Temporarily patch grand total before original submit
-    var grandEl=document.getElementById('co-grand-total');
-    var orig=parseFloat(grandEl.textContent)||0;
-    grandEl.textContent=Math.max(0,orig)+' LE';
-  }
-  _origSubmitCheckout();
 };
 
 // ============================================================
