@@ -3092,7 +3092,11 @@ function formatPhoneDisplay(digits){
 
 function openWhatsapp(phoneDigits,message){
   var local=phoneDigits.replace(/^0/,'');
-  window.open('https://wa.me/20'+local+'?text='+encodeURIComponent(message),'_blank');
+  // web.whatsapp.com (not wa.me) forces the link to open in-browser instead of
+  // handing off to the WhatsApp Desktop app — on Windows that handoff passes
+  // the text through the OS's non-UTF-8 command-line encoding, which is what
+  // was corrupting emoji into � even though the message itself was correct.
+  window.open('https://web.whatsapp.com/send?phone=20'+local+'&text='+encodeURIComponent(message),'_blank');
 }
 
 function logWhatsapp(fields){
@@ -6449,7 +6453,7 @@ function formatPhoneForWhatsApp(phone){
 function openWhatsAppMessage(phone,message){
   var num=formatPhoneForWhatsApp(phone);
   if(!num){showToast('No phone number on file — couldn\'t open WhatsApp',true);return;}
-  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(message),'_blank');
+  window.open('https://web.whatsapp.com/send?phone='+num+'&text='+encodeURIComponent(message),'_blank');
 }
 function buildBookingConfirmMessage(r){
   return 'Hi '+r.client+'! 👋'
@@ -8518,7 +8522,7 @@ function openWhatsApp(phone,name){
   var clean=phone.replace(/[^0-9+]/g,'');
   if(clean.startsWith('0'))clean='20'+clean.slice(1);
   var msg=encodeURIComponent('Hi '+name+', your SpaceCo package is running low. Come renew anytime! 😊');
-  window.open('https://wa.me/'+clean+'?text='+msg,'_blank');
+  window.open('https://web.whatsapp.com/send?phone='+clean+'&text='+msg,'_blank');
 }
 
 // ============================================================
