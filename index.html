@@ -1222,6 +1222,33 @@
   </div>
 
   <div class="card" id="bc-compose-card">
+    <div class="card-title">Recipients</div>
+    <div class="form-group">
+      <label>Send to</label>
+      <select id="bc-filter" onchange="onBcFilterChange()">
+        <option value="all">All clients with a phone number</option>
+        <option value="never">Never visited (no session on record)</option>
+        <option value="active_7">Visited in the last 7 days</option>
+        <option value="missing_8_14">Missing 8–14 days</option>
+        <option value="missing_15_30">Missing 15–30 days</option>
+        <option value="missing_31_60">Missing 31–60 days</option>
+        <option value="missing_61_100">Missing 61–100 days</option>
+        <option value="missing_100plus">Missing 100+ days</option>
+        <option value="custom">Custom range…</option>
+      </select>
+    </div>
+    <div class="form-row" id="bc-custom-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="form-group">
+        <label>Missing at least (days)</label>
+        <input type="number" id="bc-custom-min" min="0" placeholder="0" oninput="updateBcRecipientCount()">
+      </div>
+      <div class="form-group">
+        <label>Missing at most (days, optional)</label>
+        <input type="number" id="bc-custom-max" min="0" placeholder="No limit" oninput="updateBcRecipientCount()">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;" id="bc-recipient-count">Loading recipients…</div>
+
     <div class="card-title">Compose</div>
     <div class="form-group">
       <label>Message</label>
@@ -1232,7 +1259,6 @@
       <span style="font-size:11px;color:var(--text3);margin-left:6px;">optional — inserts each client's name</span>
     </div>
     <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;white-space:pre-wrap;" id="bc-preview">Preview will appear here…</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;" id="bc-recipient-count">Loading recipients…</div>
     <button class="btn btn-primary btn-full btn-lg" onclick="startBroadcast()">Start Broadcast</button>
   </div>
 
@@ -3341,16 +3367,79 @@ function deleteWaTemplate(){
 // So this steps through recipients one at a time: open their chat,
 // press Send inside WhatsApp yourself, then click Next here.
 // ============================================================
-function getBroadcastRecipients(){
-  var seen={},list=[];
+var BC_FILTER_LABELS={
+  all:'All clients',
+  never:'Never visited',
+  active_7:'Visited in the last 7 days',
+  missing_8_14:'Missing 8–14 days',
+  missing_15_30:'Missing 15–30 days',
+  missing_31_60:'Missing 31–60 days',
+  missing_61_100:'Missing 61–100 days',
+  missing_100plus:'Missing 100+ days',
+  custom:'Custom range'
+};
+
+// Days since a profile's last checkout session, or null if it has none on record.
+function getBcDaysSince(profileId){
+  var lastV=getLastVisit(profileId);
+  return lastV?daysSinceDate(lastV):null;
+}
+
+function matchesBcFilter(days,filter){
+  switch(filter.type){
+    case 'never': return days===null;
+    case 'active_7': return days!==null&&days<=7;
+    case 'missing_8_14': return days!==null&&days>=8&&days<=14;
+    case 'missing_15_30': return days!==null&&days>=15&&days<=30;
+    case 'missing_31_60': return days!==null&&days>=31&&days<=60;
+    case 'missing_61_100': return days!==null&&days>=61&&days<=100;
+    case 'missing_100plus': return days!==null&&days>100;
+    case 'custom':
+      if(days===null)return false;
+      var min=filter.min!=null?filter.min:0;
+      var max=filter.max!=null?filter.max:Infinity;
+      return days>=min&&days<=max;
+    case 'all':
+    default: return true;
+  }
+}
+
+function getCurrentBcFilter(){
+  var sel=document.getElementById('bc-filter');
+  var type=sel?sel.value:'all';
+  var filter={type:type};
+  if(type==='custom'){
+    var minEl=document.getElementById('bc-custom-min'),maxEl=document.getElementById('bc-custom-max');
+    filter.min=minEl&&minEl.value!==''?parseInt(minEl.value,10):0;
+    filter.max=maxEl&&maxEl.value!==''?parseInt(maxEl.value,10):Infinity;
+  }
+  return filter;
+}
+
+// Some clients have more than one profile under the same phone number.
+// Collapse those to one entry per phone before filtering, using whichever
+// profile has the most recent visit — otherwise the same person could be
+// counted in two different day-ranges and segment totals wouldn't add up
+// to "All clients".
+function getBcRecipientPool(){
+  var byPhone={};
   (clientProfiles||[]).forEach(function(p){
     var digits=normalizePhoneDigits(p.phone);
     if(digits.length<8)return;
-    if(seen[digits])return;
-    seen[digits]=true;
-    list.push({name:p.name,phone:digits});
+    var days=getBcDaysSince(p.id);
+    var existing=byPhone[digits];
+    if(!existing||(days!==null&&(existing.days===null||days<existing.days))){
+      byPhone[digits]={name:p.name,phone:digits,days:days};
+    }
   });
-  return list;
+  return Object.keys(byPhone).map(function(k){return byPhone[k];});
+}
+
+function getBroadcastRecipients(filter){
+  filter=filter||{type:'all'};
+  return getBcRecipientPool()
+    .filter(function(r){return matchesBcFilter(r.days,filter);})
+    .map(function(r){return {name:r.name,phone:r.phone};});
 }
 
 function insertBcVariable(token){
@@ -3369,10 +3458,22 @@ function updateBcPreview(){
   document.getElementById('bc-preview').textContent=body.trim()?renderTemplate(body,{client_name:'Ahmed Mostafa'}):'Preview will appear here…';
 }
 
-function renderBroadcastRecipients(){
-  var recipients=getBroadcastRecipients();
+function onBcFilterChange(){
+  var type=document.getElementById('bc-filter').value;
+  var customRow=document.getElementById('bc-custom-row');
+  if(customRow)customRow.style.display=type==='custom'?'grid':'none';
+  updateBcRecipientCount();
+}
+
+function updateBcRecipientCount(){
+  var recipients=getBroadcastRecipients(getCurrentBcFilter());
   var countEl=document.getElementById('bc-recipient-count');
-  if(countEl)countEl.textContent=recipients.length+' client'+(recipients.length===1?'':'s')+' with a phone number on file';
+  if(countEl)countEl.textContent=recipients.length+' client'+(recipients.length===1?'':'s')+' match'+(recipients.length===1?'es':'')+' this filter';
+  return recipients;
+}
+
+function renderBroadcastRecipients(){
+  onBcFilterChange();
   updateBcPreview();
   var state=loadData('waBroadcastState',null);
   if(state&&state.queue&&state.index<state.queue.length){
@@ -3386,9 +3487,10 @@ function renderBroadcastRecipients(){
 function startBroadcast(){
   var msg=document.getElementById('bc-message').value.trim();
   if(!msg){showToast('Write a message first',true);return;}
-  var recipients=getBroadcastRecipients();
-  if(!recipients.length){showToast('No clients with a phone number on file',true);return;}
-  var state={message:msg,queue:recipients,index:0,sentCount:0,startedAt:new Date().toISOString()};
+  var filter=getCurrentBcFilter();
+  var recipients=getBroadcastRecipients(filter);
+  if(!recipients.length){showToast('No clients match this filter',true);return;}
+  var state={message:msg,queue:recipients,index:0,sentCount:0,startedAt:new Date().toISOString(),filterType:filter.type};
   saveData('waBroadcastState',state);
   renderBroadcastQueueUI(state);
 }
@@ -3397,7 +3499,8 @@ function renderBroadcastQueueUI(state){
   document.getElementById('bc-compose-card').style.display='none';
   document.getElementById('bc-queue-card').style.display='block';
   var current=state.queue[state.index];
-  document.getElementById('bc-progress').textContent=(state.index+1)+' of '+state.queue.length+' · '+(state.sentCount||0)+' sent';
+  var label=BC_FILTER_LABELS[state.filterType]||'All clients';
+  document.getElementById('bc-progress').textContent=(state.index+1)+' of '+state.queue.length+' · '+(state.sentCount||0)+' sent · '+label;
   document.getElementById('bc-current-name').textContent=current.name;
   document.getElementById('bc-current-phone').textContent=formatPhoneDisplay(current.phone);
   document.getElementById('bc-current-preview').textContent=renderTemplate(state.message,{client_name:current.name});
