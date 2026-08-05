@@ -3115,11 +3115,11 @@ function formatPhoneDisplay(digits){
 
 function openWhatsapp(phoneDigits,message){
   var local=phoneDigits.replace(/^0/,'');
-  // web.whatsapp.com (not wa.me) forces the link to open in-browser instead of
-  // handing off to the WhatsApp Desktop app — on Windows that handoff passes
-  // the text through the OS's non-UTF-8 command-line encoding, which is what
-  // was corrupting emoji into � even though the message itself was correct.
-  window.open('https://web.whatsapp.com/send?phone=20'+local+'&text='+encodeURIComponent(message),'_blank');
+  // wa.me hands off to the WhatsApp Desktop app on Windows, which mangles
+  // emoji (surrogate-pair characters) into � during that handoff. Rather than
+  // force everything into the browser, every message this app sends is kept
+  // emoji-free so there's nothing for that handoff to corrupt.
+  window.open('https://wa.me/20'+local+'?text='+encodeURIComponent(message),'_blank');
 }
 
 function logWhatsapp(fields){
@@ -3159,7 +3159,7 @@ function renderTemplate(body,vars){
 
 function buildRoomPricingBlock(){
   var p=pricing;
-  return '🏠 Rooms:\n'
+  return 'Rooms:\n'
     +'• Room 1 (4 persons): '+p.room1.first+' LE 1st hr, +'+p.room1.extra+' LE/hr\n'
     +'• Room 2 (4 persons): '+p.room2.first+' LE 1st hr, +'+p.room2.extra+' LE/hr\n'
     +'• Room 3 (6 persons): '+p.room3.first+' LE 1st hr, +'+p.room3.extra+' LE/hr\n'
@@ -3188,15 +3188,15 @@ function buildWelcomeMessage(){
   };
   var tmpl=getActiveTemplate('welcome_new_client');
   if(tmpl)return renderTemplate(tmpl.message_body,vars);
-  return 'Welcome to Space-Co Workspace! 🚀\n\n'
+  return 'Welcome to Space-Co Workspace!\n\n'
     +'Here are our packages & pricing:\n\n'+vars.room_pricing+'\n\n'
-    +'📦 Academy Packages:\n'
+    +'Academy Packages:\n'
     +'• Custom hour packages available\n'
     +'• Ask our staff for details!\n\n'
-    +'📍 Location: '+vars.business_address+'\n'
-    +'📞 Call us: '+vars.business_phone+'\n'
-    +'🕐 Hours: '+vars.business_hours+'\n\n'
-    +'We hope you enjoy your session! ☕';
+    +'Location: '+vars.business_address+'\n'
+    +'Call us: '+vars.business_phone+'\n'
+    +'Hours: '+vars.business_hours+'\n\n'
+    +'We hope you enjoy your session!';
 }
 
 function sendWelcomeWhatsapp(){
@@ -3229,14 +3229,14 @@ function buildReceiptMessage(visit,grand,payment){
   var tmpl=getActiveTemplate('checkout_receipt_text');
   if(tmpl)return renderTemplate(tmpl.message_body,vars);
   return 'Hi '+vars.client_name+', thanks for visiting Space-Co!\n\n'
-    +'📅 Date: '+vars.date+'\n'
-    +'🏠 Room: '+vars.room+'\n'
-    +'⏱️ Duration: '+vars.duration+'\n'
-    +'💰 Room Cost: '+vars.room_cost+' LE\n'
-    +'☕ Drinks & Snacks: '+vars.snacks_cost+' LE\n'
-    +'🎯 Grand Total: '+vars.total+' LE\n'
-    +'💳 Paid via: '+vars.payment_method+'\n\n'
-    +'See you next time! 🌟\nSpace-Co Workspace';
+    +'Date: '+vars.date+'\n'
+    +'Room: '+vars.room+'\n'
+    +'Duration: '+vars.duration+'\n'
+    +'Room Cost: '+vars.room_cost+' LE\n'
+    +'Drinks & Snacks: '+vars.snacks_cost+' LE\n'
+    +'Grand Total: '+vars.total+' LE\n'
+    +'Paid via: '+vars.payment_method+'\n\n'
+    +'See you next time!\nSpace-Co Workspace';
 }
 
 // Offered on every checkout with a phone on file — new clients get this
@@ -6476,22 +6476,22 @@ function formatPhoneForWhatsApp(phone){
 function openWhatsAppMessage(phone,message){
   var num=formatPhoneForWhatsApp(phone);
   if(!num){showToast('No phone number on file — couldn\'t open WhatsApp',true);return;}
-  window.open('https://web.whatsapp.com/send?phone='+num+'&text='+encodeURIComponent(message),'_blank');
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(message),'_blank');
 }
 function buildBookingConfirmMessage(r){
-  return 'Hi '+r.client+'! 👋'
-    +'\n\nYour SpaceCo booking is confirmed ✅'
-    +'\n📍 '+r.room
-    +'\n📅 '+r.date
-    +'\n🕐 '+fmt12(r.from)+' – '+fmt12(r.to)
+  return 'Hi '+r.client+'!'
+    +'\n\nYour SpaceCo booking is confirmed'
+    +'\n'+r.room
+    +'\n'+r.date
+    +'\n'+fmt12(r.from)+' – '+fmt12(r.to)
     +'\n\nSee you then!'
     +'\n— SpaceCo Workspace';
 }
 function buildBookingRejectMessage(r){
   return 'Hi '+r.client+', sorry — we\'re not able to confirm your booking request:'
-    +'\n📍 '+r.room
-    +'\n📅 '+r.date
-    +'\n🕐 '+fmt12(r.from)+' – '+fmt12(r.to)
+    +'\n'+r.room
+    +'\n'+r.date
+    +'\n'+fmt12(r.from)+' – '+fmt12(r.to)
     +'\n\nFeel free to reply here and we\'ll help you find another time, or book a different slot online.'
     +'\n— SpaceCo Workspace';
 }
@@ -8547,8 +8547,8 @@ function openWhatsApp(phone,name){
   if(!phone){showToast('No phone number on file',true);return;}
   var clean=phone.replace(/[^0-9+]/g,'');
   if(clean.startsWith('0'))clean='20'+clean.slice(1);
-  var msg=encodeURIComponent('Hi '+name+', your SpaceCo package is running low. Come renew anytime! 😊');
-  window.open('https://web.whatsapp.com/send?phone='+clean+'&text='+msg,'_blank');
+  var msg=encodeURIComponent('Hi '+name+', your SpaceCo package is running low. Come renew anytime!');
+  window.open('https://wa.me/'+clean+'?text='+msg,'_blank');
 }
 
 // ============================================================
