@@ -3270,6 +3270,117 @@ function skipReceiptWhatsapp(){
   _waReceiptCtx=null;
 }
 
+// Squeezes the extra blank line left behind when an optional {{...}} block
+// (e.g. drinks_section) renders empty, so the sent message never has a gap.
+function squeezeBlankLines(text){
+  return (text||'').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+// ── Shared Space package check-in message (checkout, package holders only) ──
+// Replaces the generic receipt offer for package check-ins: shows visit
+// progress (e.g. "3 of 20") instead of a 0 LE room-cost receipt, plus
+// whatever drinks/snacks were ordered that visit, if any.
+var _waPkgCheckinCtx=null;
+
+function buildPackageCheckinMessage(visit,pkg,tab,drinksCost){
+  var totalVisits=pkg.daysTotal!==null?String(pkg.daysTotal):'Unlimited';
+  var drinksSection='';
+  if(tab&&tab.length){
+    drinksSection='Drinks & Snacks:\n'+tab.map(function(x){
+      return '• '+(x.qty>1?x.qty+'x ':'')+x.name;
+    }).join('\n')+'\nDrinks total: '+drinksCost+' LE\n';
+  }
+  var vars={
+    client_name:visit.name,visit_number:String(pkg.daysUsed),total_visits:totalVisits,
+    date:formatDate(visit.date),drinks_section:drinksSection
+  };
+  var tmpl=getActiveTemplate('package_checkin');
+  if(tmpl)return squeezeBlankLines(renderTemplate(tmpl.message_body,vars));
+  return squeezeBlankLines(
+    'Hi '+vars.client_name+', thanks for checking in today!\n\n'
+    +'Visit '+vars.visit_number+' of '+vars.total_visits+'\n'
+    +'Date: '+vars.date+'\n\n'
+    +vars.drinks_section+'\n'
+    +'See you next time!\nSpaceCo Workspace'
+  );
+}
+
+function maybeOfferPackageCheckinWhatsapp(visit,pkg,tab,drinksCost){
+  if(!visit.phone)return;
+  _waPkgCheckinCtx={visit:visit,pkg:pkg,tab:tab,drinksCost:drinksCost};
+  document.getElementById('wa-pkgcheckin-name').textContent=visit.name;
+  openModal('whatsapp-pkgcheckin-modal');
+}
+
+function sendPackageCheckinWhatsapp(){
+  if(!_waPkgCheckinCtx)return;
+  var visit=_waPkgCheckinCtx.visit,pkg=_waPkgCheckinCtx.pkg,tab=_waPkgCheckinCtx.tab,drinksCost=_waPkgCheckinCtx.drinksCost;
+  var phone=normalizePhoneDigits(visit.phone);
+  if(phone.length<8){showToast('No valid phone on file for this client',true);closeModal('whatsapp-pkgcheckin-modal');_waPkgCheckinCtx=null;return;}
+  var msg=buildPackageCheckinMessage(visit,pkg,tab,drinksCost);
+  openWhatsapp(phone,msg);
+  logWhatsapp({client_phone:phone,client_name:visit.name,message_type:'package_checkin',message_content:msg,status:'sent',session_id:String(visit.id),template_key:'package_checkin'});
+  closeModal('whatsapp-pkgcheckin-modal');
+  _waPkgCheckinCtx=null;
+}
+
+function skipPackageCheckinWhatsapp(){
+  if(_waPkgCheckinCtx){
+    var visit=_waPkgCheckinCtx.visit;
+    logWhatsapp({client_phone:normalizePhoneDigits(visit.phone),client_name:visit.name,message_type:'package_checkin',status:'skipped',session_id:String(visit.id)});
+  }
+  closeModal('whatsapp-pkgcheckin-modal');
+  _waPkgCheckinCtx=null;
+}
+
+// ── Shared Space package purchase confirmation (sent when a package is sold) ──
+var _waPkgPurchaseCtx=null;
+
+function buildPackagePurchaseMessage(pkg,tier,profile){
+  var vars={
+    client_name:profile.name,package_label:tier.label,
+    total_visits:tier.days!==null?String(tier.days):'Unlimited',
+    cost:tier.cost,purchase_date:formatDate(pkg.purchaseDate),expiry_date:formatDate(pkg.expiryDate)
+  };
+  var tmpl=getActiveTemplate('package_purchased');
+  if(tmpl)return renderTemplate(tmpl.message_body,vars);
+  return 'Hi '+vars.client_name+', thank you for subscribing to SpaceCo Workspace!\n\n'
+    +'Package: '+vars.package_label+'\n'
+    +'Total check-ins: '+vars.total_visits+'\n'
+    +'Amount paid: '+vars.cost+' LE\n'
+    +'Purchase date: '+vars.purchase_date+'\n'
+    +'Valid until: '+vars.expiry_date+'\n\n'
+    +'We look forward to seeing you!\nSpaceCo Workspace';
+}
+
+function maybeOfferPackagePurchaseWhatsapp(pkg,tier,profile){
+  if(!profile.phone)return;
+  _waPkgPurchaseCtx={pkg:pkg,tier:tier,profile:profile};
+  document.getElementById('wa-pkgpurchase-name').textContent=profile.name;
+  openModal('whatsapp-pkgpurchase-modal');
+}
+
+function sendPackagePurchaseWhatsapp(){
+  if(!_waPkgPurchaseCtx)return;
+  var pkg=_waPkgPurchaseCtx.pkg,tier=_waPkgPurchaseCtx.tier,profile=_waPkgPurchaseCtx.profile;
+  var phone=normalizePhoneDigits(profile.phone);
+  if(phone.length<8){showToast('No valid phone on file for this client',true);closeModal('whatsapp-pkgpurchase-modal');_waPkgPurchaseCtx=null;return;}
+  var msg=buildPackagePurchaseMessage(pkg,tier,profile);
+  openWhatsapp(phone,msg);
+  logWhatsapp({client_phone:phone,client_name:profile.name,message_type:'package_purchased',message_content:msg,status:'sent',template_key:'package_purchased'});
+  closeModal('whatsapp-pkgpurchase-modal');
+  _waPkgPurchaseCtx=null;
+}
+
+function skipPackagePurchaseWhatsapp(){
+  if(_waPkgPurchaseCtx){
+    var profile=_waPkgPurchaseCtx.profile;
+    logWhatsapp({client_phone:normalizePhoneDigits(profile.phone),client_name:profile.name,message_type:'package_purchased',status:'skipped'});
+  }
+  closeModal('whatsapp-pkgpurchase-modal');
+  _waPkgPurchaseCtx=null;
+}
+
 // ============================================================
 // WHATSAPP MESSAGES MANAGER — CRUD for whatsapp_templates
 // ============================================================
@@ -3826,7 +3937,13 @@ function submitCheckout(){
   setTimeout(function(){printInvoice(visit);},400);
   renderShiftCards();calcSettlement();
   if(usedPackage)renderSharedSpacePackages();
-  maybeOfferWhatsappReceipt(visit,grand,payment);
+  // Package check-ins get their visit-progress message (e.g. "3 of 20") instead
+  // of the generic receipt — a 0 LE room-cost receipt isn't useful to them.
+  if(usedPackage){
+    maybeOfferPackageCheckinWhatsapp(visit,pkg,tab,drinksCost);
+  } else {
+    maybeOfferWhatsappReceipt(visit,grand,payment);
+  }
 }
 
 // legacy submitGuest kept for any other callers
@@ -5120,6 +5237,7 @@ function confirmSellPackage(){
   refreshDashboard();
   showToast('Package sold — '+tier.cost.toLocaleString()+' LE added to shift ✓');
   setTimeout(function(){printPackageReceipt(sharedSpacePackages[profile.id],tier,profile,payment,cashier);},400);
+  maybeOfferPackagePurchaseWhatsapp(sharedSpacePackages[profile.id],tier,profile);
 }
 
 // Instant receipt printed the moment a client subscribes/renews a Shared
@@ -9301,6 +9419,26 @@ refreshDashboard=function(){
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="skipReceiptWhatsapp()">Skip</button>
       <button class="btn btn-primary" onclick="sendReceiptWhatsapp()">💬 Send Text Receipt</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="whatsapp-pkgcheckin-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">📱 Send Check-in Update via WhatsApp?</div><button class="close-btn" onclick="skipPackageCheckinWhatsapp()">✕</button></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Send <strong id="wa-pkgcheckin-name"></strong> their visit count and drinks (if any) now, or skip.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="skipPackageCheckinWhatsapp()">Skip</button>
+      <button class="btn btn-primary" onclick="sendPackageCheckinWhatsapp()">💬 Send Update</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="whatsapp-pkgpurchase-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">📱 Send Package Confirmation via WhatsApp?</div><button class="close-btn" onclick="skipPackagePurchaseWhatsapp()">✕</button></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Send <strong id="wa-pkgpurchase-name"></strong> their package details now, or skip.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="skipPackagePurchaseWhatsapp()">Skip</button>
+      <button class="btn btn-primary" onclick="sendPackagePurchaseWhatsapp()">💬 Send Confirmation</button>
     </div>
   </div>
 </div>
