@@ -1564,8 +1564,9 @@
       <div id="drinks-editor"></div>
       <div class="card" style="margin-top:16px;">
         <div class="card-title">Add New Drink Item</div>
-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
           <div class="form-group"><label>Name *</label><input type="text" id="ndk-name" placeholder="e.g. Cappuccino"></div>
+          <div class="form-group"><label>Type</label><select id="ndk-category"><option value="hot_drinks">Hot Drink ☕</option><option value="drinks">Cold Drink / Soda 🥤</option></select></div>
           <div class="form-group"><label>Price (LE)</label><input type="number" id="ndk-price" placeholder="0"></div>
           <div class="form-group"><label>Emoji</label><input type="text" id="ndk-emoji" placeholder="☕" style="font-size:20px;"></div>
         </div>
@@ -2468,7 +2469,7 @@ function openModal(id){
 // DATA
 // ============================================================
 var _archivePending=null;
-var clients, clientProfiles, shiftPayments, academies, academyOrder, pricing, adminPass, isAdmin=false, staff, snacksMenu, drinksMenuData, reservations, recycleBin, archivedAcademies, dismissedNotifs, sharedSpacePackages, staffDebts;
+var clients, clientProfiles, shiftPayments, academies, academyOrder, pricing, adminPass, isAdmin=false, staff, reservations, recycleBin, archivedAcademies, dismissedNotifs, sharedSpacePackages, staffDebts;
 
 // ============================================================
 // SHARED SPACE MONTHLY PACKAGES — tiers & helpers
@@ -2534,28 +2535,6 @@ function initData(){
     {id:'youssef',name:'Youssef',shift:'4:00 PM – 11:00 PM',color:'var(--teal)'},
     {id:'nour',name:'Nour',shift:'Fri & Sat both shifts',color:'var(--pink)'}
   ]);
-  snacksMenu=loadData('snacksMenu',[
-    {name:'Chips',price:15,emoji:'🍟',stock:20,lowStock:5},
-    {name:'Chocolate',price:20,emoji:'🍫',stock:20,lowStock:5},
-    {name:'Sandwich',price:35,emoji:'🥪',stock:20,lowStock:5},
-    {name:'Biscuits',price:15,emoji:'🍪',stock:20,lowStock:5},
-    {name:'Candy',price:10,emoji:'🍬',stock:20,lowStock:5}
-  ]);
-  drinksMenuData=loadData('drinksMenuData',[
-    {name:'Water',price:10,emoji:'💧',stock:20,lowStock:5},
-    {name:'Tea',price:15,emoji:'🍵',stock:20,lowStock:5},
-    {name:'Nعناع',price:15,emoji:'🌿',stock:20,lowStock:5},
-    {name:'ينسون',price:15,emoji:'🌾',stock:20,lowStock:5},
-    {name:'Nescafe',price:20,emoji:'☕',stock:20,lowStock:5},
-    {name:'Espresso',price:25,emoji:'☕',stock:20,lowStock:5},
-    {name:'Americano',price:25,emoji:'☕',stock:20,lowStock:5},
-    {name:'Double Shot',price:35,emoji:'⚡',stock:20,lowStock:5},
-    {name:'Any with Milk',price:45,emoji:'🥛',stock:20,lowStock:5}
-  ]);
-  // Migrate: ensure stock/lowStock fields exist on previously-saved menu items
-  snacksMenu.forEach(function(it){if(it.stock===undefined)it.stock=20;if(it.lowStock===undefined)it.lowStock=5;});
-  drinksMenuData.forEach(function(it){if(it.stock===undefined)it.stock=20;if(it.lowStock===undefined)it.lowStock=5;});
-  drinksMenu=drinksMenuData;
   reservations=loadData('reservations',[]);
   roomBlocks=loadData('roomBlocks',[]);
   packageRequests=loadData('packageRequests',[]);
@@ -2748,53 +2727,59 @@ function showPage(id,btn){
 // ============================================================
 var selectedRoom=null;
 var currentProfileId=null;
-var ciDrinkQty={};
-var ciSnackQty={};
+var ciDrinkQty={}; // keyed by products.id
+var ciSnackQty={}; // keyed by products.id
 
-function changeCiSnack(idx,delta){
-  ciSnackQty[idx]=(ciSnackQty[idx]||0)+delta;
-  if(ciSnackQty[idx]<0)ciSnackQty[idx]=0;
-  renderCiDrinkGrid();
+// Drinks + snacks pricing here is sourced live from the Product Catalog
+// (`products`, same table checkout reads) so it can never drift from
+// what clients are actually charged at checkout.
+function ciDrinkProducts(){return products.filter(function(p){return p.is_active&&(p.category==='drinks'||p.category==='hot_drinks');});}
+function ciSnackProducts(){return products.filter(function(p){return p.is_active&&p.category==='snacks';});}
+
+function ciUpdateDrinkTotal(){
   var tot=0;
-  drinksMenu.forEach(function(d,i){tot+=(ciDrinkQty[i]||0)*d.price;});
-  snacksMenu.forEach(function(d,i){tot+=(ciSnackQty[i]||0)*d.price;});
+  ciDrinkProducts().forEach(function(d){tot+=(ciDrinkQty[d.id]||0)*d.sale_price;});
+  ciSnackProducts().forEach(function(d){tot+=(ciSnackQty[d.id]||0)*d.sale_price;});
   var el=document.getElementById('ci-drink-total');
   if(el)el.textContent=tot+' LE';
+}
+
+function changeCiSnack(id,delta){
+  ciSnackQty[id]=(ciSnackQty[id]||0)+delta;
+  if(ciSnackQty[id]<0)ciSnackQty[id]=0;
+  renderCiDrinkGrid();
+  ciUpdateDrinkTotal();
 }
 
 function renderCiDrinkGrid(){
   var g=document.getElementById('ci-drink-grid');
   if(!g)return;
-  g.innerHTML=drinksMenu.map(function(d,i){
-    var qty=ciDrinkQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;" onclick="changeCiDrink('+i+',1)" oncontextmenu="event.preventDefault();changeCiDrink('+i+',-1)">'
-      +'<div>'+d.emoji+' '+d.name+'</div>'
-      +'<div style="color:var(--accent2);">'+d.price+' LE</div>'
+  g.innerHTML=ciDrinkProducts().map(function(d){
+    var qty=ciDrinkQty[d.id]||0;
+    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;" onclick="changeCiDrink(\''+d.id+'\',1)" oncontextmenu="event.preventDefault();changeCiDrink(\''+d.id+'\',-1)">'
+      +'<div>'+(d.emoji||'')+' '+d.display_name+'</div>'
+      +'<div style="color:var(--accent2);">'+d.sale_price+' LE</div>'
       +(qty>0?'<div><span style="background:var(--accent);color:white;border-radius:20px;padding:1px 6px;font-size:10px;">x'+qty+'</span></div>':'')
       +'</div>';
   }).join('');
   // Snacks
   var sg=document.getElementById('ci-snack-grid');
   if(!sg)return;
-  sg.innerHTML=snacksMenu.map(function(d,i){
-    var qty=ciSnackQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;" onclick="changeCiSnack('+i+',1)" oncontextmenu="event.preventDefault();changeCiSnack('+i+',-1)">'
-      +'<div>'+d.emoji+' '+d.name+'</div>'
-      +'<div style="color:var(--amber);">'+d.price+' LE</div>'
+  sg.innerHTML=ciSnackProducts().map(function(d){
+    var qty=ciSnackQty[d.id]||0;
+    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;" onclick="changeCiSnack(\''+d.id+'\',1)" oncontextmenu="event.preventDefault();changeCiSnack(\''+d.id+'\',-1)">'
+      +'<div>'+(d.emoji||'')+' '+d.display_name+'</div>'
+      +'<div style="color:var(--amber);">'+d.sale_price+' LE</div>'
       +(qty>0?'<div><span style="background:var(--amber);color:#1a0f00;border-radius:20px;padding:1px 6px;font-size:10px;">x'+qty+'</span></div>':'')
       +'</div>';
   }).join('');
 }
 
-function changeCiDrink(idx,delta){
-  ciDrinkQty[idx]=(ciDrinkQty[idx]||0)+delta;
-  if(ciDrinkQty[idx]<0)ciDrinkQty[idx]=0;
+function changeCiDrink(id,delta){
+  ciDrinkQty[id]=(ciDrinkQty[id]||0)+delta;
+  if(ciDrinkQty[id]<0)ciDrinkQty[id]=0;
   renderCiDrinkGrid();
-  var tot=0;
-  drinksMenu.forEach(function(d,i){tot+=(ciDrinkQty[i]||0)*d.price;});
-  snacksMenu.forEach(function(d,i){tot+=(ciSnackQty[i]||0)*d.price;});
-  var el=document.getElementById('ci-drink-total');
-  if(el)el.textContent=tot+' LE';
+  ciUpdateDrinkTotal();
 }
 
 function selectRoom(el,roomKey,roomName,roomCap){
@@ -4436,14 +4421,16 @@ function printClientHistory(profileId){
 // ============================================================
 // DRINKS & SNACKS MENU
 // ============================================================
-// drinksMenu is now dynamic, loaded in initData as drinksMenuData
-var drinkQty={};
-var snackQty={};
+// Drinks/snacks lists here are sourced live from the Product Catalog
+// (`products`, same table checkout reads via ciDrinkProducts/ciSnackProducts)
+// so a logged order always matches what checkout would have charged.
+var drinkQty={}; // keyed by products.id
+var snackQty={}; // keyed by products.id
 var snackLines=[];
 
-function changeSnackQty(idx,delta){
-  snackQty[idx]=(snackQty[idx]||0)+delta;
-  if(snackQty[idx]<0)snackQty[idx]=0;
+function changeSnackQty(id,delta){
+  snackQty[id]=(snackQty[id]||0)+delta;
+  if(snackQty[id]<0)snackQty[id]=0;
   renderDrinkMenu();
   updateDrinkTotal();
 }
@@ -4451,32 +4438,32 @@ function changeSnackQty(idx,delta){
 function renderDrinkMenu(){
   var g=document.getElementById('drink-menu-grid');
   if(!g)return;
-  g.innerHTML=drinksMenu.map(function(d,i){
-    var qty=drinkQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;" onclick="changeDrinkQty('+i+',1)" oncontextmenu="event.preventDefault();changeDrinkQty('+i+',-1)">'
-      +'<div style="font-size:16px;">'+d.emoji+'</div>'
-      +'<div style="font-size:12px;font-weight:600;margin:4px 0 2px;">'+d.name+'</div>'
-      +'<div style="font-size:11px;color:var(--accent2);">'+d.price+' LE</div>'
+  g.innerHTML=ciDrinkProducts().map(function(d){
+    var qty=drinkQty[d.id]||0;
+    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;" onclick="changeDrinkQty(\''+d.id+'\',1)" oncontextmenu="event.preventDefault();changeDrinkQty(\''+d.id+'\',-1)">'
+      +'<div style="font-size:16px;">'+(d.emoji||'')+'</div>'
+      +'<div style="font-size:12px;font-weight:600;margin:4px 0 2px;">'+d.display_name+'</div>'
+      +'<div style="font-size:11px;color:var(--accent2);">'+d.sale_price+' LE</div>'
       +(qty>0?'<div style="margin-top:6px;"><span style="background:var(--accent);color:white;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;">x'+qty+'</span></div>':'<div style="margin-top:6px;height:20px;"></div>')
       +'</div>';
   }).join('');
   // Snacks grid
   var sg=document.getElementById('snack-menu-grid');
   if(!sg)return;
-  sg.innerHTML=snacksMenu.map(function(d,i){
-    var qty=snackQty[i]||0;
-    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;" onclick="changeSnackQty('+i+',1)" oncontextmenu="event.preventDefault();changeSnackQty('+i+',-1)">'
-      +'<div style="font-size:16px;">'+d.emoji+'</div>'
-      +'<div style="font-size:12px;font-weight:600;margin:4px 0 2px;">'+d.name+'</div>'
-      +'<div style="font-size:11px;color:var(--amber);">'+d.price+' LE</div>'
+  sg.innerHTML=ciSnackProducts().map(function(d){
+    var qty=snackQty[d.id]||0;
+    return '<div style="background:var(--bg2);border:1px solid var(--border'+(qty>0?'2':'')+ ');border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;" onclick="changeSnackQty(\''+d.id+'\',1)" oncontextmenu="event.preventDefault();changeSnackQty(\''+d.id+'\',-1)">'
+      +'<div style="font-size:16px;">'+(d.emoji||'')+'</div>'
+      +'<div style="font-size:12px;font-weight:600;margin:4px 0 2px;">'+d.display_name+'</div>'
+      +'<div style="font-size:11px;color:var(--amber);">'+d.sale_price+' LE</div>'
       +(qty>0?'<div style="margin-top:6px;"><span style="background:var(--amber);color:#1a0f00;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;">x'+qty+'</span></div>':'<div style="margin-top:6px;height:20px;"></div>')
       +'</div>';
   }).join('');
 }
 
-function changeDrinkQty(idx,delta){
-  drinkQty[idx]=(drinkQty[idx]||0)+delta;
-  if(drinkQty[idx]<0)drinkQty[idx]=0;
+function changeDrinkQty(id,delta){
+  drinkQty[id]=(drinkQty[id]||0)+delta;
+  if(drinkQty[id]<0)drinkQty[id]=0;
   renderDrinkMenu();
   updateDrinkTotal();
 }
@@ -4514,8 +4501,8 @@ function removeSnack(i){
 
 function updateDrinkTotal(){
   var tot=0;
-  drinksMenu.forEach(function(d,i){tot+=(drinkQty[i]||0)*d.price;});
-  snacksMenu.forEach(function(d,i){tot+=(snackQty[i]||0)*d.price;});
+  ciDrinkProducts().forEach(function(d){tot+=(drinkQty[d.id]||0)*d.sale_price;});
+  ciSnackProducts().forEach(function(d){tot+=(snackQty[d.id]||0)*d.sale_price;});
   snackLines.forEach(function(s){tot+=s.price;});
   var el=document.getElementById('drk-order-total');
   if(el)el.textContent=tot+' LE';
@@ -4535,8 +4522,8 @@ function submitDrinkOrder(){
   var client=document.getElementById('drk-client').value.trim()||'Walk-in';
   var payment=document.getElementById('drk-payment').value;
   var items=[];
-  drinksMenu.forEach(function(d,i){if(drinkQty[i]>0)items.push({name:d.name,qty:drinkQty[i],price:d.price,total:drinkQty[i]*d.price});});
-  snacksMenu.forEach(function(d,i){if(snackQty[i]>0)items.push({name:d.name,qty:snackQty[i],price:d.price,total:snackQty[i]*d.price});});
+  ciDrinkProducts().forEach(function(d){if(drinkQty[d.id]>0)items.push({productId:d.id,name:d.display_name,qty:drinkQty[d.id],price:d.sale_price,total:drinkQty[d.id]*d.sale_price});});
+  ciSnackProducts().forEach(function(d){if(snackQty[d.id]>0)items.push({productId:d.id,name:d.display_name,qty:snackQty[d.id],price:d.sale_price,total:snackQty[d.id]*d.sale_price});});
   snackLines.forEach(function(s){items.push({name:s.name,qty:1,price:s.price,total:s.price});});
   if(!items.length){showToast('Add at least one item',true);return;}
   var total=items.reduce(function(s,x){return s+x.total;},0);
@@ -6283,44 +6270,64 @@ function populateCashierDropdowns(){
 // ============================================================
 // SNACKS MENU MANAGEMENT
 // ============================================================
+// Edits here write straight to the Product Catalog (`products`), the same
+// table checkout reads — so a price change here shows up at checkout instantly.
 function renderSnacksEditor(){
   var el=document.getElementById('snacks-editor');
   if(!el)return;
-  el.innerHTML=snacksMenu.map(function(s,i){
+  el.innerHTML=ciSnackProducts().map(function(s){
     return '<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;padding:12px 14px;">'
-      +'<span style="font-size:20px;">'+s.emoji+'</span>'
-      +'<input type="text" value="'+s.name+'" id="sk-name-'+i+'" style="flex:1;" placeholder="Name">'
-      +'<input type="number" value="'+s.price+'" id="sk-price-'+i+'" style="width:90px;" placeholder="Price">'
-      +'<input type="text" value="'+s.emoji+'" id="sk-emoji-'+i+'" style="width:60px;font-size:16px;" placeholder="🍟">'
-      +'<button class="btn btn-success btn-sm" onclick="saveSnackItem('+i+')">Save</button>'
-      +'<button class="btn btn-danger btn-sm" onclick="removeSnackItem('+i+')">Del</button>'
+      +'<span style="font-size:20px;">'+(s.emoji||'')+'</span>'
+      +'<input type="text" value="'+s.display_name+'" id="sk-name-'+s.id+'" style="flex:1;" placeholder="Name">'
+      +'<input type="number" value="'+s.sale_price+'" id="sk-price-'+s.id+'" style="width:90px;" placeholder="Price">'
+      +'<input type="text" value="'+(s.emoji||'')+'" id="sk-emoji-'+s.id+'" style="width:60px;font-size:16px;" placeholder="🍟">'
+      +'<button class="btn btn-success btn-sm" onclick="saveSnackItem(\''+s.id+'\')">Save</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="removeSnackItem(\''+s.id+'\')">Del</button>'
       +'</div>';
   }).join('');
 }
-function saveSnackItem(i){
-  snacksMenu[i].name=document.getElementById('sk-name-'+i).value.trim()||snacksMenu[i].name;
-  snacksMenu[i].price=parseInt(document.getElementById('sk-price-'+i).value)||0;
-  snacksMenu[i].emoji=document.getElementById('sk-emoji-'+i).value||'🍽';
-  saveData('snacksMenu',snacksMenu);
+function refreshMenusAfterProductChange(){
   renderSnacksEditor();
+  renderDrinksEditor();
   renderDrinkMenu();
+  renderCiDrinkGrid();
+  if(typeof renderCoProductGrid==='function')renderCoProductGrid();
+  if(typeof renderProductCatalog==='function')renderProductCatalog();
+}
+async function saveSnackItem(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  var fields={
+    display_name:document.getElementById('sk-name-'+id).value.trim()||p.display_name,
+    sale_price:parseInt(document.getElementById('sk-price-'+id).value)||0,
+    emoji:document.getElementById('sk-emoji-'+id).value||'🍽'
+  };
+  await updateProduct(id,fields);
+  Object.assign(p,fields);
+  refreshMenusAfterProductChange();
   showToast('Snack updated!');
 }
-function removeSnackItem(i){
-  snacksMenu.splice(i,1);
-  saveData('snacksMenu',snacksMenu);
-  renderSnacksEditor();
-  renderDrinkMenu();
+async function removeSnackItem(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  p.is_active=false;
+  await updateProduct(id,{is_active:false});
+  refreshMenusAfterProductChange();
   showToast('Snack removed');
 }
-function addSnackItem(){
+async function addSnackItem(){
   var name=document.getElementById('nsk-name').value.trim();
   if(!name){showToast('Name required',true);return;}
-  snacksMenu.push({name:name,price:parseInt(document.getElementById('nsk-price').value)||0,emoji:document.getElementById('nsk-emoji').value||'🍽'});
-  saveData('snacksMenu',snacksMenu);
+  var fields={
+    display_name:name,category:'snacks',subcategory:null,
+    sale_price:parseInt(document.getElementById('nsk-price').value)||0,
+    emoji:document.getElementById('nsk-emoji').value||'🍽',
+    inventory_mode:'retail',unit:'piece',stock_quantity:0,min_stock:5,is_active:true
+  };
+  var created=await createProduct(fields);
+  if(created)products.push(created);
   document.getElementById('nsk-name').value='';document.getElementById('nsk-price').value='';document.getElementById('nsk-emoji').value='';
-  renderSnacksEditor();
-  renderDrinkMenu();
+  refreshMenusAfterProductChange();
   showToast(name+' added to snacks!');
 }
 
@@ -6534,50 +6541,57 @@ function exportAcademyRenewalWord(key){
 // ============================================================
 // DRINKS MENU MANAGEMENT (editable like snacks)
 // ============================================================
+// Edits here write straight to the Product Catalog (`products`), the same
+// table checkout reads — so a price change here shows up at checkout instantly.
 function renderDrinksEditor(){
   var el=document.getElementById('drinks-editor');
   if(!el)return;
-  el.innerHTML=drinksMenuData.map(function(d,i){
+  el.innerHTML=ciDrinkProducts().map(function(d){
     return '<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:12px;padding:12px 14px;">'
-      +'<span style="font-size:20px;">'+d.emoji+'</span>'
-      +'<input type="text" value="'+d.name+'" id="dk-name-'+i+'" style="flex:1;" placeholder="Name">'
-      +'<input type="number" value="'+d.price+'" id="dk-price-'+i+'" style="width:90px;" placeholder="Price">'
-      +'<input type="text" value="'+d.emoji+'" id="dk-emoji-'+i+'" style="width:60px;font-size:16px;" placeholder="☕">'
-      +'<button class="btn btn-success btn-sm" onclick="saveDrinkItem('+i+')">Save</button>'
-      +'<button class="btn btn-danger btn-sm" onclick="removeDrinkItem('+i+')">Del</button>'
+      +'<span style="font-size:20px;">'+(d.emoji||'')+'</span>'
+      +'<input type="text" value="'+d.display_name+'" id="dk-name-'+d.id+'" style="flex:1;" placeholder="Name">'
+      +'<input type="number" value="'+d.sale_price+'" id="dk-price-'+d.id+'" style="width:90px;" placeholder="Price">'
+      +'<input type="text" value="'+(d.emoji||'')+'" id="dk-emoji-'+d.id+'" style="width:60px;font-size:16px;" placeholder="☕">'
+      +'<button class="btn btn-success btn-sm" onclick="saveDrinkItem(\''+d.id+'\')">Save</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="removeDrinkItem(\''+d.id+'\')">Del</button>'
       +'</div>';
   }).join('');
 }
-function saveDrinkItem(i){
-  drinksMenuData[i].name=document.getElementById('dk-name-'+i).value.trim()||drinksMenuData[i].name;
-  drinksMenuData[i].price=parseInt(document.getElementById('dk-price-'+i).value)||0;
-  drinksMenuData[i].emoji=document.getElementById('dk-emoji-'+i).value||'☕';
-  saveData('drinksMenuData',drinksMenuData);
-  drinksMenu=drinksMenuData;
-  renderDrinksEditor();
-  renderDrinkMenu();
-  renderCiDrinkGrid();
+async function saveDrinkItem(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  var fields={
+    display_name:document.getElementById('dk-name-'+id).value.trim()||p.display_name,
+    sale_price:parseInt(document.getElementById('dk-price-'+id).value)||0,
+    emoji:document.getElementById('dk-emoji-'+id).value||'☕'
+  };
+  await updateProduct(id,fields);
+  Object.assign(p,fields);
+  refreshMenusAfterProductChange();
   showToast('Drink updated!');
 }
-function removeDrinkItem(i){
-  drinksMenuData.splice(i,1);
-  saveData('drinksMenuData',drinksMenuData);
-  drinksMenu=drinksMenuData;
-  renderDrinksEditor();
-  renderDrinkMenu();
-  renderCiDrinkGrid();
+async function removeDrinkItem(id){
+  var p=products.find(function(x){return x.id===id;});
+  if(!p)return;
+  p.is_active=false;
+  await updateProduct(id,{is_active:false});
+  refreshMenusAfterProductChange();
   showToast('Drink removed');
 }
-function addDrinkItem(){
+async function addDrinkItem(){
   var name=document.getElementById('ndk-name').value.trim();
   if(!name){showToast('Name required',true);return;}
-  drinksMenuData.push({name:name,price:parseInt(document.getElementById('ndk-price').value)||0,emoji:document.getElementById('ndk-emoji').value||'☕'});
-  saveData('drinksMenuData',drinksMenuData);
-  drinksMenu=drinksMenuData;
+  var catEl=document.getElementById('ndk-category');
+  var fields={
+    display_name:name,category:(catEl?catEl.value:'hot_drinks'),subcategory:null,
+    sale_price:parseInt(document.getElementById('ndk-price').value)||0,
+    emoji:document.getElementById('ndk-emoji').value||'☕',
+    inventory_mode:'retail',unit:'piece',stock_quantity:0,min_stock:5,is_active:true
+  };
+  var created=await createProduct(fields);
+  if(created)products.push(created);
   document.getElementById('ndk-name').value='';document.getElementById('ndk-price').value='';document.getElementById('ndk-emoji').value='';
-  renderDrinksEditor();
-  renderDrinkMenu();
-  renderCiDrinkGrid();
+  refreshMenusAfterProductChange();
   showToast(name+' added to drinks!');
 }
 
