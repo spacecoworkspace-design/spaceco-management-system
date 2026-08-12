@@ -215,7 +215,9 @@ async function sbWriteKey(key, val){
 
 function getBusyRanges(dateStr, room, reservations, blocks){
   var ranges=[];
-  reservations.filter(function(r){return r.date===dateStr && r.room===room;}).forEach(function(r){
+  // A no-show'd reservation still exists as a row (only a full cancellation
+  // removes it), but must not keep blocking the slot from being rebooked.
+  reservations.filter(function(r){return r.date===dateStr && r.room===room && r.status!=='no_show';}).forEach(function(r){
     ranges.push({from:timeToMin(r.from), to:timeToMin(r.to)});
   });
   (blocks||[]).filter(function(b){return b.date===dateStr && b.room===room;}).forEach(function(b){
@@ -583,6 +585,23 @@ async function submitBooking(){
     state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
     render(); return;
   }
+  // Server-side re-check using the Edge Function's own clock, so a client
+  // with its system clock set wrong can't bypass the check above. Fails
+  // open on a network/function error rather than blocking every booking
+  // sitewide over an unrelated outage — the client-side checks already
+  // covering the normal case.
+  try{
+    var winRes = await fetch(SUPABASE_URL+'/functions/v1/validate-booking-window',{
+      method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({date:state.date})
+    });
+    var winData = await winRes.json();
+    if(winData && winData.valid===false){
+      state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(winData.maxDate||maxBookingDateStr())+'.';
+      render(); return;
+    }
+  }catch(e){ console.warn('validate-booking-window check failed, proceeding on client-side check only',e); }
   state._error=null; state.submitting=true; render();
 
   var fresh = await sbFetchKey('reservations');
