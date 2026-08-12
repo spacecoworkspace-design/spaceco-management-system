@@ -2066,12 +2066,12 @@ var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
   checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',
   shifts:'finance',staffdebts:'finance',expenses:'finance',
-  productcatalog:'inventory',stockmgmt:'inventory',watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',
+  watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',
   'archived-academies':'academies',
   recyclebin:'system'
 };
 var NAV_CATEGORY_DEFAULT_PAGE={
-  dashboard:'dashboard',operations:'checkin',finance:'shifts',inventory:'productcatalog',system:'recyclebin'
+  dashboard:'dashboard',operations:'checkin',finance:'shifts',inventory:'watemplates',system:'recyclebin'
 };
 function syncNavCategoryForPage(id){
   var cat=PAGE_TO_CATEGORY[id]||(academies[id]?'academies':null);
