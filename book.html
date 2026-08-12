@@ -129,6 +129,18 @@ function todayStr(){
   var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+// Website bookings can only be made up to 90 days (3 months) out — staff booking
+// internally (index.html) has no such limit, this only applies to the public widget.
+var BOOKING_WINDOW_DAYS = 90;
+function maxBookingDateStr(){
+  var d=new Date();
+  d.setDate(d.getDate()+BOOKING_WINDOW_DAYS);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function formatDateForHumans(dateStr){
+  var d=new Date(dateStr+'T00:00:00');
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+}
 function timeToMin(t){ var p=t.split(':'); return (+p[0])*60+(+p[1]); }
 function minToTime(m){ var h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); }
 function fmt12(t){
@@ -274,10 +286,11 @@ function render(){
   html += '<div class="card-title">Choose a date</div>';
   html += '<div class="date-nav">';
   html += '<button onclick="shiftDate(-1)">&#8249;</button>';
-  html += '<input type="date" id="date-input" value="'+state.date+'" min="'+todayStr()+'" onchange="onDateChange(this.value)">';
+  html += '<input type="date" id="date-input" value="'+state.date+'" min="'+todayStr()+'" max="'+maxBookingDateStr()+'" onchange="onDateChange(this.value)">';
   html += '<button onclick="shiftDate(1)">&#8250;</button>';
   html += '</div>';
   html += '<div class="hint">Open '+fmt12(oh.start)+' – '+fmt12(oh.end)+' on this date</div>';
+  if(state._dateError) html += '<div class="error-box" style="margin-top:10px;">'+state._dateError+'</div>';
   html += '</div>';
 
   html += '<div class="card">';
@@ -537,9 +550,22 @@ function shiftDate(delta){
   d.setDate(d.getDate()+delta);
   var nd = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   if(nd<todayStr()) return;
+  if(nd>maxBookingDateStr()){
+    state._dateError='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
+    render(); return;
+  }
+  state._dateError=null;
   state.date=nd; state.selectedStart=null; render();
 }
-function onDateChange(v){ if(v<todayStr())v=todayStr(); state.date=v; state.selectedStart=null; render(); }
+function onDateChange(v){
+  if(v<todayStr())v=todayStr();
+  if(v>maxBookingDateStr()){
+    state._dateError='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
+    render(); return;
+  }
+  state._dateError=null;
+  state.date=v; state.selectedStart=null; render();
+}
 function selectStart(m){ state.selectedStart=m; state.duration=60; render(); }
 function onDurationChange(v){ state.duration=parseInt(v,10); render(); }
 
@@ -551,6 +577,10 @@ async function submitBooking(){
 
   if(!name || !phone){
     state._error='Please enter your name and phone number.';
+    render(); return;
+  }
+  if(state.date>maxBookingDateStr()){
+    state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
     render(); return;
   }
   state._error=null; state.submitting=true; render();

@@ -1477,6 +1477,9 @@
       <div class="form-group"><label>Package Hours</label><input type="number" id="na-hours" placeholder="e.g. 40"></div>
       <div class="form-group"><label>Package Cost (LE)</label><input type="number" id="na-cost" placeholder="e.g. 5000"></div>
     </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="na-enforce-noshow" style="width:auto;" checked> Enforce 20-min no-show grace period for this academy's sessions</label>
+    </div>
     <div class="form-group"><label>Color</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;" id="color-picker">
         <div class="color-dot selected" data-color="#6c63ff" style="background:#6c63ff;width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid white;"></div>
@@ -5799,13 +5802,15 @@ function addNewAcademy(){
     pkgHours:parseInt(document.getElementById('na-hours').value)||0,
     pkgCost:parseInt(document.getElementById('na-cost').value)||0,
     sessions:[],
-    color:selectedAcademyColor
+    color:selectedAcademyColor,
+    enforceNoShowRule:document.getElementById('na-enforce-noshow').checked
   };
   academyOrder.push(key);
   saveData('academies',academies);
   saveData('academyOrder',academyOrder);
   closeModal('add-academy-modal');
   ['na-name','na-room','na-hours','na-cost'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('na-enforce-noshow').checked=true;
   renderSidebarAcademies();
   showToast(name+' added!');
 }
@@ -6090,6 +6095,7 @@ function renderAcademyEditor(){
       +'<div class="form-group"><label>Package Cost (LE)</label><input type="number" id="ae-cost-'+k+'" value="'+a.pkgCost+'"></div>'
       +'</div>'
       +'<div class="form-group"><label>Room Assignment</label><input type="text" id="ae-room-'+k+'" value="'+a.room+'"></div>'
+      +'<div class="form-group"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="ae-enforce-'+k+'" style="width:auto;" '+(a.enforceNoShowRule===false?'':'checked')+'> Enforce 20-min no-show grace period</label></div>'
       +'</div>';
   }).join('');
 }
@@ -6101,6 +6107,8 @@ function saveAcademyPackages(){
     a.pkgHours=parseInt(document.getElementById('ae-hrs-'+k).value)||a.pkgHours;
     a.pkgCost=parseInt(document.getElementById('ae-cost-'+k).value)||a.pkgCost;
     a.room=document.getElementById('ae-room-'+k).value.trim()||a.room;
+    var enforceEl=document.getElementById('ae-enforce-'+k);
+    if(enforceEl)a.enforceNoShowRule=enforceEl.checked;
   });
   saveData('academies',academies);
   renderSidebarAcademies();
@@ -6694,7 +6702,7 @@ function saveReservation(){
     showToast('Outside operating hours!',true);return;
   }
   var id='rv_'+Date.now();
-  reservations.push({id:id,client:client,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null});
+  reservations.push({id:id,client:client,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null,status:'upcoming',no_show_grace_deadline:new Date(computeGraceDeadline(date,from)).toISOString(),graceExtensionsUsed:0});
   saveData('reservations',reservations);
   closeModal('add-reservation-modal');
   renderReservations();
@@ -6755,6 +6763,8 @@ function acceptReservation(id){
   var r=reservations.find(function(x){return x.id===id;});
   if(!r)return;
   r.status='upcoming';
+  r.no_show_grace_deadline=new Date(computeGraceDeadline(r.date,r.from)).toISOString();
+  r.graceExtensionsUsed=0;
   saveData('reservations',reservations);
   updatePendingResBadge();
   renderReservations();
@@ -7034,6 +7044,103 @@ function getClientColor(name){
   return clientColorMap[name];
 }
 
+// ============================================================
+// GRACE PERIOD — 20-minute no-show window for confirmed ('upcoming')
+// reservations. `no_show_grace_deadline` is set once, at the moment a
+// reservation becomes 'upcoming' (staff booking, accept, recurring/academy
+// booking), so this code never has to guess who "saw it first" across
+// devices. Auto-flipping to no-show is done server-side by the
+// grace-period-check Edge Function (source of truth, see
+// supabase/functions/grace-period-check) — this code only *reads* that
+// state to render the countdown/pulsing UI and to run staff-triggered
+// actions (Check In, Extend Grace, manual No-show), never auto-flips
+// status itself. Reused by the existing 30s live-sync poll, so no new
+// timer is needed for the countdown to tick.
+// ============================================================
+var GRACE_PERIOD_MINS=20;
+var GRACE_EXTENSION_MINS=15;
+var GRACE_MAX_EXTENSIONS=2;
+
+function computeGraceDeadline(dateStr,fromStr){
+  return new Date(dateStr+'T'+fromStr+':00').getTime()+GRACE_PERIOD_MINS*60000;
+}
+// Reservations saved before this feature shipped won't have no_show_grace_deadline
+// stored — fall back to computing it from date/from so old rows behave correctly
+// without needing a one-time backfill migration over live data.
+function getGraceDeadline(r){
+  return r.no_show_grace_deadline?new Date(r.no_show_grace_deadline).getTime():computeGraceDeadline(r.date,r.from);
+}
+function isAcademyNoShowExempt(r){
+  if(!r.academyKey)return false;
+  var a=academies[r.academyKey];
+  return !!a&&a.enforceNoShowRule===false;
+}
+// 'na' (not applicable/no grace concept), 'not-started', 'in-grace', 'overdue'
+// Requires status to be EXPLICITLY 'upcoming' and no_show_grace_deadline to
+// already be set — i.e. created through this feature's code path. Historical
+// reservations from before this shipped have neither and must stay 'na': an
+// earlier version of grace-period-check treated a missing status as an
+// implicit 'upcoming' default and computed a fallback deadline from date/from
+// for rows missing both, which silently flipped ~293 old reservations to
+// no-show server-side. Keeping this check just as strict client-side too, so
+// staff never see a false "grace expired" badge on old historical bookings.
+function reservationGraceState(r){
+  if(r.status!=='upcoming')return 'na';
+  if(!r.no_show_grace_deadline)return 'na';
+  if(isAcademyNoShowExempt(r))return 'na';
+  var start=new Date(r.date+'T'+r.from+':00').getTime();
+  var now=Date.now();
+  if(now<start)return 'not-started';
+  return now<getGraceDeadline(r)?'in-grace':'overdue';
+}
+function graceMinsLeft(r){
+  return Math.max(0,Math.ceil((getGraceDeadline(r)-Date.now())/60000));
+}
+
+function checkInReservation(id){
+  var r=reservations.find(function(x){return x.id===id;});
+  if(!r)return;
+  r.status='arrived'; // same terminal state the guest-checkin name-match already uses
+  saveData('reservations',reservations);
+  showToast(r.client+' checked in ✔');
+  renderReservations();
+}
+
+function extendReservationGrace(id){
+  var r=reservations.find(function(x){return x.id===id;});
+  if(!r)return;
+  var used=r.graceExtensionsUsed||0;
+  if(used>=GRACE_MAX_EXTENSIONS){showToast('Maximum '+GRACE_MAX_EXTENSIONS+' extensions already used',true);return;}
+  r.no_show_grace_deadline=new Date(getGraceDeadline(r)+GRACE_EXTENSION_MINS*60000).toISOString();
+  r.graceExtensionsUsed=used+1;
+  saveData('reservations',reservations);
+  showToast('Grace period extended +'+GRACE_EXTENSION_MINS+' min ('+(used+1)+'/'+GRACE_MAX_EXTENSIONS+')');
+  renderReservations();
+}
+
+function buildNoShowMessage(r){
+  return 'Hi '+r.client+', we held '+r.room+' for you today at '+fmt12(r.from)+' but weren\'t able to check you in within 20 minutes, so the booking was released.'
+    +'\n\nFeel free to book again any time.'
+    +'\n— SpaceCo Workspace';
+}
+// For reservations the grace-period-check Edge Function auto-flips to no-show —
+// it can't open WhatsApp itself (no browser), so it flags whatsappNoShowPending
+// and this button (surfaced in the reservations table) lets staff send the same
+// click-to-chat notice with one tap, same pattern as accept/reject.
+function sendNoShowWhatsApp(id){
+  var r=reservations.find(function(x){return x.id===id;});
+  if(!r)return;
+  r.whatsappNoShowPending=false;
+  saveData('reservations',reservations);
+  if(r.phone){
+    openWhatsAppMessage(r.phone,buildNoShowMessage(r));
+    showToast('No-show notice sent via WhatsApp');
+  }else{
+    showToast('No phone on file — nothing to notify',true);
+  }
+  renderReservations();
+}
+
 function renderReservations(){
   var dateStr=document.getElementById('res-filter-date').value||today();
   var oh=getOpenHours(dateStr);
@@ -7084,10 +7191,18 @@ function renderReservations(){
       var width=((re-rs)/totalMins)*100;
       var col=getClientColor(r.client);
       var isPending=r.status==='pending';
-      html+='<div style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':'')+'border-radius:6px;overflow:hidden;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
+      var graceState=reservationGraceState(r);
+      var graceBorder=graceState==='in-grace'?'border:2px solid var(--amber);animation:pulse 1.6s ease-in-out infinite;'
+        :graceState==='overdue'?'border:2px solid var(--red);animation:pulse 1.6s ease-in-out infinite;'
+        :'';
+      var graceLabel=graceState==='in-grace'?'<div style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">⏳ '+graceMinsLeft(r)+' min left</div>'
+        :graceState==='overdue'?'<div style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;">🚫 grace expired</div>'
+        :'';
+      html+='<div style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':graceBorder)+'border-radius:6px;overflow:hidden;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':graceState==='in-grace'?'⏳ GRACE PERIOD — '+graceMinsLeft(r)+' min left — ':graceState==='overdue'?'🚫 GRACE EXPIRED, AWAITING NO-SHOW — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
         +'<div style="overflow:hidden;">'
         +'<div style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(isPending?'⏳ ':'')+r.client+'</div>'
         +'<div style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;">'+fmt12(r.from)+'–'+fmt12(r.to)+'</div>'
+        +graceLabel
         +'</div>'
         +'<div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:2px;">'
         +'<button onclick="openEditReservation(\''+r.id+'\')" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏</button>'
@@ -7131,9 +7246,18 @@ function renderReservations(){
     dateResAll.forEach(function(r){
       var staffDuty=getStaffForSlot(r.date,timeToMin(r.from),timeToMin(r.to));
       var status=r.status||'upcoming';
-      var statusBadge=status==='pending'?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">⏳ Pending</span>':status==='arrived'?'<span class="badge badge-green">✔ Arrived</span>':status==='no-show'?'<span class="badge badge-red">✖ No-show</span>':'<span class="badge" style="background:var(--bg3);color:var(--text3);">Upcoming</span>';
+      var graceState=reservationGraceState(r);
+      var statusBadge=status==='pending'?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">⏳ Pending</span>'
+        :status==='arrived'?'<span class="badge badge-green">✔ Arrived</span>'
+        :status==='no-show'?'<span class="badge badge-red">✖ No-show</span>'
+        :graceState==='in-grace'?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">⏳ Grace — '+graceMinsLeft(r)+' min</span>'
+        :graceState==='overdue'?'<span class="badge" style="background:var(--red-bg);color:var(--red);">🚫 Grace expired</span>'
+        :isAcademyNoShowExempt(r)?'<span class="badge" style="background:var(--blue-bg);color:var(--blue);">🎓 Held (no-show rule off)</span>'
+        :'<span class="badge" style="background:var(--bg3);color:var(--text3);">Upcoming</span>';
       var sourceTag=r.source==='online'?' <span class="badge" style="background:var(--blue-bg);color:var(--blue);font-size:10px;">🌐 Online</span>':'';
-      html+='<tr'+(status==='pending'?' style="background:rgba(212,168,67,0.06);"':'')+'><td><span class="badge badge-purple">'+r.room+'</span></td>'
+      var rowTint=status==='pending'?'rgba(212,168,67,0.06)':graceState==='in-grace'?'rgba(212,168,67,0.06)':graceState==='overdue'?'rgba(224,85,85,0.08)':'';
+      var extLeft=GRACE_MAX_EXTENSIONS-(r.graceExtensionsUsed||0);
+      html+='<tr'+(rowTint?' style="background:'+rowTint+';"':'')+'><td><span class="badge badge-purple">'+r.room+'</span></td>'
         +'<td><strong>'+r.client+'</strong>'+sourceTag+'</td>'
         +'<td style="font-size:12px;">'+(r.phone||'—')+'</td>'
         +'<td>'+fmt12(r.from)+'</td><td>'+fmt12(r.to)+'</td>'
@@ -7142,6 +7266,9 @@ function renderReservations(){
         +'<td style="color:var(--text3);font-size:12px;">'+(r.notes||'—')+'</td>'
         +'<td style="white-space:nowrap;">'
         +(status==='pending'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button><button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject this booking">✖ Reject</button>':'')
+        +(status==='upcoming'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="checkInReservation(\''+r.id+'\')" title="Check in this reservation">✔ Check In</button>':'')
+        +(status==='upcoming'&&(graceState==='in-grace'||graceState==='overdue')?(extLeft>0?'<button class="btn btn-outline btn-sm" onclick="extendReservationGrace(\''+r.id+'\')" style="margin-right:4px;" title="Extend grace period by 15 minutes ('+extLeft+' left)">+15min ('+extLeft+')</button>':'<span class="badge" style="background:var(--bg3);color:var(--text3);font-size:10px;margin-right:4px;" title="Both extensions used">Extensions used</span>'):'')
+        +(r.whatsappNoShowPending?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="sendNoShowWhatsApp(\''+r.id+'\')" title="Send WhatsApp no-show notice">📤 Notify</button>':'')
         +(status==='upcoming'?'<button class="btn btn-outline btn-sm" onclick="markReservationNoShow(\''+r.id+'\')" style="margin-right:4px;" title="Mark No-show">🚫</button>':'')
         +'<button class="btn btn-outline btn-sm" onclick="openEditReservation(\''+r.id+'\')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteReservation(\''+r.id+'\')">Del</button></td></tr>';
     });
@@ -7812,6 +7939,12 @@ function saveEditReservation() {
   r.from = document.getElementById('er-from').value;
   r.to = document.getElementById('er-to').value;
   r.notes = document.getElementById('er-notes').value.trim();
+  // Time/date changed under a reservation still awaiting arrival — restart its
+  // grace window against the new start time rather than leaving a stale deadline.
+  if((r.status||'upcoming')==='upcoming'){
+    r.no_show_grace_deadline = new Date(computeGraceDeadline(r.date, r.from)).toISOString();
+    r.graceExtensionsUsed = 0;
+  }
   saveData('reservations', reservations);
   closeModal('edit-reservation-modal');
   renderReservations();
@@ -8200,7 +8333,10 @@ function saveRecurring(){
       to: p.tTo,
       notes: p.notes,
       recurring: true,
-      academyKey: p.academyKey || null
+      academyKey: p.academyKey || null,
+      status: 'upcoming',
+      no_show_grace_deadline: new Date(computeGraceDeadline(d, p.tFrom)).toISOString(),
+      graceExtensionsUsed: 0
     });
   });
   saveData('reservations', reservations);
@@ -8398,6 +8534,20 @@ function buildNotifications(){
   var td=today();
   var pendingOnline=reservations.filter(function(r){return r.status==='pending';});
   if(pendingOnline.length)items.push({icon:'🌐',text:pendingOnline.length+' online booking request'+(pendingOnline.length>1?'s':'')+' awaiting approval',color:'var(--amber)'});
+  // Grace-period alerts — today's reservations only, cheap enough to recompute on every
+  // notif refresh (reuses the same 30s live-sync poll as the reservations page itself).
+  reservations.filter(function(r){return r.date===td;}).forEach(function(r){
+    var gs=reservationGraceState(r);
+    if(gs==='in-grace'){
+      var mins=graceMinsLeft(r);
+      items.push({id:'grace-'+r.id,icon:'⏳',text:r.client+' — '+r.room+' — grace period expires in '+mins+' min'+(mins!==1?'s':''),color:mins<=5?'var(--red)':'var(--amber)'});
+    }else if(gs==='overdue'){
+      items.push({id:'graceover-'+r.id,icon:'🚫',text:r.client+' — '+r.room+' — grace expired, awaiting auto no-show (or mark manually)',color:'var(--red)'});
+    }
+    if(r.whatsappNoShowPending){
+      items.push({id:'wanotify-'+r.id,icon:'📤',text:r.client+' was auto-marked no-show — WhatsApp notice not sent yet',color:'var(--amber)'});
+    }
+  });
   var pendingPkgs=(packageRequests||[]).filter(function(p){return p.status==='pending'||p.status==='priced';});
   if(pendingPkgs.length)items.push({icon:'📦',text:pendingPkgs.length+' monthly package request'+(pendingPkgs.length>1?'s':'')+' need'+(pendingPkgs.length>1?'':'s')+' attention',color:'var(--amber)'});
   var todayRes=reservations.filter(function(r){return r.date===td;});
@@ -8878,7 +9028,12 @@ function markReservationNoShow(id){
     profile.noShows=(profile.noShows||0)+1;
     saveData('clientProfiles',clientProfiles);
   }
-  showToast(r.client+' marked as no-show');
+  if(r.source==='online'&&r.phone){
+    openWhatsAppMessage(r.phone,buildNoShowMessage(r));
+    showToast(r.client+' marked as no-show — WhatsApp opened');
+  }else{
+    showToast(r.client+' marked as no-show');
+  }
   renderReservations();
   renderNotifPanel();
 }
