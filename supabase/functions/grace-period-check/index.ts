@@ -127,7 +127,9 @@ Deno.serve(async (_req) => {
         r.autoNoShow = true;
         // The client (index.html) surfaces a "Notify" button for this — a background
         // job can't open a wa.me link in anyone's browser, so it can only flag it.
-        if (r.source === 'online' && r.phone) r.whatsappNoShowPending = true;
+        // Applies to any reservation with a phone on file, not just online ones —
+        // staff-created and recurring bookings can carry a phone number too now.
+        if (r.phone) r.whatsappNoShowPending = true;
         reservationsChanged = true;
         autoNoShows.push(r);
       }

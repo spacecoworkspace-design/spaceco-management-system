@@ -900,6 +900,30 @@
       <button class="btn btn-primary" onclick="openAddReservation()">+ Add Reservation</button>
     </div>
   </div>
+
+  <div class="card mt-16" style="padding:14px 18px;">
+    <div class="card-title" style="margin-bottom:10px;">🔎 Search Reservations — by Client / Academy</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="form-group" style="flex:1;min-width:220px;margin-bottom:0;">
+        <label>Client name or phone number</label>
+        <input type="text" id="res-search-query" placeholder="Search…" oninput="renderResSearch()">
+      </div>
+      <div class="form-group" style="min-width:200px;margin-bottom:0;">
+        <label>Academy</label>
+        <select id="res-search-academy" onchange="renderResSearch()"><option value="">— Any —</option></select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Show</label>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="btn btn-outline btn-sm res-search-tab active" data-tab="all" onclick="setResSearchTab(this)">All</button>
+          <button type="button" class="btn btn-outline btn-sm res-search-tab" data-tab="upcoming" onclick="setResSearchTab(this)">Upcoming</button>
+          <button type="button" class="btn btn-outline btn-sm res-search-tab" data-tab="previous" onclick="setResSearchTab(this)">Previous</button>
+        </div>
+      </div>
+    </div>
+    <div id="res-search-results" style="margin-top:12px;"></div>
+  </div>
+
   <div id="reservations-board"><div class="card" style="margin-bottom:16px;padding:14px 18px;"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><div style="font-size:13px;color:var(--text2);font-weight:600;">Tue 2026-05-05 &nbsp;·&nbsp; Open 09:00–23h&nbsp;&nbsp;</div><span class="badge badge-blue" style="margin-right:4px;">Aya 09:00–16:00</span><span class="badge" style="background:rgba(30,200,200,0.15);color:var(--teal);margin-right:4px;">Youssef 4:00 PM–11:00 PM</span></div></div><div class="card" style="padding:0;overflow:hidden;"><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Room 4 Persons (1)</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:6px;bottom:6px;left:14.285714285714285%;width:57.14285714285714%;background:#6c63ff;border-radius:6px;overflow:hidden;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="Mahmoud Abdelfatah 11:00–19:00"><div style="overflow:hidden;"><div style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Mahmoud Abdelfatah</div><div style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;">11:00–19:00</div></div><div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:2px;"><button onclick="openEditReservation(&#39;rv_1777964214340&#39;)" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏</button><button onclick="deleteReservation(&#39;rv_1777964214340&#39;)" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button></div></div><div style="position:absolute;top:0;bottom:0;left:0%;width:14.285714285714285%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–11:00</span></div><div style="position:absolute;top:0;bottom:0;left:71.42857142857143%;width:28.57142857142857%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">19:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Room 4 Persons (2)</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:0;bottom:0;left:0%;width:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Room 6 Persons</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:6px;bottom:6px;left:50%;width:28.57142857142857%;background:#34d88b;border-radius:6px;overflow:hidden;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="IMA 16:00–20:00"><div style="overflow:hidden;"><div style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">IMA</div><div style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;">16:00–20:00</div></div><div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:2px;"><button onclick="openEditReservation(&#39;rv_1777732045983_06fka&#39;)" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏</button><button onclick="deleteReservation(&#39;rv_1777732045983_06fka&#39;)" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button></div></div><div style="position:absolute;top:0;bottom:0;left:0%;width:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–16:00</span></div><div style="position:absolute;top:0;bottom:0;left:78.57142857142857%;width:21.428571428571427%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">20:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Room 8 Persons</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:0;bottom:0;left:0%;width:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Class Room</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:0;bottom:0;left:0%;width:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Shared Space</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:0;bottom:0;left:0%;width:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–23:00</span></div></div></div><div style="display:flex;border-bottom:1px solid var(--border);min-height:56px;"><div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;"><div style="font-size:12px;font-weight:600;color:var(--text);">Drawing Room</div></div><div style="flex:1;position:relative;background:var(--bg3);"><div style="position:absolute;left:0%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">09:00</span></div><div style="position:absolute;left:7.142857142857142%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">10:00</span></div><div style="position:absolute;left:14.285714285714285%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">11:00</span></div><div style="position:absolute;left:21.428571428571427%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">12:00</span></div><div style="position:absolute;left:28.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">13:00</span></div><div style="position:absolute;left:35.714285714285715%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">14:00</span></div><div style="position:absolute;left:42.857142857142854%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">15:00</span></div><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">16:00</span></div><div style="position:absolute;left:57.14285714285714%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">17:00</span></div><div style="position:absolute;left:64.28571428571429%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">18:00</span></div><div style="position:absolute;left:71.42857142857143%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">19:00</span></div><div style="position:absolute;left:78.57142857142857%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">20:00</span></div><div style="position:absolute;left:85.71428571428571%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">21:00</span></div><div style="position:absolute;left:92.85714285714286%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">22:00</span></div><div style="position:absolute;left:100%;top:0;bottom:0;border-left:1px solid var(--hairline);pointer-events:none;"><span style="position:absolute;top:4px;left:3px;font-size:10px;color:var(--text3);">23:00</span></div><div style="position:absolute;top:0;bottom:0;left:0%;width:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:10px;color:var(--green);opacity:0.7;">09:00–23:00</span></div></div></div></div><div class="card mt-16"><div class="card-title">Reservations for 2026-05-05</div><div class="table-wrap"><table><thead><tr><th>Room</th><th>Client</th><th>From</th><th>To</th><th>Staff on Duty</th><th>Notes</th><th></th></tr></thead><tbody><tr><td><span class="badge badge-purple">Room 4 Persons (1)</span></td><td><strong>Mahmoud Abdelfatah</strong></td><td>11:00</td><td>19:00</td><td><span class="badge badge-blue">Aya / Youssef</span></td><td style="color:var(--text3);font-size:12px;">—</td><td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditReservation(&#39;rv_1777964214340&#39;)" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteReservation(&#39;rv_1777964214340&#39;)">Del</button></td></tr><tr><td><span class="badge badge-purple">Room 6 Persons</span></td><td><strong>IMA</strong></td><td>16:00</td><td>20:00</td><td><span class="badge badge-blue">Youssef</span></td><td style="color:var(--text3);font-size:12px;">—</td><td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditReservation(&#39;rv_1777732045983_06fka&#39;)" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteReservation(&#39;rv_1777732045983_06fka&#39;)">Del</button></td></tr></tbody></table></div><div style="margin-top:16px;"><div class="card-title" style="margin-bottom:10px;">✅ Available Slots</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Room 4 Persons (1)</div><div style="font-size:11px;color:var(--green);">09:00–11:00</div><div style="font-size:11px;color:var(--green);">19:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Room 4 Persons (2)</div><div style="font-size:11px;color:var(--green);">09:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Room 6 Persons</div><div style="font-size:11px;color:var(--green);">09:00–16:00</div><div style="font-size:11px;color:var(--green);">20:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Room 8 Persons</div><div style="font-size:11px;color:var(--green);">09:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Class Room</div><div style="font-size:11px;color:var(--green);">09:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Shared Space</div><div style="font-size:11px;color:var(--green);">09:00–23:00</div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Drawing Room</div><div style="font-size:11px;color:var(--green);">09:00–23:00</div></div></div></div></div></div>
   <div class="card mt-16">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;"><span>📋 Waitlist</span><button class="btn btn-outline btn-sm" onclick="openAddWaitlist()">+ Add to Waitlist</button></div>
@@ -1517,7 +1541,10 @@
 <div class="modal-overlay" id="add-reservation-modal">
   <div class="modal" style="width:500px;">
     <div class="modal-header"><div class="modal-title">📅 Add Reservation</div><button class="close-btn" onclick="closeModal(&#39;add-reservation-modal&#39;)">✕</button></div>
-    <div class="form-group"><label>Client / Name *</label><input type="text" id="rv-client" placeholder="e.g. Mostafa Ali"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Client / Name *</label><input type="text" id="rv-client" placeholder="e.g. Mostafa Ali"></div>
+      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rv-phone" placeholder="e.g. 01012345678"></div>
+    </div>
     <div class="form-group"><label>Room *</label>
       <select id="rv-room">
         <option value="">Select room</option>
@@ -6029,6 +6056,7 @@ function openAddReservation(){
   var df=document.getElementById('res-filter-date').value||today();
   document.getElementById('rv-date').value=df;
   document.getElementById('rv-client').value='';
+  document.getElementById('rv-phone').value='';
   document.getElementById('rv-room').value='';
   document.getElementById('rv-from').value='';
   document.getElementById('rv-to').value='';
@@ -6070,6 +6098,7 @@ function hasConflict(date,room,from,to,excludeId){
 
 function saveReservation(){
   var client=document.getElementById('rv-client').value.trim();
+  var phone=document.getElementById('rv-phone').value.trim();
   var room=document.getElementById('rv-room').value;
   var date=document.getElementById('rv-date').value;
   var from=document.getElementById('rv-from').value;
@@ -6084,11 +6113,17 @@ function saveReservation(){
     showToast('Outside operating hours!',true);return;
   }
   var id='rv_'+Date.now();
-  reservations.push({id:id,client:client,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null,status:'upcoming',no_show_grace_deadline:new Date(computeGraceDeadline(date,from)).toISOString(),grace_extensions_used:0});
+  var newRes={id:id,client:client,phone:phone||undefined,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null,status:'upcoming',no_show_grace_deadline:new Date(computeGraceDeadline(date,from)).toISOString(),grace_extensions_used:0};
+  reservations.push(newRes);
   saveData('reservations',reservations);
   closeModal('add-reservation-modal');
   renderReservations();
-  showToast(client+' reserved '+room+'!');
+  if(phone){
+    openWhatsAppMessage(phone,buildBookingConfirmMessage(newRes));
+    showToast(client+' reserved '+room+'! WhatsApp confirmation opened');
+  }else{
+    showToast(client+' reserved '+room+'!');
+  }
 }
 
 function deleteReservation(id){
@@ -6102,6 +6137,30 @@ function deleteReservation(id){
     closeModal('confirm-modal');
     renderReservations();
     showToast('Reservation moved to Recycle Bin');
+  };
+  openModal('confirm-modal');
+}
+
+// Bulk delete for the search panel — deletes exactly what's currently
+// displayed (window._resSearchMatches, set by renderResSearch on every
+// render), same soft-delete-to-Recycle-Bin path as a single delete, just
+// looped, with one confirm covering the whole batch instead of one per row.
+function deleteAllResSearchResults(){
+  var matches=window._resSearchMatches||[];
+  if(!matches.length){showToast('No results to delete',true);return;}
+  document.getElementById('confirm-modal-msg').textContent='Delete all '+matches.length+' matching reservation'+(matches.length!==1?'s':'')+'? This moves them to the Recycle Bin (recoverable).';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    var idsToDelete=matches.map(function(r){return r.id;});
+    matches.forEach(function(r){
+      recycleBin.push({binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),type:'reservation',deletedAt:new Date().toISOString(),data:r});
+    });
+    reservations=reservations.filter(function(r){return idsToDelete.indexOf(r.id)===-1;});
+    saveData('reservations',reservations);
+    saveData('recycleBin',recycleBin);
+    updateBinBadge();
+    closeModal('confirm-modal');
+    renderReservations();
+    showToast(matches.length+' reservation'+(matches.length!==1?'s':'')+' moved to Recycle Bin');
   };
   openModal('confirm-modal');
 }
@@ -6130,6 +6189,7 @@ function buildBookingConfirmMessage(r){
     +'\n'+r.room
     +'\n'+r.date
     +'\n'+fmt12(r.from)+' – '+fmt12(r.to)
+    +'\n\nPlease arrive on time — bookings are held for 20 minutes after the start time before being released.'
     +'\n\nSee you then!'
     +'\n— SpaceCo Workspace';
 }
@@ -6426,6 +6486,14 @@ function getClientColor(name){
   return clientColorMap[name];
 }
 
+// A note like "wants a screen" or "agreed discount" is easy to miss as plain
+// gray table text — this makes it a loud, impossible-to-scroll-past badge
+// wherever a reservation is shown, not just visible on hover in a tooltip.
+function noteBadge(notes){
+  if(!notes)return '';
+  return '<div style="background:var(--red-bg);color:var(--red);font-weight:700;padding:4px 9px;border-radius:6px;font-size:12px;display:inline-block;max-width:220px;white-space:normal;line-height:1.3;">📌 '+notes+'</div>';
+}
+
 // ============================================================
 // GRACE PERIOD — 20-minute no-show window for confirmed ('upcoming')
 // reservations. `no_show_grace_deadline` is set once, at the moment a
@@ -6586,7 +6654,9 @@ function renderReservations(){
         ?('<button onclick="checkInReservation(\''+r.id+'\')" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Check In">✔</button>'
           +(blockExtLeft>0?'<button onclick="extendReservationGrace(\''+r.id+'\')" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Extend Grace +15min ('+blockExtLeft+' left)">+15</button>':''))
         :'';
-      html+='<div style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':graceBorder)+'border-radius:6px;overflow:hidden;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':graceState==='in-grace'?'⏳ GRACE PERIOD — '+graceMinsLeft(r)+' min left — ':graceState==='overdue'?'🚫 GRACE EXPIRED, AWAITING NO-SHOW — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
+      var noteFlag=r.notes?'<div style="position:absolute;left:-5px;top:-5px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--bg3);z-index:1;" title="Note: '+r.notes+'">📌</div>':'';
+      html+='<div style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':graceBorder)+'border-radius:6px;overflow:visible;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':graceState==='in-grace'?'⏳ GRACE PERIOD — '+graceMinsLeft(r)+' min left — ':graceState==='overdue'?'🚫 GRACE EXPIRED, AWAITING NO-SHOW — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
+        +noteFlag
         +'<div style="overflow:hidden;">'
         +'<div style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(isPending?'⏳ ':'')+r.client+'</div>'
         +'<div style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;">'+fmt12(r.from)+'–'+fmt12(r.to)+'</div>'
@@ -6652,7 +6722,7 @@ function renderReservations(){
         +'<td>'+fmt12(r.from)+'</td><td>'+fmt12(r.to)+'</td>'
         +'<td><span class="badge badge-blue">'+staffDuty+'</span></td>'
         +'<td>'+statusBadge+'</td>'
-        +'<td style="color:var(--text3);font-size:12px;">'+(r.notes||'—')+'</td>'
+        +'<td>'+(r.notes?noteBadge(r.notes):'<span style="color:var(--text3);">—</span>')+'</td>'
         +'<td style="white-space:nowrap;">'
         +(status==='pending'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button><button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject this booking">✖ Reject</button>':'')
         +(status==='upcoming'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="checkInReservation(\''+r.id+'\')" title="Check in this reservation">✔ Check In</button>':'')
@@ -6695,6 +6765,112 @@ function renderReservations(){
 
   document.getElementById('reservations-board').innerHTML=html;
   updatePendingResBadge();
+  populateResSearchAcademies();
+  renderResSearch();
+}
+
+// ============================================================
+// SEARCH RESERVATIONS — by client name/phone or by academy, across ALL
+// dates (unlike the day grid above, which only ever shows one date at a
+// time). Reuses the exact same action buttons as the main table so
+// check-in/extend/no-show/notify/edit/delete all work identically here.
+// ============================================================
+function populateResSearchAcademies(){
+  var sel=document.getElementById('res-search-academy');
+  if(!sel)return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">— Any —</option>'
+    +(academyOrder||[]).map(function(k){
+      var a=academies[k];if(!a)return '';
+      return '<option value="'+k+'">'+a.name+'</option>';
+    }).join('');
+  sel.value=cur;
+}
+
+function setResSearchTab(btn){
+  document.querySelectorAll('.res-search-tab').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  renderResSearch();
+}
+
+function renderResSearch(){
+  var el=document.getElementById('res-search-results');
+  if(!el)return;
+  var query=normalizeStr(document.getElementById('res-search-query').value);
+  var academyKey=document.getElementById('res-search-academy').value;
+  var activeTabBtn=document.querySelector('.res-search-tab.active');
+  var tab=activeTabBtn?activeTabBtn.dataset.tab:'all';
+
+  if(!query&&!academyKey){ el.innerHTML=''; return; }
+
+  var td=today();
+  var academyName=academyKey&&academies[academyKey]?normalizeStr(academies[academyKey].name):'';
+  var matches=reservations.filter(function(r){
+    if(academyKey){
+      // Most real academy reservations predate the academyKey field (or were
+      // made through the single Add-Reservation modal, which has no academy
+      // link at all) — fall back to matching the academy's name against the
+      // client field, same fallback already used by the renewal reminder.
+      var tagMatch=r.academyKey===academyKey;
+      var rClientNorm=normalizeStr(r.client);
+      // Substring both ways, not exact equality — client field might be "IMA"
+      // while the academy's stored name is "IMA Academy" (or vice versa).
+      var nameFallback=!r.academyKey && academyName && rClientNorm
+        && (rClientNorm.indexOf(academyName)!==-1 || academyName.indexOf(rClientNorm)!==-1);
+      if(!tagMatch&&!nameFallback)return false;
+    }else if(query){
+      var nameMatch=normalizeStr(r.client).indexOf(query)!==-1;
+      var phoneMatch=(r.phone||'').replace(/\D/g,'').indexOf(query.replace(/\D/g,''))!==-1 && query.replace(/\D/g,'').length>=3;
+      if(!nameMatch&&!phoneMatch)return false;
+    }
+    if(tab==='upcoming'&&r.date<td)return false;
+    if(tab==='previous'&&r.date>=td)return false;
+    return true;
+  }).sort(function(a,b){ return a.date===b.date ? timeToMin(a.from)-timeToMin(b.from) : (a.date<b.date?1:-1); });
+
+  window._resSearchMatches=matches;
+
+  if(!matches.length){
+    el.innerHTML='<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">No matching reservations</div>';
+    return;
+  }
+
+  var DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    +'<span style="font-size:12px;color:var(--text3);">'+matches.length+' result'+(matches.length!==1?'s':'')+'</span>'
+    +'<button class="btn btn-danger btn-sm" onclick="deleteAllResSearchResults()" title="Move all '+matches.length+' matching reservations to the Recycle Bin">🗑 Delete All ('+matches.length+')</button>'
+    +'</div>';
+  html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Room</th><th>Client</th><th>Phone</th><th>From</th><th>To</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>';
+  matches.forEach(function(r){
+    var status=r.status||'upcoming';
+    var graceState=reservationGraceState(r);
+    var statusBadge=status==='pending'?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">⏳ Pending</span>'
+      :status==='checked_in'?'<span class="badge badge-green">✔ Checked In</span>'
+      :status==='no_show'?'<span class="badge badge-red">✖ No-show</span>'
+      :graceState==='in-grace'?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">⏳ Grace — '+graceMinsLeft(r)+' min</span>'
+      :graceState==='overdue'?'<span class="badge" style="background:var(--red-bg);color:var(--red);">🚫 Grace expired</span>'
+      :'<span class="badge" style="background:var(--bg3);color:var(--text3);">Upcoming</span>';
+    var extLeft=GRACE_MAX_EXTENSIONS-(r.grace_extensions_used||0);
+    var isPast=r.date<td;
+    html+='<tr'+(isPast?' style="opacity:0.75;"':'')+'><td>'+formatDate(r.date)+' <span style="color:var(--text3);font-size:11px;">('+DAY_NAMES[new Date(r.date).getDay()]+')</span></td>'
+      +'<td><span class="badge badge-purple">'+r.room+'</span></td>'
+      +'<td><strong>'+r.client+'</strong></td>'
+      +'<td style="font-size:12px;">'+(r.phone||'—')+'</td>'
+      +'<td>'+fmt12(r.from)+'</td><td>'+fmt12(r.to)+'</td>'
+      +'<td>'+statusBadge+'</td>'
+      +'<td>'+(r.notes?noteBadge(r.notes):'<span style="color:var(--text3);">—</span>')+'</td>'
+      +'<td style="white-space:nowrap;">'
+      +(status==='pending'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button><button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject this booking">✖ Reject</button>':'')
+      +(status==='upcoming'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="checkInReservation(\''+r.id+'\')" title="Check in this reservation">✔</button>':'')
+      +(status==='upcoming'&&(graceState==='in-grace'||graceState==='overdue')&&extLeft>0?'<button class="btn btn-outline btn-sm" onclick="extendReservationGrace(\''+r.id+'\')" style="margin-right:4px;" title="Extend grace +15min ('+extLeft+' left)">+15</button>':'')
+      +(r.whatsappNoShowPending?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="sendNoShowWhatsApp(\''+r.id+'\')" title="Send WhatsApp no-show notice">📤</button>':'')
+      +(status==='upcoming'?'<button class="btn btn-outline btn-sm" onclick="markReservationNoShow(\''+r.id+'\')" style="margin-right:4px;" title="Mark No-show">🚫</button>':'')
+      +'<button class="btn btn-outline btn-sm" onclick="openEditReservation(\''+r.id+'\')" style="margin-right:4px;">✏️</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteReservation(\''+r.id+'\')" title="Delete this reservation">Del</button>'
+      +'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
 }
 
 // ============================================================
@@ -7312,6 +7488,7 @@ function openEditReservation(resId) {
   if(!r) return;
   _editingResId = resId;
   document.getElementById('er-client').value = r.client || '';
+  document.getElementById('er-phone').value = r.phone || '';
   document.getElementById('er-room').value = r.room || '';
   document.getElementById('er-date').value = r.date || '';
   document.getElementById('er-from').value = r.from || '';
@@ -7323,6 +7500,7 @@ function saveEditReservation() {
   var r = reservations.find(function(x){ return x.id === _editingResId; });
   if(!r) return;
   r.client = document.getElementById('er-client').value.trim();
+  r.phone = document.getElementById('er-phone').value.trim()||undefined;
   r.room = document.getElementById('er-room').value;
   r.date = document.getElementById('er-date').value;
   r.from = document.getElementById('er-from').value;
@@ -7581,9 +7759,11 @@ function clearManualGuest() {
 // ============================================================
 function openRecurringModal(){
   var df = document.getElementById('res-filter-date').value || today();
+  window._rcrLines = [];
   document.getElementById('rcr-from-date').value = df;
   document.getElementById('rcr-to-date').value = '';
   document.getElementById('rcr-client').value = '';
+  document.getElementById('rcr-phone').value = '';
   document.getElementById('rcr-room').value = '';
   document.getElementById('rcr-time-from').value = '';
   document.getElementById('rcr-time-to').value = '';
@@ -7598,6 +7778,7 @@ function openRecurringModal(){
         }).join('');
     linkSel.value = '';
   }
+  renderRcrLinesList();
   var resultEl = document.getElementById('rcr-result');
   resultEl.style.display = 'none';
   resultEl.innerHTML = '';
@@ -7606,6 +7787,69 @@ function openRecurringModal(){
 
 function toggleRcrDay(btn){
   btn.classList.toggle('active');
+}
+
+// ============================================================
+// RECURRING BATCH — multiple room+timing lines under one client,
+// so e.g. an academy can book Room 1 Mon/Wed/Fri 4-6pm AND Room 3
+// Tue/Thu 5-7pm in a single batch instead of two separate recurring
+// bookings. Each line keeps its own room/dates/time/days; client,
+// phone, academy link and notes are shared across the whole batch.
+// ============================================================
+function addRcrLine(){
+  var room   = document.getElementById('rcr-room').value;
+  var from   = document.getElementById('rcr-from-date').value;
+  var to     = document.getElementById('rcr-to-date').value;
+  var tFrom  = document.getElementById('rcr-time-from').value;
+  var tTo    = document.getElementById('rcr-time-to').value;
+  if(!room)  { showToast('Please select a room', true); return; }
+  if(!from||!to){ showToast('Select start and end dates', true); return; }
+  if(!tFrom||!tTo){ showToast('Select time from and to', true); return; }
+  if(tTo <= tFrom){ showToast('End time must be after start time', true); return; }
+  var selectedDays = [];
+  document.querySelectorAll('.rcr-day-btn.active').forEach(function(b){
+    selectedDays.push(parseInt(b.dataset.day));
+  });
+  if(!selectedDays.length){ showToast('Pick at least one day', true); return; }
+  if(new Date(to) < new Date(from)){ showToast('End date must be after start date', true); return; }
+
+  window._rcrLines = window._rcrLines || [];
+  window._rcrLines.push({room:room, from:from, to:to, tFrom:tFrom, tTo:tTo, days:selectedDays});
+
+  // Reset just the line composer so the next room/timing starts fresh —
+  // client/phone/academy/notes stay put since they're shared across the batch.
+  document.getElementById('rcr-room').value = '';
+  document.getElementById('rcr-from-date').value = document.getElementById('res-filter-date').value || today();
+  document.getElementById('rcr-to-date').value = '';
+  document.getElementById('rcr-time-from').value = '';
+  document.getElementById('rcr-time-to').value = '';
+  document.querySelectorAll('.rcr-day-btn').forEach(function(b){ b.classList.remove('active'); });
+  renderRcrLinesList();
+  showToast('Added to batch — add another room/timing, or preview when ready');
+}
+
+function removeRcrLine(idx){
+  window._rcrLines.splice(idx,1);
+  renderRcrLinesList();
+}
+
+function renderRcrLinesList(){
+  var el = document.getElementById('rcr-lines-list');
+  if(!el) return;
+  var lines = window._rcrLines || [];
+  var DAY_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  if(!lines.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 2px;">No rooms/timings added yet — fill in the fields above and click "Add to Batch."</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Batch ('+lines.length+')</div>'
+    + lines.map(function(l,i){
+        var daysStr = l.days.slice().sort().map(function(d){return DAY_ABBR[d];}).join('/');
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:6px;font-size:12px;">'
+          +'<div><strong>'+l.room+'</strong> — '+daysStr+' '+fmt12(l.tFrom)+'–'+fmt12(l.tTo)+' <span style="color:var(--text3);">('+formatDate(l.from)+' – '+formatDate(l.to)+')</span></div>'
+          +'<button class="btn btn-danger btn-sm" onclick="removeRcrLine('+i+')">✕</button>'
+          +'</div>';
+      }).join('');
 }
 
 // Picking an academy from the link dropdown syncs the client-name field to the
@@ -7621,81 +7865,58 @@ function onRcrAcademyLinkChange(){
 
 function previewRecurring(){
   var client = document.getElementById('rcr-client').value.trim();
-  var room   = document.getElementById('rcr-room').value;
-  var from   = document.getElementById('rcr-from-date').value;
-  var to     = document.getElementById('rcr-to-date').value;
-  var tFrom  = document.getElementById('rcr-time-from').value;
-  var tTo    = document.getElementById('rcr-time-to').value;
+  var phone  = document.getElementById('rcr-phone').value.trim();
+  var lines  = window._rcrLines || [];
 
   if(!client){ showToast('Client name required', true); return; }
-  if(!room)  { showToast('Please select a room', true); return; }
-  if(!from||!to){ showToast('Select start and end dates', true); return; }
-  if(!tFrom||!tTo){ showToast('Select time from and to', true); return; }
-  if(tTo <= tFrom){ showToast('End time must be after start time', true); return; }
-
-  var selectedDays = [];
-  document.querySelectorAll('.rcr-day-btn.active').forEach(function(b){
-    selectedDays.push(parseInt(b.dataset.day));
-  });
-  if(!selectedDays.length){ showToast('Pick at least one day', true); return; }
-
-  var startD = new Date(from);
-  var endD   = new Date(to);
-  if(endD < startD){ showToast('End date must be after start date', true); return; }
-
-  var dates = [];
-  var cur = new Date(startD);
-  while(cur <= endD){
-    if(selectedDays.indexOf(cur.getDay()) !== -1){
-      dates.push(cur.toISOString().slice(0,10));
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  if(!dates.length){ showToast('No matching dates found in range', true); return; }
-
-  var clean = [], conflicts = [];
-  dates.forEach(function(d){
-    if(hasConflict(d, room, tFrom, tTo, null)){ conflicts.push(d); }
-    else { clean.push(d); }
-  });
-
-  window._rcrPreview = {
-    client: client, room: room, tFrom: tFrom, tTo: tTo,
-    notes: document.getElementById('rcr-notes').value.trim(),
-    academyKey: document.getElementById('rcr-academy-link').value || null,
-    clean: clean, conflicts: conflicts
-  };
+  if(!lines.length){ showToast('Add at least one room/timing to the batch first', true); return; }
 
   var DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var items = []; // {date, room, tFrom, tTo, lineIdx, conflict}
+  lines.forEach(function(line, li){
+    var startD = new Date(line.from), endD = new Date(line.to);
+    var cur = new Date(startD);
+    while(cur <= endD){
+      if(line.days.indexOf(cur.getDay()) !== -1){
+        var d = cur.toISOString().slice(0,10);
+        items.push({date:d, room:line.room, tFrom:line.tFrom, tTo:line.tTo, lineIdx:li,
+          conflict: hasConflict(d, line.room, line.tFrom, line.tTo, null)});
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  });
+  if(!items.length){ showToast('No matching dates found across the batch', true); return; }
+  items.sort(function(a,b){ return a.date===b.date ? a.room.localeCompare(b.room) : (a.date<b.date?-1:1); });
+
+  window._rcrPreview = {
+    client: client, phone: phone,
+    notes: document.getElementById('rcr-notes').value.trim(),
+    academyKey: document.getElementById('rcr-academy-link').value || null,
+    lines: lines, items: items
+  };
+
+  var cleanCount = items.filter(function(x){return !x.conflict;}).length;
+  var conflictCount = items.length - cleanCount;
   var html = '';
   html += '<div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">';
-  html += '<span class="badge badge-green">\u2705 '+clean.length+' will be booked</span>';
-  if(conflicts.length){
-    html += '<span class="badge badge-amber">\u26a0 '+conflicts.length+' conflict'+(conflicts.length!==1?'s':'')+' (still booked)</span>';
+  html += '<span class="badge badge-green">\u2705 '+cleanCount+' will be booked</span>';
+  if(conflictCount){
+    html += '<span class="badge badge-amber">\u26a0 '+conflictCount+' conflict'+(conflictCount!==1?'s':'')+' (skipped)</span>';
   }
   html += '</div>';
 
-  if(conflicts.length){
-    html += '<div style="background:var(--amber-bg);border:1px solid rgba(212,168,67,0.3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--amber);">';
-    html += '<strong>Conflicting dates:</strong> ';
-    html += conflicts.map(function(d){ return formatDate(d)+' ('+DAY_NAMES[new Date(d).getDay()]+')'; }).join(' \u00b7 ');
-    html += '</div>';
-  }
-
-  html += '<div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">';
-  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Date</th><th>Day</th><th>Status</th></tr></thead><tbody>';
-  var all = clean.concat(conflicts).sort();
-  all.forEach(function(d, i){
-    var isConflict = conflicts.indexOf(d) !== -1;
-    html += '<tr><td>'+(i+1)+'</td><td>'+formatDate(d)+'</td>';
-    html += '<td>'+DAY_NAMES[new Date(d).getDay()]+'</td>';
-    html += '<td>'+(isConflict ? '<span class="badge badge-amber">\u26a0 Conflict</span>' : '<span class="badge badge-green">\u2705 Free</span>')+'</td></tr>';
+  html += '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">';
+  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Room</th><th>Date</th><th>Day</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+  items.forEach(function(it, i){
+    html += '<tr><td>'+(i+1)+'</td><td>'+it.room+'</td><td>'+formatDate(it.date)+'</td>';
+    html += '<td>'+DAY_NAMES[new Date(it.date).getDay()]+'</td><td>'+fmt12(it.tFrom)+'\u2013'+fmt12(it.tTo)+'</td>';
+    html += '<td>'+(it.conflict ? '<span class="badge badge-amber">\u26a0 Conflict</span>' : '<span class="badge badge-green">\u2705 Free</span>')+'</td></tr>';
   });
   html += '</tbody></table></div>';
 
   html += '<div style="margin-top:14px;display:flex;justify-content:flex-end;gap:10px;">';
   html += '<button class="btn btn-outline" onclick="hideRcrResult()">\u2190 Back</button>';
-  html += '<button class="btn btn-primary" onclick="saveRecurring()">\U0001f4be Book All '+all.length+' Dates</button>';
+  html += '<button class="btn btn-primary" onclick="saveRecurring()" '+(cleanCount?'':'disabled')+'>\U0001f4be Book '+cleanCount+' Session'+(cleanCount!==1?'s':'')+'</button>';
   html += '</div>';
 
   var resultEl = document.getElementById('rcr-result');
@@ -7708,30 +7929,49 @@ function hideRcrResult(){
   el.style.display = 'none';
 }
 
+function buildRecurringConfirmMessage(p){
+  var DAY_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var lineText = p.lines.map(function(l){
+    var daysStr = l.days.slice().sort().map(function(d){return DAY_ABBR[d];}).join('/');
+    return '\u2022 '+l.room+' \u2014 '+daysStr+' '+fmt12(l.tFrom)+'\u2013'+fmt12(l.tTo)+' ('+formatDate(l.from)+' to '+formatDate(l.to)+')';
+  }).join('\n');
+  return 'Hi '+p.client+'!'
+    +'\n\nYour SpaceCo recurring booking is confirmed:'
+    +'\n'+lineText
+    +'\n\nPlease arrive on time \u2014 bookings are held for 20 minutes after the start time before being released.'
+    +'\n\u2014 SpaceCo Workspace';
+}
+
 function saveRecurring(){
   var p = window._rcrPreview;
   if(!p) return;
-  var all = p.clean.concat(p.conflicts).sort();
-  all.forEach(function(d){
+  var toBook = p.items.filter(function(x){return !x.conflict;});
+  toBook.forEach(function(it){
     reservations.push({
       id: 'rv_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
       client: p.client,
-      room: p.room,
-      date: d,
-      from: p.tFrom,
-      to: p.tTo,
+      phone: p.phone || undefined,
+      room: it.room,
+      date: it.date,
+      from: it.tFrom,
+      to: it.tTo,
       notes: p.notes,
       recurring: true,
       academyKey: p.academyKey || null,
       status: 'upcoming',
-      no_show_grace_deadline: new Date(computeGraceDeadline(d, p.tFrom)).toISOString(),
+      no_show_grace_deadline: new Date(computeGraceDeadline(it.date, it.tFrom)).toISOString(),
       grace_extensions_used: 0
     });
   });
   saveData('reservations', reservations);
   closeModal('recurring-modal');
   renderReservations();
-  showToast('\U0001f501 '+all.length+' recurring reservations booked!');
+  if(p.phone){
+    openWhatsAppMessage(p.phone, buildRecurringConfirmMessage(p));
+    showToast('\U0001f501 '+toBook.length+' recurring reservations booked \u2014 WhatsApp confirmation opened');
+  }else{
+    showToast('\U0001f501 '+toBook.length+' recurring reservations booked!');
+  }
 }
 
 // ============================================================
@@ -8414,7 +8654,7 @@ function markReservationNoShow(id){
     profile.noShows=(profile.noShows||0)+1;
     saveData('clientProfiles',clientProfiles);
   }
-  if(r.source==='online'&&r.phone){
+  if(r.phone){
     openWhatsAppMessage(r.phone,buildNoShowMessage(r));
     showToast(r.client+' marked as no-show — WhatsApp opened');
   }else{
@@ -8847,7 +9087,10 @@ refreshDashboard=function(){
 <div class="modal-overlay" id="edit-reservation-modal">
   <div class="modal" style="width:500px;">
     <div class="modal-header"><div class="modal-title">✏️ Edit Reservation</div><button class="close-btn" onclick="closeModal(&#39;edit-reservation-modal&#39;)">✕</button></div>
-    <div class="form-group"><label>Client / Name</label><input type="text" id="er-client" placeholder="Name"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Client / Name</label><input type="text" id="er-client" placeholder="Name"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="er-phone" placeholder="e.g. 01012345678"></div>
+    </div>
     <div class="form-group"><label>Room</label>
       <select id="er-room">
         <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
@@ -8918,49 +9161,60 @@ refreshDashboard=function(){
 
 <!-- RECURRING RESERVATION MODAL -->
 <div class="modal-overlay" id="recurring-modal">
-  <div class="modal" style="width:560px;">
+  <div class="modal" style="width:620px;">
     <div class="modal-header">
       <div class="modal-title">🔁 Recurring Reservation</div>
       <button class="close-btn" onclick="closeModal(&#39;recurring-modal&#39;)">✕</button>
     </div>
-    <div class="form-group"><label>Client / Name *</label><input type="text" id="rcr-client" placeholder="e.g. Mostafa Ali"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Client / Name *</label><input type="text" id="rcr-client" placeholder="e.g. Mostafa Ali"></div>
+      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rcr-phone" placeholder="e.g. 01012345678"></div>
+    </div>
     <div class="form-group"><label>Link to Academy (optional)</label><select id="rcr-academy-link" onchange="onRcrAcademyLinkChange()"><option value="">— None (regular client) —</option></select></div>
-    <div class="form-group"><label>Room *</label>
-      <select id="rcr-room">
-        <option value="">Select room</option>
-        <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
-        <option value="Room 4 Persons (2)">Room 4 Persons (2)</option>
-        <option value="Room 6 Persons">Room 6 Persons</option>
-        <option value="Room 8 Persons">Room 8 Persons</option>
-        <option value="Class Room">Class Room</option>
-        <option value="Shared Space">Shared Space</option>
-        <option value="Drawing Room">Drawing Room</option>
-      </select>
-    </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>From Date *</label><input type="date" id="rcr-from-date"></div>
-      <div class="form-group"><label>To Date *</label><input type="date" id="rcr-to-date"></div>
-    </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Time From *</label><input type="time" id="rcr-time-from"></div>
-      <div class="form-group"><label>Time To *</label><input type="time" id="rcr-time-to"></div>
-    </div>
-    <div class="form-group">
-      <label>Repeat on Days *</label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-        <button type="button" class="rcr-day-btn" data-day="0" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Sun</button>
-        <button type="button" class="rcr-day-btn" data-day="1" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Mon</button>
-        <button type="button" class="rcr-day-btn" data-day="2" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Tue</button>
-        <button type="button" class="rcr-day-btn" data-day="3" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Wed</button>
-        <button type="button" class="rcr-day-btn" data-day="4" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Thu</button>
-        <button type="button" class="rcr-day-btn" data-day="5" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Fri</button>
-        <button type="button" class="rcr-day-btn" data-day="6" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Sat</button>
+
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;margin:12px 0;">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Add a room + timing to the batch</div>
+      <div class="form-group"><label>Room *</label>
+        <select id="rcr-room">
+          <option value="">Select room</option>
+          <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
+          <option value="Room 4 Persons (2)">Room 4 Persons (2)</option>
+          <option value="Room 6 Persons">Room 6 Persons</option>
+          <option value="Room 8 Persons">Room 8 Persons</option>
+          <option value="Class Room">Class Room</option>
+          <option value="Shared Space">Shared Space</option>
+          <option value="Drawing Room">Drawing Room</option>
+        </select>
       </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>From Date *</label><input type="date" id="rcr-from-date"></div>
+        <div class="form-group"><label>To Date *</label><input type="date" id="rcr-to-date"></div>
+      </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Time From *</label><input type="time" id="rcr-time-from"></div>
+        <div class="form-group"><label>Time To *</label><input type="time" id="rcr-time-to"></div>
+      </div>
+      <div class="form-group">
+        <label>Repeat on Days *</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+          <button type="button" class="rcr-day-btn" data-day="0" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Sun</button>
+          <button type="button" class="rcr-day-btn" data-day="1" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Mon</button>
+          <button type="button" class="rcr-day-btn" data-day="2" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Tue</button>
+          <button type="button" class="rcr-day-btn" data-day="3" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Wed</button>
+          <button type="button" class="rcr-day-btn" data-day="4" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Thu</button>
+          <button type="button" class="rcr-day-btn" data-day="5" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Fri</button>
+          <button type="button" class="rcr-day-btn" data-day="6" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Sat</button>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-full" onclick="addRcrLine()">➕ Add to Batch</button>
     </div>
+
+    <div id="rcr-lines-list" style="margin-bottom:6px;"></div>
+
     <div class="form-group"><label>Notes</label><input type="text" id="rcr-notes" placeholder="Optional notes for all sessions"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;recurring-modal&#39;)">Cancel</button>
-      <button class="btn btn-primary" onclick="previewRecurring()">👁 Preview Dates</button>
+      <button class="btn btn-primary" onclick="previewRecurring()">👁 Preview All Sessions</button>
     </div>
     <div id="rcr-result" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px;"></div>
   </div>
