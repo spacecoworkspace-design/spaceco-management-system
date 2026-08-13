@@ -580,11 +580,11 @@
           <div class="form-group">
             <label>Guest Name *</label>
             <div class="name-wrap">
-              <input type="text" id="ci-name" placeholder="Full name" oninput="nameAutoComplete(this.value);checkCiPackageStatus(this.value)" autocomplete="off">
+              <input type="text" id="ci-name" placeholder="Full name" oninput="nameAutoComplete(this.value,document.getElementById('ci-phone').value);checkCiPackageStatus(this.value,document.getElementById('ci-phone').value)" autocomplete="off">
               <div class="suggestions" id="name-suggestions" style="display: none;"></div>
             </div>
           </div>
-          <div class="form-group"><label>Phone Number</label><input type="text" id="ci-phone" placeholder="01X-XXXXXXXX" oninput="checkNewClientWhatsapp()"></div>
+          <div class="form-group"><label>Phone Number</label><input type="text" id="ci-phone" placeholder="01X-XXXXXXXX" oninput="checkNewClientWhatsapp();checkCiPackageStatus(document.getElementById('ci-name').value,this.value);nameAutoComplete(document.getElementById('ci-name').value,this.value)"></div>
         </div>
         <div id="ci-package-status" style="display:none;margin:-6px 0 14px;padding:8px 12px;background:var(--green-bg);border-radius:var(--radius-sm);color:var(--green);font-size:12px;"></div>
         <div id="ci-whatsapp-banner" style="display:none;margin:-6px 0 14px;padding:10px 12px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.35);border-radius:var(--radius-sm);align-items:center;justify-content:space-between;gap:10px;">
@@ -2005,7 +2005,17 @@ function migrateClientProfiles(){
 
 function findOrCreateProfile(name,phone,email){
   var norm=normalizeStr(name);
-  var profile=clientProfiles.find(function(p){return p.normalizedName===norm;});
+  var phoneDigits=(phone||'').replace(/\D/g,'');
+  // Phone first, not just name: a real client can have their name typed
+  // differently between visits ("Ahmed Tawila" vs "Ahmed twela") but their
+  // phone number stays the same. Matching name-only silently created a
+  // second profile every time the spelling drifted, splitting one real
+  // client's package eligibility, visit history, and spend across two
+  // records. Phone is the more stable identifier when it's present.
+  var profile = phoneDigits.length>=3
+    ? clientProfiles.find(function(p){return (p.phone||'').replace(/\D/g,'')===phoneDigits;})
+    : null;
+  if(!profile) profile=clientProfiles.find(function(p){return p.normalizedName===norm;});
   if(!profile){
     profile={id:'p'+Date.now()+'_'+Math.random().toString(36).slice(2),name:name.trim(),normalizedName:norm,phone:phone||'',email:email||'',createdAt:today()};
     clientProfiles.push(profile);
@@ -2259,11 +2269,16 @@ function calcBalance(){
   el.style.color=bal<0?'var(--red)':'var(--green)';
 }
 
-function nameAutoComplete(val){
+function nameAutoComplete(val,phoneVal){
   var sug=document.getElementById('name-suggestions');
   var norm=normalizeStr(val);
-  if(!norm||norm.length<2){sug.style.display='none';return;}
-  var matches=clientProfiles.filter(function(p){return p.normalizedName.includes(norm);}).slice(0,6);
+  var digits=(phoneVal||'').replace(/\D/g,'');
+  if((!norm||norm.length<2)&&digits.length<3){sug.style.display='none';return;}
+  var matches=clientProfiles.filter(function(p){
+    var nameHit=norm&&norm.length>=2&&p.normalizedName.includes(norm);
+    var phoneHit=digits.length>=3&&p.phone&&p.phone.replace(/\D/g,'').indexOf(digits)!==-1;
+    return nameHit||phoneHit;
+  }).slice(0,6);
   if(!matches.length){sug.style.display='none';return;}
   sug.innerHTML=matches.map(function(p){
     return '<div class="suggestion-item" onclick="fillFromProfile(\''+p.id+'\')"><span class="s-name">'+p.name+'</span><span class="s-phone">'+( p.phone||'no phone')+'</span></div>';
@@ -2278,19 +2293,23 @@ function fillFromProfile(profileId){
   document.getElementById('ci-phone').value=p.phone||'';
   document.getElementById('ci-email').value=p.email||'';
   document.getElementById('name-suggestions').style.display='none';
-  checkCiPackageStatus(p.name);
+  checkCiPackageStatus(p.name,p.phone);
 }
 
 // Live "does this guest already have a Shared Space package?" check —
 // shown right under the Guest Name field on Check-in, so it's obvious
 // every day whether to just pick "Shared Space" and check in for free,
-// without waiting until checkout to find out.
-function checkCiPackageStatus(name){
+// without waiting until checkout to find out. Checks phone first (stable
+// identifier) then falls back to name, same reasoning as findOrCreateProfile —
+// a client typed under a slightly different spelling should still be found.
+function checkCiPackageStatus(name,phone){
   var el=document.getElementById('ci-package-status');
   if(!el)return;
   var norm=normalizeStr(name);
-  if(!norm){el.style.display='none';return;}
-  var p=clientProfiles.find(function(x){return x.normalizedName===norm;});
+  var digits=(phone||'').replace(/\D/g,'');
+  if(!norm&&digits.length<3){el.style.display='none';return;}
+  var p=digits.length>=3?clientProfiles.find(function(x){return (x.phone||'').replace(/\D/g,'')===digits;}):null;
+  if(!p&&norm)p=clientProfiles.find(function(x){return x.normalizedName===norm;});
   var pkg=p?getActivePackage(p.id):null;
   if(!pkg){el.style.display='none';return;}
   var left=pkg.daysTotal!==null
