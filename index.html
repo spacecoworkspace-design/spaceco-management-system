@@ -1548,7 +1548,7 @@
       <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rv-phone" placeholder="e.g. 01012345678" oninput="rvNameAutoComplete(this.value)"></div>
     </div>
     <div class="form-group"><label>Room *</label>
-      <select id="rv-room">
+      <select id="rv-room" onchange="checkResConflict();updateRvCostPreview()">
         <option value="">Select room</option>
         <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
         <option value="Room 4 Persons (2)">Room 4 Persons (2)</option>
@@ -1561,10 +1561,11 @@
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
       <div class="form-group"><label>Date *</label><input type="date" id="rv-date"></div>
-      <div class="form-group"><label>From *</label><input type="time" id="rv-from" onchange="checkResConflict()"></div>
-      <div class="form-group"><label>To *</label><input type="time" id="rv-to" onchange="checkResConflict()"></div>
+      <div class="form-group"><label>From *</label><input type="time" id="rv-from" onchange="checkResConflict();updateRvCostPreview()"></div>
+      <div class="form-group"><label>To *</label><input type="time" id="rv-to" onchange="checkResConflict();updateRvCostPreview()"></div>
     </div>
     <div class="form-group"><label>Notes</label><input type="text" id="rv-notes" placeholder="Optional notes"></div>
+    <div id="rv-cost-preview" style="display:none;font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;"></div>
     <div id="rv-conflict" style="display:none;" class="alert alert-danger">⚠ Conflict with existing reservation!</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;add-reservation-modal&#39;)">Cancel</button>
@@ -6073,7 +6074,19 @@ function openAddReservation(){
   document.getElementById('rv-to').value='';
   document.getElementById('rv-notes').value='';
   document.getElementById('rv-conflict').style.display='none';
+  document.getElementById('rv-cost-preview').style.display='none';
   openModal('add-reservation-modal');
+}
+
+function updateRvCostPreview(){
+  var room=document.getElementById('rv-room').value;
+  var from=document.getElementById('rv-from').value;
+  var to=document.getElementById('rv-to').value;
+  var el=document.getElementById('rv-cost-preview');
+  if(!room||!from||!to||timeToMin(to)<=timeToMin(from)){el.style.display='none';return;}
+  var cost=calcReservationCost(room,from,to);
+  el.textContent='💰 Estimated cost: '+cost.toLocaleString()+' LE';
+  el.style.display='block';
 }
 
 // Same lookup pattern as check-in's nameAutoComplete/fillFromProfile, just
@@ -6169,6 +6182,35 @@ function formatConflictDetail(detail){
   return 'Conflict — room blocked: '+detail.reason+' ('+fmt12(detail.from)+'–'+fmt12(detail.to)+')';
 }
 
+// ============================================================
+// RESERVATION COST ESTIMATE — reuses the exact same pricing table and
+// calcCost() the check-in checkout flow already uses (admin-editable via
+// System > Pricing), so a room's price is defined in exactly one place.
+// Deliberately regular-clients only, per explicit decision: academy
+// sessions are paid for through their hour package, not a per-session
+// price, so academy-linked reservations never get an estimated_cost.
+// ============================================================
+var ROOM_TO_PRICING_KEY={
+  'Room 4 Persons (1)':'room1',
+  'Room 4 Persons (2)':'room2',
+  'Room 6 Persons':'room3',
+  'Room 8 Persons':'room4',
+  'Class Room':'classRoom',
+  'Shared Space':'sharedSpace',
+  'Drawing Room':'drawingRoom'
+};
+function calcReservationCost(room,from,to){
+  var key=ROOM_TO_PRICING_KEY[room];
+  if(!key)return 0;
+  var hrs=(timeToMin(to)-timeToMin(from))/60;
+  if(hrs<=0)return 0;
+  return calcCost(key,hrs);
+}
+function costBadge(cost){
+  if(!cost)return '<span style="color:var(--text3);">—</span>';
+  return '<span class="badge" style="background:var(--green-bg);color:var(--green);font-weight:700;">'+cost.toLocaleString()+' LE</span>';
+}
+
 function saveReservation(){
   var client=document.getElementById('rv-client').value.trim();
   var phone=document.getElementById('rv-phone').value.trim();
@@ -6187,7 +6229,7 @@ function saveReservation(){
     showToast('Outside operating hours!',true);return;
   }
   var id='rv_'+Date.now();
-  var newRes={id:id,client:client,phone:phone||undefined,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null,status:'upcoming',no_show_grace_deadline:new Date(computeGraceDeadline(date,from)).toISOString(),grace_extensions_used:0};
+  var newRes={id:id,client:client,phone:phone||undefined,room:room,date:date,from:from,to:to,notes:document.getElementById('rv-notes').value.trim(),created_by:currentUser?currentUser.id:null,status:'upcoming',no_show_grace_deadline:new Date(computeGraceDeadline(date,from)).toISOString(),grace_extensions_used:0,estimated_cost:calcReservationCost(room,from,to)};
   reservations.push(newRes);
   saveData('reservations',reservations);
   closeModal('add-reservation-modal');
@@ -6775,7 +6817,7 @@ function renderReservations(){
   html+='<div class="card mt-16"><div class="card-title">Reservations for '+dateStr+'</div>';
   if(!dateResAll.length){html+='<div style="text-align:center;padding:24px;color:var(--text3);">No reservations — all rooms open!</div>';}
   else{
-    html+='<div class="table-wrap"><table><thead><tr><th>Room</th><th>Client</th><th>Phone</th><th>From</th><th>To</th><th>Staff on Duty</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>';
+    html+='<div class="table-wrap"><table><thead><tr><th>Room</th><th>Client</th><th>Phone</th><th>From</th><th>To</th><th>Staff on Duty</th><th>Status</th><th>Cost</th><th>Notes</th><th></th></tr></thead><tbody>';
     dateResAll.forEach(function(r){
       var staffDuty=getStaffForSlot(r.date,timeToMin(r.from),timeToMin(r.to));
       var status=r.status||'upcoming';
@@ -6796,6 +6838,7 @@ function renderReservations(){
         +'<td>'+fmt12(r.from)+'</td><td>'+fmt12(r.to)+'</td>'
         +'<td><span class="badge badge-blue">'+staffDuty+'</span></td>'
         +'<td>'+statusBadge+'</td>'
+        +'<td>'+(r.academyKey?'<span style="color:var(--text3);font-size:11px;">🎓 academy</span>':costBadge(r.estimated_cost))+'</td>'
         +'<td>'+(r.notes?noteBadge(r.notes):'<span style="color:var(--text3);">—</span>')+'</td>'
         +'<td style="white-space:nowrap;">'
         +(status==='pending'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button><button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject this booking">✖ Reject</button>':'')
@@ -6914,7 +6957,7 @@ function renderResSearch(){
     +'<span style="font-size:12px;color:var(--text3);">'+matches.length+' result'+(matches.length!==1?'s':'')+'</span>'
     +'<button class="btn btn-danger btn-sm" onclick="deleteAllResSearchResults()" title="Move all '+matches.length+' matching reservations to the Recycle Bin">🗑 Delete All ('+matches.length+')</button>'
     +'</div>';
-  html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Room</th><th>Client</th><th>Phone</th><th>From</th><th>To</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>';
+  html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Room</th><th>Client</th><th>Phone</th><th>From</th><th>To</th><th>Status</th><th>Cost</th><th>Notes</th><th></th></tr></thead><tbody>';
   matches.forEach(function(r){
     var status=r.status||'upcoming';
     var graceState=reservationGraceState(r);
@@ -6932,6 +6975,7 @@ function renderResSearch(){
       +'<td style="font-size:12px;">'+(r.phone||'—')+'</td>'
       +'<td>'+fmt12(r.from)+'</td><td>'+fmt12(r.to)+'</td>'
       +'<td>'+statusBadge+'</td>'
+      +'<td>'+(r.academyKey?'<span style="color:var(--text3);font-size:11px;">🎓 academy</span>':costBadge(r.estimated_cost))+'</td>'
       +'<td>'+(r.notes?noteBadge(r.notes):'<span style="color:var(--text3);">—</span>')+'</td>'
       +'<td style="white-space:nowrap;">'
       +(status==='pending'?'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button><button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject this booking">✖ Reject</button>':'')
@@ -7578,7 +7622,20 @@ function openEditReservation(resId) {
     linkSel.value = r.academyKey || '';
   }
   document.getElementById('er-conflict').style.display = 'none';
+  updateErCostPreview();
   openModal('edit-reservation-modal');
+}
+
+function updateErCostPreview(){
+  var academyKey=document.getElementById('er-academy-link').value;
+  var room=document.getElementById('er-room').value;
+  var from=document.getElementById('er-from').value;
+  var to=document.getElementById('er-to').value;
+  var el=document.getElementById('er-cost-preview');
+  if(academyKey||!room||!from||!to||timeToMin(to)<=timeToMin(from)){el.style.display='none';return;}
+  var cost=calcReservationCost(room,from,to);
+  el.textContent='💰 Estimated cost: '+cost.toLocaleString()+' LE';
+  el.style.display='block';
 }
 
 function erNameAutoComplete(val){
@@ -7649,6 +7706,9 @@ function saveEditReservation() {
   r.from = from;
   r.to = to;
   r.notes = document.getElementById('er-notes').value.trim();
+  // Academy-linked reservations don't get a per-session price — they're paid
+  // for through the academy's hour package, not cash per booking.
+  r.estimated_cost = r.academyKey ? undefined : calcReservationCost(room, from, to);
   // Time/date/room changed under a reservation still awaiting arrival — restart
   // its grace window against the new start time rather than leaving a stale one.
   if((r.status||'upcoming')==='upcoming' && dateOrTimeChanged){
@@ -8014,11 +8074,13 @@ function renderRcrLinesList(){
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 2px;">No rooms/timings added yet — fill in the fields above and click "Add to Batch."</div>';
     return;
   }
+  var isAcademy = !!document.getElementById('rcr-academy-link').value;
   el.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Batch ('+lines.length+')</div>'
     + lines.map(function(l,i){
         var daysStr = l.days.slice().sort().map(function(d){return DAY_ABBR[d];}).join('/');
+        var costStr = isAcademy?'':(' · '+calcReservationCost(l.room,l.tFrom,l.tTo).toLocaleString()+' LE/session');
         return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:6px;font-size:12px;">'
-          +'<div><div><strong>'+l.room+'</strong> — '+daysStr+' '+fmt12(l.tFrom)+'–'+fmt12(l.tTo)+' <span style="color:var(--text3);">('+formatDate(l.from)+' – '+formatDate(l.to)+')</span></div>'+(l.note?'<div style="margin-top:4px;">'+noteBadge(l.note)+'</div>':'')+'</div>'
+          +'<div><div><strong>'+l.room+'</strong> — '+daysStr+' '+fmt12(l.tFrom)+'–'+fmt12(l.tTo)+' <span style="color:var(--text3);">('+formatDate(l.from)+' – '+formatDate(l.to)+')'+costStr+'</span></div>'+(l.note?'<div style="margin-top:4px;">'+noteBadge(l.note)+'</div>':'')+'</div>'
           +'<button class="btn btn-danger btn-sm" onclick="removeRcrLine('+i+')">✕</button>'
           +'</div>';
       }).join('');
@@ -8030,6 +8092,7 @@ function renderRcrLinesList(){
 function onRcrAcademyLinkChange(){
   var linkSel = document.getElementById('rcr-academy-link');
   var key = linkSel.value;
+  renderRcrLinesList(); // toggles the per-line cost display on/off
   if(!key) return;
   var a = academies[key];
   if(a) document.getElementById('rcr-client').value = a.name;
@@ -8043,8 +8106,9 @@ function previewRecurring(){
   if(!client){ showToast('Client name required', true); return; }
   if(!lines.length){ showToast('Add at least one room/timing to the batch first', true); return; }
 
+  var isAcademy = !!document.getElementById('rcr-academy-link').value;
   var DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var items = []; // {date, room, tFrom, tTo, lineIdx, note, conflict, conflictDetail}
+  var items = []; // {date, room, tFrom, tTo, lineIdx, note, conflict, conflictDetail, cost}
   lines.forEach(function(line, li){
     var startD = new Date(line.from), endD = new Date(line.to);
     var cur = new Date(startD);
@@ -8053,7 +8117,8 @@ function previewRecurring(){
         var d = cur.toISOString().slice(0,10);
         var detail = getConflictDetail(d, line.room, line.tFrom, line.tTo, null);
         items.push({date:d, room:line.room, tFrom:line.tFrom, tTo:line.tTo, lineIdx:li, note:line.note||'',
-          conflict: !!detail, conflictDetail: detail});
+          conflict: !!detail, conflictDetail: detail,
+          cost: isAcademy?undefined:calcReservationCost(line.room,line.tFrom,line.tTo)});
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -8070,20 +8135,25 @@ function previewRecurring(){
 
   var cleanCount = items.filter(function(x){return !x.conflict;}).length;
   var conflictCount = items.length - cleanCount;
+  var totalCost = isAcademy?0:items.filter(function(x){return !x.conflict;}).reduce(function(s,x){return s+(x.cost||0);},0);
   var html = '';
   html += '<div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">';
   html += '<span class="badge badge-green">\u2705 '+cleanCount+' will be booked</span>';
   if(conflictCount){
     html += '<span class="badge badge-amber">\u26a0 '+conflictCount+' conflict'+(conflictCount!==1?'s':'')+' (skipped)</span>';
   }
+  if(!isAcademy){
+    html += '<span class="badge" style="background:var(--green-bg);color:var(--green);font-weight:700;">\ud83d\udcb0 Total: '+totalCost.toLocaleString()+' LE</span>';
+  }
   html += '</div>';
 
   html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">';
-  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Room</th><th>Date</th><th>Day</th><th>Time</th><th>Note</th><th>Status</th></tr></thead><tbody>';
+  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Room</th><th>Date</th><th>Day</th><th>Time</th><th>Note</th>'+(isAcademy?'':'<th>Cost</th>')+'<th>Status</th></tr></thead><tbody>';
   items.forEach(function(it, i){
     html += '<tr><td>'+(i+1)+'</td><td>'+it.room+'</td><td>'+formatDate(it.date)+'</td>';
     html += '<td>'+DAY_NAMES[new Date(it.date).getDay()]+'</td><td>'+fmt12(it.tFrom)+'\u2013'+fmt12(it.tTo)+'</td>';
     html += '<td>'+(it.note?noteBadge(it.note):'<span style="color:var(--text3);">\u2014</span>')+'</td>';
+    if(!isAcademy) html += '<td>'+costBadge(it.cost)+'</td>';
     html += '<td>'+(it.conflict ? '<span class="badge badge-amber">\u26a0 '+formatConflictDetail(it.conflictDetail)+'</span>' : '<span class="badge badge-green">\u2705 Free</span>')+'</td></tr>';
   });
   html += '</tbody></table></div>';
@@ -8134,7 +8204,8 @@ function saveRecurring(){
       academyKey: p.academyKey || null,
       status: 'upcoming',
       no_show_grace_deadline: new Date(computeGraceDeadline(it.date, it.tFrom)).toISOString(),
-      grace_extensions_used: 0
+      grace_extensions_used: 0,
+      estimated_cost: it.cost
     });
   });
   saveData('reservations', reservations);
@@ -9267,9 +9338,9 @@ refreshDashboard=function(){
       </div>
       <div class="form-group"><label>Phone</label><input type="text" id="er-phone" placeholder="e.g. 01012345678" oninput="erNameAutoComplete(this.value)"></div>
     </div>
-    <div class="form-group"><label>Link to Academy (optional)</label><select id="er-academy-link"><option value="">— None (regular client) —</option></select></div>
+    <div class="form-group"><label>Link to Academy (optional)</label><select id="er-academy-link" onchange="updateErCostPreview()"><option value="">— None (regular client) —</option></select></div>
     <div class="form-group"><label>Room *</label>
-      <select id="er-room" onchange="checkErConflict()">
+      <select id="er-room" onchange="checkErConflict();updateErCostPreview()">
         <option value="">Select room</option>
         <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
         <option value="Room 4 Persons (2)">Room 4 Persons (2)</option>
@@ -9282,10 +9353,11 @@ refreshDashboard=function(){
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
       <div class="form-group"><label>Date *</label><input type="date" id="er-date" onchange="checkErConflict()"></div>
-      <div class="form-group"><label>From *</label><input type="time" id="er-from" onchange="checkErConflict()"></div>
-      <div class="form-group"><label>To *</label><input type="time" id="er-to" onchange="checkErConflict()"></div>
+      <div class="form-group"><label>From *</label><input type="time" id="er-from" onchange="checkErConflict();updateErCostPreview()"></div>
+      <div class="form-group"><label>To *</label><input type="time" id="er-to" onchange="checkErConflict();updateErCostPreview()"></div>
     </div>
     <div class="form-group"><label>Notes</label><input type="text" id="er-notes" placeholder="Optional notes"></div>
+    <div id="er-cost-preview" style="display:none;font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;"></div>
     <div id="er-conflict" style="display:none;" class="alert alert-danger">⚠ Conflict</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;edit-reservation-modal&#39;)">Cancel</button>
