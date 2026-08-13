@@ -2306,9 +2306,10 @@ document.addEventListener('click',function(e){
   // Phone inputs aren't wrapped in .name-wrap (only the name field is), so
   // check them explicitly too — otherwise clicking into the phone field to
   // type would hide the dropdown a beat before typing reopens it.
-  if(e.target.closest('.name-wrap')||e.target.id==='rv-phone'||e.target.id==='rcr-phone')return;
+  if(e.target.closest('.name-wrap')||e.target.id==='rv-phone'||e.target.id==='rcr-phone'||e.target.id==='er-phone')return;
   var rvSug=document.getElementById('rv-name-suggestions'); if(rvSug)rvSug.style.display='none';
   var rcrSug=document.getElementById('rcr-name-suggestions'); if(rcrSug)rcrSug.style.display='none';
+  var erSug=document.getElementById('er-name-suggestions'); if(erSug)erSug.style.display='none';
 });
 
 // ── ACTIVE SESSIONS (in-memory, persisted in localStorage) ──
@@ -7567,21 +7568,90 @@ function openEditReservation(resId) {
   document.getElementById('er-from').value = r.from || '';
   document.getElementById('er-to').value = r.to || '';
   document.getElementById('er-notes').value = r.notes || '';
+  var linkSel = document.getElementById('er-academy-link');
+  if(linkSel){
+    linkSel.innerHTML = '<option value="">— None (regular client) —</option>'
+      + (academyOrder||[]).map(function(k){
+          var a = academies[k]; if(!a) return '';
+          return '<option value="'+k+'">'+a.name+'</option>';
+        }).join('');
+    linkSel.value = r.academyKey || '';
+  }
+  document.getElementById('er-conflict').style.display = 'none';
   openModal('edit-reservation-modal');
 }
+
+function erNameAutoComplete(val){
+  var sug=document.getElementById('er-name-suggestions');
+  if(!sug)return;
+  var norm=normalizeStr(val);
+  var digits=(val||'').replace(/\D/g,'');
+  if((!norm||norm.length<2)&&digits.length<3){sug.style.display='none';return;}
+  var matches=clientProfiles.filter(function(p){
+    var nameHit=norm&&norm.length>=2&&p.normalizedName&&p.normalizedName.includes(norm);
+    var phoneHit=digits.length>=3&&p.phone&&p.phone.replace(/\D/g,'').indexOf(digits)!==-1;
+    return nameHit||phoneHit;
+  }).slice(0,6);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.innerHTML=matches.map(function(p){
+    return '<div class="suggestion-item" onclick="fillErProfile(\''+p.id+'\')"><span class="s-name">'+p.name+'</span><span class="s-phone">'+(p.phone||'no phone')+'</span></div>';
+  }).join('');
+  sug.style.display='block';
+}
+function fillErProfile(profileId){
+  var p=clientProfiles.find(function(x){return x.id===profileId;});
+  if(!p)return;
+  document.getElementById('er-client').value=p.name;
+  document.getElementById('er-phone').value=p.phone||'';
+  document.getElementById('er-name-suggestions').style.display='none';
+}
+
+function checkErConflict(){
+  var room=document.getElementById('er-room').value;
+  var date=document.getElementById('er-date').value;
+  var from=document.getElementById('er-from').value;
+  var to=document.getElementById('er-to').value;
+  var el=document.getElementById('er-conflict');
+  if(!room||!date||!from||!to){el.style.display='none';return;}
+  var detail=getConflictDetail(date,room,from,to,_editingResId);
+  if(detail){
+    el.textContent='⚠ '+formatConflictDetail(detail);
+    el.style.display='flex';
+  }else{
+    el.style.display='none';
+  }
+}
+
 function saveEditReservation() {
   var r = reservations.find(function(x){ return x.id === _editingResId; });
   if(!r) return;
-  r.client = document.getElementById('er-client').value.trim();
+  var client = document.getElementById('er-client').value.trim();
+  var room = document.getElementById('er-room').value;
+  var date = document.getElementById('er-date').value;
+  var from = document.getElementById('er-from').value;
+  var to = document.getElementById('er-to').value;
+  if(!client){showToast('Client name required',true);return;}
+  if(!room){showToast('Please select a room',true);return;}
+  if(!date||!from||!to){showToast('Date and times required',true);return;}
+  if(timeToMin(to)<=timeToMin(from)){showToast('End time must be after start time',true);return;}
+  var conflictDetail=getConflictDetail(date,room,from,to,_editingResId);
+  if(conflictDetail){showToast(formatConflictDetail(conflictDetail),true);return;}
+  var oh=getOpenHours(date);
+  if(timeToMin(from)<timeToMin(oh.start)||timeToMin(to)>timeToMin(oh.end)){
+    showToast('Outside operating hours!',true);return;
+  }
+  var dateOrTimeChanged = r.date!==date || r.from!==from || r.room!==room;
+  r.client = client;
   r.phone = document.getElementById('er-phone').value.trim()||undefined;
-  r.room = document.getElementById('er-room').value;
-  r.date = document.getElementById('er-date').value;
-  r.from = document.getElementById('er-from').value;
-  r.to = document.getElementById('er-to').value;
+  r.academyKey = document.getElementById('er-academy-link').value || null;
+  r.room = room;
+  r.date = date;
+  r.from = from;
+  r.to = to;
   r.notes = document.getElementById('er-notes').value.trim();
-  // Time/date changed under a reservation still awaiting arrival — restart its
-  // grace window against the new start time rather than leaving a stale deadline.
-  if((r.status||'upcoming')==='upcoming'){
+  // Time/date/room changed under a reservation still awaiting arrival — restart
+  // its grace window against the new start time rather than leaving a stale one.
+  if((r.status||'upcoming')==='upcoming' && dateOrTimeChanged){
     r.no_show_grace_deadline = new Date(computeGraceDeadline(r.date, r.from)).toISOString();
     r.grace_extensions_used = 0;
   }
@@ -9192,11 +9262,15 @@ refreshDashboard=function(){
   <div class="modal" style="width:500px;">
     <div class="modal-header"><div class="modal-title">✏️ Edit Reservation</div><button class="close-btn" onclick="closeModal(&#39;edit-reservation-modal&#39;)">✕</button></div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Client / Name</label><input type="text" id="er-client" placeholder="Name"></div>
-      <div class="form-group"><label>Phone</label><input type="text" id="er-phone" placeholder="e.g. 01012345678"></div>
+      <div class="form-group"><label>Client / Name *</label>
+        <div class="name-wrap"><input type="text" id="er-client" placeholder="Name" oninput="erNameAutoComplete(this.value)" autocomplete="off"><div class="suggestions" id="er-name-suggestions" style="display:none;"></div></div>
+      </div>
+      <div class="form-group"><label>Phone</label><input type="text" id="er-phone" placeholder="e.g. 01012345678" oninput="erNameAutoComplete(this.value)"></div>
     </div>
-    <div class="form-group"><label>Room</label>
-      <select id="er-room">
+    <div class="form-group"><label>Link to Academy (optional)</label><select id="er-academy-link"><option value="">— None (regular client) —</option></select></div>
+    <div class="form-group"><label>Room *</label>
+      <select id="er-room" onchange="checkErConflict()">
+        <option value="">Select room</option>
         <option value="Room 4 Persons (1)">Room 4 Persons (1)</option>
         <option value="Room 4 Persons (2)">Room 4 Persons (2)</option>
         <option value="Room 6 Persons">Room 6 Persons</option>
@@ -9207,11 +9281,12 @@ refreshDashboard=function(){
       </select>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
-      <div class="form-group"><label>Date</label><input type="date" id="er-date"></div>
-      <div class="form-group"><label>From</label><input type="time" id="er-from"></div>
-      <div class="form-group"><label>To</label><input type="time" id="er-to"></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="er-date" onchange="checkErConflict()"></div>
+      <div class="form-group"><label>From *</label><input type="time" id="er-from" onchange="checkErConflict()"></div>
+      <div class="form-group"><label>To *</label><input type="time" id="er-to" onchange="checkErConflict()"></div>
     </div>
     <div class="form-group"><label>Notes</label><input type="text" id="er-notes" placeholder="Optional notes"></div>
+    <div id="er-conflict" style="display:none;" class="alert alert-danger">⚠ Conflict</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;edit-reservation-modal&#39;)">Cancel</button>
       <button class="btn btn-primary" onclick="saveEditReservation()">💾 Save</button>
