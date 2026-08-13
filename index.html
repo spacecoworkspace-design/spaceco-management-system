@@ -1542,8 +1542,10 @@
   <div class="modal" style="width:500px;">
     <div class="modal-header"><div class="modal-title">📅 Add Reservation</div><button class="close-btn" onclick="closeModal(&#39;add-reservation-modal&#39;)">✕</button></div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Client / Name *</label><input type="text" id="rv-client" placeholder="e.g. Mostafa Ali"></div>
-      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rv-phone" placeholder="e.g. 01012345678"></div>
+      <div class="form-group"><label>Client / Name *</label>
+        <div class="name-wrap"><input type="text" id="rv-client" placeholder="e.g. Mostafa Ali" oninput="rvNameAutoComplete(this.value)" autocomplete="off"><div class="suggestions" id="rv-name-suggestions" style="display:none;"></div></div>
+      </div>
+      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rv-phone" placeholder="e.g. 01012345678" oninput="rvNameAutoComplete(this.value)"></div>
     </div>
     <div class="form-group"><label>Room *</label>
       <select id="rv-room">
@@ -2299,6 +2301,14 @@ function checkCiPackageStatus(name){
 
 document.addEventListener('click',function(e){
   if(!e.target.closest('.name-wrap'))document.getElementById('name-suggestions').style.display='none';
+});
+document.addEventListener('click',function(e){
+  // Phone inputs aren't wrapped in .name-wrap (only the name field is), so
+  // check them explicitly too — otherwise clicking into the phone field to
+  // type would hide the dropdown a beat before typing reopens it.
+  if(e.target.closest('.name-wrap')||e.target.id==='rv-phone'||e.target.id==='rcr-phone')return;
+  var rvSug=document.getElementById('rv-name-suggestions'); if(rvSug)rvSug.style.display='none';
+  var rcrSug=document.getElementById('rcr-name-suggestions'); if(rcrSug)rcrSug.style.display='none';
 });
 
 // ── ACTIVE SESSIONS (in-memory, persisted in localStorage) ──
@@ -6065,14 +6075,48 @@ function openAddReservation(){
   openModal('add-reservation-modal');
 }
 
+// Same lookup pattern as check-in's nameAutoComplete/fillFromProfile, just
+// matching on phone digits too (not just name) since staff often start
+// typing whichever one they remember first.
+function rvNameAutoComplete(val){
+  var sug=document.getElementById('rv-name-suggestions');
+  if(!sug)return;
+  var norm=normalizeStr(val);
+  var digits=(val||'').replace(/\D/g,'');
+  if((!norm||norm.length<2)&&digits.length<3){sug.style.display='none';return;}
+  var matches=clientProfiles.filter(function(p){
+    var nameHit=norm&&norm.length>=2&&p.normalizedName&&p.normalizedName.includes(norm);
+    var phoneHit=digits.length>=3&&p.phone&&p.phone.replace(/\D/g,'').indexOf(digits)!==-1;
+    return nameHit||phoneHit;
+  }).slice(0,6);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.innerHTML=matches.map(function(p){
+    return '<div class="suggestion-item" onclick="fillRvProfile(\''+p.id+'\')"><span class="s-name">'+p.name+'</span><span class="s-phone">'+(p.phone||'no phone')+'</span></div>';
+  }).join('');
+  sug.style.display='block';
+}
+function fillRvProfile(profileId){
+  var p=clientProfiles.find(function(x){return x.id===profileId;});
+  if(!p)return;
+  document.getElementById('rv-client').value=p.name;
+  document.getElementById('rv-phone').value=p.phone||'';
+  document.getElementById('rv-name-suggestions').style.display='none';
+}
+
 function checkResConflict(){
   var room=document.getElementById('rv-room').value;
   var date=document.getElementById('rv-date').value;
   var from=document.getElementById('rv-from').value;
   var to=document.getElementById('rv-to').value;
-  if(!room||!date||!from||!to){document.getElementById('rv-conflict').style.display='none';return;}
-  var conflict=hasConflict(date,room,from,to,null);
-  document.getElementById('rv-conflict').style.display=conflict?'flex':'none';
+  var el=document.getElementById('rv-conflict');
+  if(!room||!date||!from||!to){el.style.display='none';return;}
+  var detail=getConflictDetail(date,room,from,to,null);
+  if(detail){
+    el.textContent='⚠ '+formatConflictDetail(detail);
+    el.style.display='flex';
+  }else{
+    el.style.display='none';
+  }
 }
 
 function hasConflict(date,room,from,to,excludeId){
@@ -6096,6 +6140,34 @@ function hasConflict(date,room,from,to,excludeId){
   });
 }
 
+// Same overlap logic as hasConflict, but returns what it actually conflicts
+// with (an existing reservation's client+time, or a room block's reason)
+// instead of just true/false, so staff can see who/what is already there
+// rather than a bare "Conflict!" with no context.
+function getConflictDetail(date,room,from,to,excludeId){
+  var fs=timeToMin(from),fe=timeToMin(to);
+  var resHit=reservations.find(function(r){
+    if(r.id===excludeId)return false;
+    if(r.date!==date||r.room!==room)return false;
+    if(r.status==='no_show')return false;
+    var rs=timeToMin(r.from),re=timeToMin(r.to);
+    return fs<re&&fe>rs;
+  });
+  if(resHit)return {type:'reservation',client:resHit.client,from:resHit.from,to:resHit.to};
+  var blockHit=(roomBlocks||[]).find(function(b){
+    if(b.date!==date||b.room!==room)return false;
+    var bs=timeToMin(b.from),be=timeToMin(b.to);
+    return fs<be&&fe>bs;
+  });
+  if(blockHit)return {type:'block',reason:blockHit.reason||'Blocked',from:blockHit.from,to:blockHit.to};
+  return null;
+}
+function formatConflictDetail(detail){
+  if(!detail)return '';
+  if(detail.type==='reservation')return 'Conflict with '+detail.client+' ('+fmt12(detail.from)+'–'+fmt12(detail.to)+')';
+  return 'Conflict — room blocked: '+detail.reason+' ('+fmt12(detail.from)+'–'+fmt12(detail.to)+')';
+}
+
 function saveReservation(){
   var client=document.getElementById('rv-client').value.trim();
   var phone=document.getElementById('rv-phone').value.trim();
@@ -6107,7 +6179,8 @@ function saveReservation(){
   if(!room){showToast('Please select a room',true);return;}
   if(!date||!from||!to){showToast('Date and times required',true);return;}
   if(timeToMin(to)<=timeToMin(from)){showToast('End time must be after start time',true);return;}
-  if(hasConflict(date,room,from,to,null)){showToast('Conflict with existing reservation!',true);return;}
+  var conflictDetail=getConflictDetail(date,room,from,to,null);
+  if(conflictDetail){showToast(formatConflictDetail(conflictDetail),true);return;}
   var oh=getOpenHours(date);
   if(timeToMin(from)<timeToMin(oh.start)||timeToMin(to)>timeToMin(oh.end)){
     showToast('Outside operating hours!',true);return;
@@ -7767,6 +7840,7 @@ function openRecurringModal(){
   document.getElementById('rcr-room').value = '';
   document.getElementById('rcr-time-from').value = '';
   document.getElementById('rcr-time-to').value = '';
+  document.getElementById('rcr-line-note').value = '';
   document.getElementById('rcr-notes').value = '';
   document.querySelectorAll('.rcr-day-btn').forEach(function(b){ b.classList.remove('active'); });
   var linkSel = document.getElementById('rcr-academy-link');
@@ -7787,6 +7861,31 @@ function openRecurringModal(){
 
 function toggleRcrDay(btn){
   btn.classList.toggle('active');
+}
+
+function rcrNameAutoComplete(val){
+  var sug=document.getElementById('rcr-name-suggestions');
+  if(!sug)return;
+  var norm=normalizeStr(val);
+  var digits=(val||'').replace(/\D/g,'');
+  if((!norm||norm.length<2)&&digits.length<3){sug.style.display='none';return;}
+  var matches=clientProfiles.filter(function(p){
+    var nameHit=norm&&norm.length>=2&&p.normalizedName&&p.normalizedName.includes(norm);
+    var phoneHit=digits.length>=3&&p.phone&&p.phone.replace(/\D/g,'').indexOf(digits)!==-1;
+    return nameHit||phoneHit;
+  }).slice(0,6);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.innerHTML=matches.map(function(p){
+    return '<div class="suggestion-item" onclick="fillRcrProfile(\''+p.id+'\')"><span class="s-name">'+p.name+'</span><span class="s-phone">'+(p.phone||'no phone')+'</span></div>';
+  }).join('');
+  sug.style.display='block';
+}
+function fillRcrProfile(profileId){
+  var p=clientProfiles.find(function(x){return x.id===profileId;});
+  if(!p)return;
+  document.getElementById('rcr-client').value=p.name;
+  document.getElementById('rcr-phone').value=p.phone||'';
+  document.getElementById('rcr-name-suggestions').style.display='none';
 }
 
 // ============================================================
@@ -7813,16 +7912,19 @@ function addRcrLine(){
   if(!selectedDays.length){ showToast('Pick at least one day', true); return; }
   if(new Date(to) < new Date(from)){ showToast('End date must be after start date', true); return; }
 
+  var lineNote = document.getElementById('rcr-line-note').value.trim();
+
   window._rcrLines = window._rcrLines || [];
-  window._rcrLines.push({room:room, from:from, to:to, tFrom:tFrom, tTo:tTo, days:selectedDays});
+  window._rcrLines.push({room:room, from:from, to:to, tFrom:tFrom, tTo:tTo, days:selectedDays, note:lineNote});
 
   // Reset just the line composer so the next room/timing starts fresh —
-  // client/phone/academy/notes stay put since they're shared across the batch.
+  // client/phone/academy/shared notes stay put since they're shared across the batch.
   document.getElementById('rcr-room').value = '';
   document.getElementById('rcr-from-date').value = document.getElementById('res-filter-date').value || today();
   document.getElementById('rcr-to-date').value = '';
   document.getElementById('rcr-time-from').value = '';
   document.getElementById('rcr-time-to').value = '';
+  document.getElementById('rcr-line-note').value = '';
   document.querySelectorAll('.rcr-day-btn').forEach(function(b){ b.classList.remove('active'); });
   renderRcrLinesList();
   showToast('Added to batch — add another room/timing, or preview when ready');
@@ -7846,7 +7948,7 @@ function renderRcrLinesList(){
     + lines.map(function(l,i){
         var daysStr = l.days.slice().sort().map(function(d){return DAY_ABBR[d];}).join('/');
         return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:6px;font-size:12px;">'
-          +'<div><strong>'+l.room+'</strong> — '+daysStr+' '+fmt12(l.tFrom)+'–'+fmt12(l.tTo)+' <span style="color:var(--text3);">('+formatDate(l.from)+' – '+formatDate(l.to)+')</span></div>'
+          +'<div><div><strong>'+l.room+'</strong> — '+daysStr+' '+fmt12(l.tFrom)+'–'+fmt12(l.tTo)+' <span style="color:var(--text3);">('+formatDate(l.from)+' – '+formatDate(l.to)+')</span></div>'+(l.note?'<div style="margin-top:4px;">'+noteBadge(l.note)+'</div>':'')+'</div>'
           +'<button class="btn btn-danger btn-sm" onclick="removeRcrLine('+i+')">✕</button>'
           +'</div>';
       }).join('');
@@ -7872,15 +7974,16 @@ function previewRecurring(){
   if(!lines.length){ showToast('Add at least one room/timing to the batch first', true); return; }
 
   var DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var items = []; // {date, room, tFrom, tTo, lineIdx, conflict}
+  var items = []; // {date, room, tFrom, tTo, lineIdx, note, conflict, conflictDetail}
   lines.forEach(function(line, li){
     var startD = new Date(line.from), endD = new Date(line.to);
     var cur = new Date(startD);
     while(cur <= endD){
       if(line.days.indexOf(cur.getDay()) !== -1){
         var d = cur.toISOString().slice(0,10);
-        items.push({date:d, room:line.room, tFrom:line.tFrom, tTo:line.tTo, lineIdx:li,
-          conflict: hasConflict(d, line.room, line.tFrom, line.tTo, null)});
+        var detail = getConflictDetail(d, line.room, line.tFrom, line.tTo, null);
+        items.push({date:d, room:line.room, tFrom:line.tFrom, tTo:line.tTo, lineIdx:li, note:line.note||'',
+          conflict: !!detail, conflictDetail: detail});
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -7905,12 +8008,13 @@ function previewRecurring(){
   }
   html += '</div>';
 
-  html += '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">';
-  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Room</th><th>Date</th><th>Day</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+  html += '<div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">';
+  html += '<table style="width:100%;font-size:12px;"><thead><tr><th>#</th><th>Room</th><th>Date</th><th>Day</th><th>Time</th><th>Note</th><th>Status</th></tr></thead><tbody>';
   items.forEach(function(it, i){
     html += '<tr><td>'+(i+1)+'</td><td>'+it.room+'</td><td>'+formatDate(it.date)+'</td>';
     html += '<td>'+DAY_NAMES[new Date(it.date).getDay()]+'</td><td>'+fmt12(it.tFrom)+'\u2013'+fmt12(it.tTo)+'</td>';
-    html += '<td>'+(it.conflict ? '<span class="badge badge-amber">\u26a0 Conflict</span>' : '<span class="badge badge-green">\u2705 Free</span>')+'</td></tr>';
+    html += '<td>'+(it.note?noteBadge(it.note):'<span style="color:var(--text3);">\u2014</span>')+'</td>';
+    html += '<td>'+(it.conflict ? '<span class="badge badge-amber">\u26a0 '+formatConflictDetail(it.conflictDetail)+'</span>' : '<span class="badge badge-green">\u2705 Free</span>')+'</td></tr>';
   });
   html += '</tbody></table></div>';
 
@@ -7955,7 +8059,7 @@ function saveRecurring(){
       date: it.date,
       from: it.tFrom,
       to: it.tTo,
-      notes: p.notes,
+      notes: it.note || p.notes,
       recurring: true,
       academyKey: p.academyKey || null,
       status: 'upcoming',
@@ -9167,8 +9271,10 @@ refreshDashboard=function(){
       <button class="close-btn" onclick="closeModal(&#39;recurring-modal&#39;)">✕</button>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Client / Name *</label><input type="text" id="rcr-client" placeholder="e.g. Mostafa Ali"></div>
-      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rcr-phone" placeholder="e.g. 01012345678"></div>
+      <div class="form-group"><label>Client / Name *</label>
+        <div class="name-wrap"><input type="text" id="rcr-client" placeholder="e.g. Mostafa Ali" oninput="rcrNameAutoComplete(this.value)" autocomplete="off"><div class="suggestions" id="rcr-name-suggestions" style="display:none;"></div></div>
+      </div>
+      <div class="form-group"><label>Phone (for WhatsApp confirmation)</label><input type="text" id="rcr-phone" placeholder="e.g. 01012345678" oninput="rcrNameAutoComplete(this.value)"></div>
     </div>
     <div class="form-group"><label>Link to Academy (optional)</label><select id="rcr-academy-link" onchange="onRcrAcademyLinkChange()"><option value="">— None (regular client) —</option></select></div>
 
@@ -9206,6 +9312,7 @@ refreshDashboard=function(){
           <button type="button" class="rcr-day-btn" data-day="6" onclick="toggleRcrDay(this)" style="padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-size:13px;font-family:Sora,sans-serif;transition:all 0.15s;">Sat</button>
         </div>
       </div>
+      <div class="form-group"><label>Note for this room/timing (optional)</label><input type="text" id="rcr-line-note" placeholder="e.g. wants a screen, agreed discount"></div>
       <button class="btn btn-outline btn-full" onclick="addRcrLine()">➕ Add to Batch</button>
     </div>
 
