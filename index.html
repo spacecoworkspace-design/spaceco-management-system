@@ -5778,8 +5778,16 @@ async function addSnackItem(){
 // PRINT HELPER — always add logo
 // ============================================================
 function printHeader(subtitle){
-  var logoSrc=document.getElementById('sidebar-logo-img')?document.getElementById('sidebar-logo-img').src:'';
-  return (logoSrc?'<img src="'+logoSrc+'" class="print-logo-img" style="max-height:60px;display:block;margin:0 auto 4px;filter:invert(1);">'
+  // Paper is always a light surface, so always use LOGO_LIGHT_SRC (the
+  // purpose-built black wordmark) regardless of which theme is currently
+  // active in the live UI -- not sidebar-logo-img.src + a CSS invert
+  // filter. That combination only happened to look right in one of the
+  // two themes (the filter double-inverted whenever the black logo was
+  // already loaded, which is the app's own default theme now), and
+  // `filter` on an <img> is also not reliably preserved by every browser's
+  // print rendering in the first place.
+  var logoSrc=(typeof LOGO_LIGHT_SRC!=='undefined'&&LOGO_LIGHT_SRC)?LOGO_LIGHT_SRC:(document.getElementById('sidebar-logo-img')?document.getElementById('sidebar-logo-img').src:'');
+  return (logoSrc?'<img src="'+logoSrc+'" class="print-logo-img" style="max-height:60px;display:block;margin:0 auto 4px;">'
     :'<div class="print-logo">SPACE-CO</div>')
     +'<div class="print-sub">'+subtitle+'</div>';
 }
@@ -5904,7 +5912,10 @@ function exportAcademyRenewalWord(key){
   var docHours = (hrsInput && hrsInput.value) ? parseInt(hrsInput.value) : a.pkgHours;
   var docCost  = (costInput && costInput.value) ? parseInt(costInput.value) : a.pkgCost;
   var docPhone = (phoneInput && phoneInput.value) ? phoneInput.value.trim() : (a.phone||'');
-  var logoSrc=document.getElementById('sidebar-logo-img')?document.getElementById('sidebar-logo-img').src:'';
+  // Same reasoning as printHeader(): a Word doc is also a light/white
+  // surface, so always use the black wordmark regardless of the live UI's
+  // current theme, rather than whatever sidebar-logo-img currently holds.
+  var logoSrc=(typeof LOGO_LIGHT_SRC!=='undefined'&&LOGO_LIGHT_SRC)?LOGO_LIGHT_SRC:(document.getElementById('sidebar-logo-img')?document.getElementById('sidebar-logo-img').src:'');
   var logoHtml=logoSrc?'<div style="text-align:center;margin-bottom:8px;"><img src="'+logoSrc+'" style="max-height:60px;"></div>':'<div style="text-align:center;font-weight:bold;font-size:20px;margin-bottom:8px;">SPACE-CO</div>';
   var sigBlockEn=''
     +'<hr><table style="width:100%;margin-top:40px;" cellpadding="0" cellspacing="0"><tr>'
