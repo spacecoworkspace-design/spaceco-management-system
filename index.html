@@ -6703,8 +6703,12 @@ function extendReservationGrace(id){
   renderReservations();
 }
 
+// Reflects the ACTUAL grace time given, not always "20 minutes" — if staff
+// extended once (+15) before giving up, the client held the room for 35
+// minutes total (50 if extended twice), and the message should say so.
 function buildNoShowMessage(r){
-  return 'Hi '+r.client+', we held '+r.room+' for you today at '+fmt12(r.from)+' but weren\'t able to check you in within 20 minutes, so the booking was released.'
+  var totalMins=GRACE_PERIOD_MINS+(r.grace_extensions_used||0)*GRACE_EXTENSION_MINS;
+  return 'Hi '+r.client+', we held '+r.room+' for you today at '+fmt12(r.from)+' but weren\'t able to check you in within '+totalMins+' minutes, so your reservation was cancelled.'
     +'\n\nFeel free to book again any time.'
     +'\n— SpaceCo Workspace';
 }
