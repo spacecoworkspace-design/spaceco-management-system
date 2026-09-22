@@ -487,9 +487,10 @@
       <button class="nav-item" data-page="watemplates" id="nav-watemplates" onclick="showPage(&#39;watemplates&#39;,this);renderWaTemplates();"><span class="nav-icon">📱</span> WhatsApp Messages</button>
       <button class="nav-item" data-page="broadcast" id="nav-broadcast" onclick="showPage(&#39;broadcast&#39;,this);renderBroadcastRecipients();"><span class="nav-icon">📢</span> Broadcast</button>
       <button class="nav-item" data-page="sharedpkgs" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
+      <button class="nav-item" data-page="documents" onclick="showPage(&#39;documents&#39;,this);renderDocumentLibrary();"><span class="nav-icon">📁</span> Document Safe</button>
     </div>
     <div class="nav-group" data-category="academies">
-      <div class="nav-section">Academies <button class="nav-section-btn" onclick="openModal(&#39;add-academy-modal&#39;)" title="Add Academy">+</button></div>
+      <div class="nav-section">Academies <button class="nav-section-btn" onclick="openAddAcademyModal()" title="Add Academy">+</button></div>
       <div id="academy-nav"><button class="nav-item" onclick="showPage(&#39;ima&#39;,this)"><span class="nav-icon" style="color:#6c63ff;">◉</span> IMA Academy</button><button class="nav-item" onclick="showPage(&#39;skills&#39;,this)"><span class="nav-icon" style="color:#4da6ff;">◉</span> Skills Academy</button><button class="nav-item" onclick="showPage(&#39;magy&#39;,this)"><span class="nav-icon" style="color:#f5a623;">◉</span> MAGY Academy</button><button class="nav-item" onclick="showPage(&#39;ac_1783620101711&#39;,this)"><span class="nav-icon" style="color:#34d88b;">◉</span> Zaat Academy</button></div>
       <button class="nav-item" data-page="archived-academies" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
     </div>
@@ -678,6 +679,7 @@
     <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;" id="co-receipt">
       <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">Receipt</div>
       <div class="cost-row"><span style="color:var(--text2);">Room Cost</span><span class="money" id="co-room-cost" style="color:var(--amber);">0 LE</span></div>
+      <div class="cost-row" id="co-roomvisits-row" style="display:none;"><span style="color:var(--text2);">Room Visit(s)</span><span class="money" id="co-roomvisits-cost" style="color:var(--amber);">0 LE</span></div>
       <div class="cost-row"><span style="color:var(--text2);">Drinks &amp; Snacks</span><span class="money" id="co-drinks-cost" style="color:var(--teal);">0 LE</span></div>
       <div class="cost-row" id="co-discount-row" style="display:none;"><span style="color:var(--text2);">Discount</span><span class="money" id="co-discount-display" style="color:var(--red);">- 0 LE</span></div>
       <div class="cost-row total"><span>Grand Total</span><span class="money" id="co-grand-total" style="color:var(--green);font-size:18px;">0 LE</span></div>
@@ -994,6 +996,8 @@
         <option value="academy">Academies</option>
         <option value="session">Academy Sessions</option>
         <option value="reservation">Reservations</option>
+        <option value="cancelled_checkin">Cancelled Check-ins</option>
+        <option value="document">Documents</option>
       </select>
       <button class="btn btn-danger" onclick="emptyRecycleBin()" id="bin-empty-btn">🗑 Empty Bin</button>
     </div>
@@ -1164,6 +1168,32 @@
   </div>
 </div>
 
+<!-- DOCUMENT SAFE PAGE — a place to upload rules/contracts/other papers
+     once and print them anytime, instead of digging through folders. -->
+<div id="page-documents" class="page">
+  <div class="page-header flex-between">
+    <div>
+      <div class="page-title">📁 Document Safe</div>
+      <div class="page-sub">Upload the rules paper, contracts, and other documents here — print any of them anytime</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <select id="doc-filter-category" onchange="renderDocumentLibrary()" style="width:160px;">
+        <option value="all">All Categories</option>
+      </select>
+      <button class="btn btn-primary" onclick="openUploadDocumentModal()">+ Upload Document</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="doc-empty" style="text-align:center;padding:48px 0;color:var(--text3);display:none;">
+      <div style="font-size:36px;margin-bottom:12px;opacity:0.4;">📁</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">No Documents Yet</div>
+      <div style="font-size:13px;">Upload the rules paper, a contract template, or anything else you'll want to print later.</div>
+    </div>
+    <div id="doc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;"></div>
+  </div>
+</div>
+
 <!-- WHATSAPP MESSAGES MANAGER PAGE -->
 <div id="page-watemplates" class="page">
   <div class="page-header flex-between">
@@ -1283,13 +1313,14 @@
       <div class="form-group"><label>Date</label><input type="date" id="asm-date"></div>
       <div class="form-group"><label>Instructor</label><input type="text" id="asm-instructor" placeholder="Name"></div>
     </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+    <div class="form-row" id="asm-time-row" style="grid-template-columns:1fr 1fr;">
       <div class="form-group"><label>Time In</label><input type="time" id="asm-timein" oninput="previewDuration()"></div>
       <div class="form-group"><label>Time Out</label><input type="time" id="asm-timeout" oninput="previewDuration()"></div>
     </div>
-    <div class="form-group"><label>Session Type</label><input type="text" id="asm-type" placeholder="e.g. Training, Workshop"></div>
+    <div class="form-group"><label id="asm-type-label">Session Type</label><input type="text" id="asm-type" placeholder="e.g. Training, Workshop"></div>
     <div class="form-group"><label>Notes</label><textarea id="asm-notes" rows="2" placeholder="Optional..."></textarea></div>
     <div id="asm-duration-preview" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;display:none;">Duration: <strong id="asm-dur-text">-</strong></div>
+    <div id="asm-daily-note" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;display:none;">✓ This marks <strong>1 day</strong> of attendance for this date.</div>
     <button class="btn btn-primary btn-full" onclick="submitAcademySession()">Save Session</button>
   </div>
 </div>
@@ -1301,7 +1332,7 @@
     <!-- Current package summary -->
     <div id="renew-current-summary" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:14px;font-size:13px;"></div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>New Hours Purchased</label><input type="number" id="renew-hours" placeholder="e.g. 60" oninput="updateRenewPreview()"></div>
+      <div class="form-group"><label id="renew-hours-label">New Hours Purchased</label><input type="number" id="renew-hours" placeholder="e.g. 60" oninput="updateRenewPreview()"></div>
       <div class="form-group"><label>Package Cost (LE)</label><input type="number" id="renew-cost" placeholder="e.g. 7700"></div>
     </div>
     <div class="form-group"><label>Academy Phone Number</label><input type="text" id="renew-phone" placeholder="01X-XXXXXXXX"></div>
@@ -1380,8 +1411,15 @@
     <div class="modal-header"><div class="modal-title">Add New Academy</div><button class="close-btn" onclick="closeModal(&#39;add-academy-modal&#39;)">✕</button></div>
     <div class="form-group"><label>Academy Name *</label><input type="text" id="na-name" placeholder="e.g. Star Academy"></div>
     <div class="form-group"><label>Room Assignment</label><input type="text" id="na-room" placeholder="e.g. Room 1 (4 persons)"></div>
+    <div class="form-group">
+      <label>Package Type</label>
+      <select id="na-pkgtype" onchange="onNaPkgTypeChange()">
+        <option value="hours">Hourly package — log time in/out per session</option>
+        <option value="days">Daily package — just mark attendance each day (e.g. 5 days/week for a month)</option>
+      </select>
+    </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Package Hours</label><input type="number" id="na-hours" placeholder="e.g. 40"></div>
+      <div class="form-group"><label id="na-hours-label">Package Hours</label><input type="number" id="na-hours" placeholder="e.g. 40"></div>
       <div class="form-group"><label>Package Cost (LE)</label><input type="number" id="na-cost" placeholder="e.g. 5000"></div>
     </div>
     <div class="form-group">
@@ -1531,7 +1569,7 @@
       <div class="form-group"><label>Phone Number</label><input type="text" id="ep-phone" placeholder="01X-XXXXXXXX"></div>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Package Hours</label><input type="number" id="ep-hours" placeholder="60"></div>
+      <div class="form-group"><label id="ep-hours-label">Package Hours</label><input type="number" id="ep-hours" placeholder="60"></div>
       <div class="form-group"><label>Package Cost (LE)</label><input type="number" id="ep-cost" placeholder="7700"></div>
     </div>
     <div class="form-group"><label>Room</label><input type="text" id="ep-room" placeholder="e.g. Persons Room 6"></div>
@@ -1632,6 +1670,68 @@
     </div>
     <div class="form-group"><label>Notes</label><textarea id="wl-notes" rows="2" placeholder="Any notes..."></textarea></div>
     <button class="btn btn-success btn-full" onclick="saveWaitlist()">+ Add to Waitlist</button>
+  </div>
+</div>
+
+<!-- ROOM VISIT MODAL — lets a Shared Space guest borrow a private room for a
+     while without checking out; the room charge is folded into their single
+     Shared Space receipt when they finally check out. -->
+<div class="modal-overlay" id="room-visit-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header"><div class="modal-title">🚪 Take a Room — <span id="rvm-guest-name"></span></div><button class="close-btn" onclick="closeModal(&#39;room-visit-modal&#39;)">✕</button></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">They'll keep their Shared Space seat — this just adds a private room to their tab for the time they're in it.</div>
+    <div class="form-group">
+      <label>Room *</label>
+      <div id="rvm-room-grid" class="room-grid"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Guests in the room</label><input type="number" id="rvm-guests" min="1" value="1"></div>
+      <div class="form-group"><label>Time In</label><input type="time" id="rvm-timein"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="rvm-confirm-btn" onclick="confirmRoomVisit()" disabled>Select a room</button>
+  </div>
+</div>
+
+<!-- END ROOM VISIT MODAL — lets staff record the actual time a guest came
+     back from a room, instead of always stamping "now". -->
+<div class="modal-overlay" id="end-room-visit-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">↩ Back from <span id="ervm-room-name"></span></div><button class="close-btn" onclick="closeModal(&#39;end-room-visit-modal&#39;)">✕</button></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;"><span id="ervm-guest-name"></span> went into <span id="ervm-room-name2"></span> at <span id="ervm-timein"></span>.</div>
+    <div class="form-group"><label>Time They Came Back</label><input type="time" id="ervm-timeout"></div>
+    <button class="btn btn-primary btn-full" onclick="confirmEndRoomVisit()">✓ Confirm Return</button>
+  </div>
+</div>
+
+<!-- CANCEL CHECK-IN MODAL — voids an active check-in entirely (no charge,
+     no receipt) for cases like a guest asked to leave before paying. Kept
+     in the Recycle Bin so it's auditable and reversible if clicked by mistake. -->
+<div class="modal-overlay" id="cancel-checkin-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title">🚫 Cancel Check-in — <span id="cc-guest-name"></span></div><button class="close-btn" onclick="closeModal(&#39;cancel-checkin-modal&#39;)">✕</button></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">This removes them from Active Sessions with <strong>no charge and no receipt</strong> — use it when a guest leaves (or is asked to leave) without paying. It's kept in the Recycle Bin for 30 days in case this was a mistake.</div>
+    <div class="form-group"><label>Reason (optional)</label><textarea id="cc-reason" rows="2" placeholder="e.g. asked to leave, no payment"></textarea></div>
+    <button class="btn btn-danger btn-full" onclick="confirmCancelCheckin()">🚫 Confirm Cancel — No Charge</button>
+  </div>
+</div>
+
+<!-- UPLOAD DOCUMENT MODAL -->
+<div class="modal-overlay" id="upload-document-modal">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header"><div class="modal-title">📁 Upload Document</div><button class="close-btn" onclick="closeModal(&#39;upload-document-modal&#39;)">✕</button></div>
+    <div class="form-group"><label>Document Name *</label><input type="text" id="doc-name" placeholder="e.g. House Rules"></div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="doc-category">
+        <option value="Rules">Rules</option>
+        <option value="Contract">Contract</option>
+        <option value="Policy">Policy</option>
+        <option value="Price List">Price List</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>File * (PDF or image)</label><input type="file" id="doc-file-input" accept=".pdf,.png,.jpg,.jpeg" oninput="onDocFileChange()"></div>
+    <button class="btn btn-primary btn-full" id="doc-upload-confirm-btn" onclick="confirmUploadDocument()" disabled>Select a file</button>
   </div>
 </div>
 
@@ -1965,6 +2065,7 @@ function initData(){
   adminPass=loadData('adminPass','1234');
   drinkOrders=loadData('drinkOrders',[]);
   recycleBin=loadData('recycleBin',[]);
+  documentLibrary=loadData('documentLibrary',[]);
   archivedAcademies=loadData('archivedAcademies',[]);
   staff=loadData('staff',[
     {id:'aya',name:'Aya',shift:'9:00 AM – 4:00 PM',color:'var(--accent)'},
@@ -2112,7 +2213,7 @@ var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
   checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',
   shifts:'finance',staffdebts:'finance',expenses:'finance',
-  watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',
+  watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
   recyclebin:'system'
 };
@@ -2353,14 +2454,26 @@ function renderActiveSessions(){
   }
   el.innerHTML=activeSessions.map(function(s){
     var elapsed=calcHours(s.timeIn, nowTime());
+    var openVisit=(s.roomVisits||[]).find(function(v){return !v.timeOut;});
+    var closedVisits=(s.roomVisits||[]).filter(function(v){return v.timeOut;});
+    var roomVisitBtn='';
+    if(s.roomKey==='sharedSpace'){
+      roomVisitBtn=openVisit
+        ?'<button class="btn btn-outline btn-sm" onclick="openEndRoomVisitModal('+s.id+','+openVisit.id+')">↩ Back from '+openVisit.room+'</button>'
+        :'<button class="btn btn-outline btn-sm" onclick="openRoomVisitModal('+s.id+')">🚪 Take a Room</button>';
+    }
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
       +'<div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>'
       +'<div style="flex:1;">'
       +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+' · '+elapsed.toFixed(1)+' hrs so far</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
+      +(openVisit?'<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+openVisit.room+' since '+fmt12(openVisit.timeIn)+'</div>':'')
+      +(closedVisits.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+closedVisits.length+' room visit(s) — '+closedVisits.reduce(function(a,v){return a+(v.cost||0);},0)+' LE</div>':'')
       +'</div>'
-      +'<button class="btn btn-outline btn-sm" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
+      +roomVisitBtn
+      +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
+      +'<button class="btn btn-danger btn-sm" style="margin-left:8px;" title="Void this check-in — no charge" onclick="openCancelCheckinModal('+s.id+')">✕ Cancel</button>'
       +'</div>';
   }).join('');
 }
@@ -2404,6 +2517,176 @@ function checkInGuest(){
   if(pkgStatusEl)pkgStatusEl.style.display='none';
 
   renderActiveSessions();
+}
+
+// ============================================================
+// ROOM VISITS — lets a Shared Space guest borrow a private room for a
+// while and come back, without checking out of their Shared Space seat.
+// Each closed visit's cost is folded into the room charge on their single
+// eventual checkout/receipt (see calcCheckoutTotal/submitCheckout below).
+// ============================================================
+var _roomVisitSessionId=null;
+var _roomVisitSelectedKey=null;
+var ROOM_VISIT_ROOMS=[
+  {key:'room1',name:'Room 1',cap:'4 persons'},
+  {key:'room2',name:'Room 2',cap:'4 persons'},
+  {key:'room3',name:'Room 3',cap:'6 persons'},
+  {key:'room4',name:'Room 4',cap:'8 persons'},
+  {key:'drawingRoom',name:'Drawing Room',cap:'Tiered pricing'},
+  {key:'classRoom',name:'Class Room',cap:'Per hour'}
+];
+
+// Sums a session's room-visit charges. Open visits (still out in the room)
+// are estimated using `previewEnd` so the checkout preview stays live;
+// closed visits use their own stored timeOut and never change again.
+function roomVisitsTotalCost(session,previewEnd){
+  var perPersonRooms=['sharedSpace','drawingRoom'];
+  return (session.roomVisits||[]).reduce(function(sum,v){
+    var tout=v.timeOut||previewEnd;
+    var hrs=calcHours(v.timeIn,tout);
+    var base=calcCost(v.roomKey,hrs);
+    var guests=parseInt(v.guests)||1;
+    var cost=perPersonRooms.indexOf(v.roomKey)!==-1?base*guests:base;
+    return sum+cost;
+  },0);
+}
+
+function openRoomVisitModal(sessionId){
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===sessionId;});
+  if(!s)return;
+  _roomVisitSessionId=sessionId;
+  _roomVisitSelectedKey=null;
+  document.getElementById('rvm-guest-name').textContent=s.name;
+  document.getElementById('rvm-guests').value=s.guests||1;
+  document.getElementById('rvm-timein').value=nowTime();
+  renderRoomVisitRoomGrid();
+  var btn=document.getElementById('rvm-confirm-btn');
+  btn.disabled=true;btn.textContent='Select a room';
+  openModal('room-visit-modal');
+}
+
+function renderRoomVisitRoomGrid(){
+  var el=document.getElementById('rvm-room-grid');
+  if(!el)return;
+  el.innerHTML=ROOM_VISIT_ROOMS.map(function(r){
+    var busy=activeSessions.some(function(x){return x.roomKey===r.key;})
+      ||activeSessions.some(function(x){return (x.roomVisits||[]).some(function(v){return !v.timeOut&&v.roomKey===r.key;});});
+    return '<div class="room-card'+(busy?' occupied':'')+'" data-roomkey="'+r.key+'" onclick="'+(busy?'':'selectRoomVisitRoom(this,\''+r.key+'\')')+'" style="'+(busy?'opacity:0.5;cursor:not-allowed;':'')+'">'
+      +'<div class="room-name">'+r.name+'</div>'
+      +'<div class="room-price" style="font-size:10px;">'+getPriceLabel(r.key)+'</div>'
+      +'<div class="room-cap" style="color:var(--teal);margin-top:4px;">'+(busy?'In use':r.cap)+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function selectRoomVisitRoom(el,roomKey){
+  document.querySelectorAll('#rvm-room-grid .room-card').forEach(function(r){r.classList.remove('selected');});
+  el.classList.add('selected');
+  _roomVisitSelectedKey=roomKey;
+  var btn=document.getElementById('rvm-confirm-btn');
+  btn.disabled=false;btn.textContent='Confirm — Take This Room';
+}
+
+function confirmRoomVisit(){
+  if(!_roomVisitSelectedKey){showToast('Please select a room',true);return;}
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===_roomVisitSessionId;});
+  if(!s)return;
+  var room=ROOM_VISIT_ROOMS.find(function(r){return r.key===_roomVisitSelectedKey;});
+  var tin=document.getElementById('rvm-timein').value||nowTime();
+  var guests=parseInt(document.getElementById('rvm-guests').value)||1;
+  s.roomVisits=s.roomVisits||[];
+  s.roomVisits.push({id:Date.now(),room:room.name,roomKey:room.key,timeIn:tin,timeOut:null,guests:guests,cost:null});
+  saveData('activeSessions',activeSessions);
+  closeModal('room-visit-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  showToast(s.name+' is now in '+room.name+' 🚪');
+}
+
+// Computes and stamps a room visit's cost once its timeOut is known —
+// shared by the "Back from Room" modal and the auto-close-at-checkout path.
+function closeRoomVisit(v,timeOutValue){
+  v.timeOut=timeOutValue;
+  var hrs=calcHours(v.timeIn,v.timeOut);
+  var perPersonRooms=['sharedSpace','drawingRoom'];
+  var base=calcCost(v.roomKey,hrs);
+  v.cost=perPersonRooms.indexOf(v.roomKey)!==-1?base*(parseInt(v.guests)||1):base;
+  return v.cost;
+}
+
+var _endVisitSessionId=null;
+var _endVisitId=null;
+
+// Opens a small modal to record WHEN the guest actually came back, instead
+// of always stamping the click time — staff often notice a few minutes late.
+function openEndRoomVisitModal(sessionId,visitId){
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===sessionId;});
+  if(!s)return;
+  var v=(s.roomVisits||[]).find(function(x){return x.id===visitId;});
+  if(!v||v.timeOut)return;
+  _endVisitSessionId=sessionId;
+  _endVisitId=visitId;
+  document.getElementById('ervm-guest-name').textContent=s.name;
+  document.getElementById('ervm-room-name').textContent=v.room;
+  document.getElementById('ervm-room-name2').textContent=v.room;
+  document.getElementById('ervm-timein').textContent=fmt12(v.timeIn);
+  document.getElementById('ervm-timeout').value=nowTime();
+  openModal('end-room-visit-modal');
+}
+
+function confirmEndRoomVisit(){
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===_endVisitSessionId;});
+  if(!s){closeModal('end-room-visit-modal');return;}
+  var v=(s.roomVisits||[]).find(function(x){return x.id===_endVisitId;});
+  if(!v||v.timeOut){closeModal('end-room-visit-modal');return;}
+  var tout=document.getElementById('ervm-timeout').value;
+  if(!tout){showToast('Please enter the time they came back',true);return;}
+  if(calcHours(v.timeIn,tout)<0){showToast('Warning: that\'s before they went in — check the time',true);}
+  var cost=closeRoomVisit(v,tout);
+  saveData('activeSessions',activeSessions);
+  closeModal('end-room-visit-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  showToast(s.name+' is back from '+v.room+' — '+cost+' LE added to their tab');
+}
+
+// ── CANCEL CHECK-IN — void an active session entirely, no charge/receipt ──
+var _cancelCheckinSessionId=null;
+function openCancelCheckinModal(sessionId){
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===sessionId;});
+  if(!s)return;
+  _cancelCheckinSessionId=sessionId;
+  document.getElementById('cc-guest-name').textContent=s.name;
+  document.getElementById('cc-reason').value='';
+  openModal('cancel-checkin-modal');
+}
+
+function confirmCancelCheckin(){
+  activeSessions=loadData('activeSessions',[]);
+  var s=activeSessions.find(function(x){return x.id===_cancelCheckinSessionId;});
+  if(!s){closeModal('cancel-checkin-modal');return;}
+  var reason=document.getElementById('cc-reason').value.trim();
+  recycleBin=loadData('recycleBin',[]);
+  recycleBin.push({
+    binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),
+    type:'cancelled_checkin',
+    deletedAt:new Date().toISOString(),
+    data:JSON.parse(JSON.stringify(s)),
+    extra:{reason:reason,cancelledAt:nowTime(),cancelledBy:currentUser?currentUser.id:null}
+  });
+  saveData('recycleBin',recycleBin);
+  activeSessions=activeSessions.filter(function(x){return x.id!==_cancelCheckinSessionId;});
+  saveData('activeSessions',activeSessions);
+  closeModal('cancel-checkin-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  updateBinBadge();
+  showToast(s.name+'\'s check-in cancelled — no charge (kept in Recycle Bin)');
 }
 
 // ── CHECKOUT ──
@@ -2664,11 +2947,15 @@ function buildReceiptMessage(visit,grand,payment){
   };
   var tmpl=getActiveTemplate('checkout_receipt_text');
   if(tmpl)return renderTemplate(tmpl.message_body,vars);
+  var roomVisitsLine=(visit.roomVisits&&visit.roomVisits.length)
+    ?'Also used: '+visit.roomVisits.map(function(v){return v.room+' ('+(v.cost||0)+' LE)';}).join(', ')+'\n'
+    :'';
   return 'Hi '+vars.client_name+', thanks for visiting Space-Co!\n\n'
     +'Date: '+vars.date+'\n'
     +'Room: '+vars.room+'\n'
     +'Duration: '+vars.duration+'\n'
     +'Room Cost: '+vars.room_cost+' LE\n'
+    +roomVisitsLine
     +'Drinks & Snacks: '+vars.snacks_cost+' LE\n'
     +'Grand Total: '+vars.total+' LE\n'
     +'Paid via: '+vars.payment_method+'\n\n'
@@ -2732,10 +3019,17 @@ function buildPackageCheckinMessage(visit,pkg,tab,drinksCost){
   };
   var tmpl=getActiveTemplate('package_checkin');
   if(tmpl)return squeezeBlankLines(renderTemplate(tmpl.message_body,vars));
+  // Package check-ins are otherwise "free", so if they also borrowed a
+  // private room that charge needs to be visible here — nowhere else in
+  // this message mentions a room cost.
+  var roomVisitsSection=(visit.roomVisits&&visit.roomVisits.length)
+    ?'Room used: '+visit.roomVisits.map(function(v){return v.room+' ('+(v.cost||0)+' LE)';}).join(', ')+'\n'
+    :'';
   return squeezeBlankLines(
     'Hi '+vars.client_name+', thanks for checking in today!\n\n'
     +'Visit '+vars.visit_number+' of '+vars.total_visits+'\n'
     +'Date: '+vars.date+'\n\n'
+    +roomVisitsSection
     +vars.drinks_section+'\n'
     +'See you next time!\nSpaceCo Workspace'
   );
@@ -3378,12 +3672,22 @@ function calcCheckoutTotal(){
 
   var pkg=spActivePackageForName(s.name,s.roomKey);
 
+  // Room-visit charges are never covered by a Shared Space package — the
+  // package only covers the Shared Space seat itself — so this is added
+  // after the package's free-room-cost decision below, not before it.
+  var roomVisitsCost=roomVisitsTotalCost(s,tout);
+
   // s.tab is kept live-updated by updateSessionTab() on every add/remove
   var tab=s.tab||[];
   var drinksCost=tab.reduce(function(a,x){return a+x.total;},0);
-  var grand=(pkg?0:roomCost)+drinksCost;
+  var grand=(pkg?0:roomCost)+roomVisitsCost+drinksCost;
 
   document.getElementById('co-room-cost').textContent=pkg?'0 LE (Package day)':roomCost+' LE';
+  var rvRow=document.getElementById('co-roomvisits-row');
+  if(rvRow){
+    rvRow.style.display=roomVisitsCost>0?'':'none';
+    document.getElementById('co-roomvisits-cost').textContent=roomVisitsCost+' LE';
+  }
   document.getElementById('co-drinks-cost').textContent=drinksCost+' LE';
   document.getElementById('co-grand-total').textContent=grand+' LE';
 }
@@ -3419,6 +3723,16 @@ function submitCheckout(){
     }
   }
 
+  // Close out any room visit the guest never manually ended (they left
+  // straight from the room, or forgot to click "Back") using the checkout
+  // time itself, then fold every room visit's cost into the room charge —
+  // a Shared Space package covers the seat, never a private room excursion.
+  (s.roomVisits||[]).forEach(function(v){
+    if(!v.timeOut)closeRoomVisit(v,tout);
+  });
+  var roomVisitsCost=(s.roomVisits||[]).reduce(function(sum,v){return sum+(v.cost||0);},0);
+  roomCost+=roomVisitsCost;
+
   var tab=s.tab||[];
   var drinksCost=tab.reduce(function(a,x){return a+x.total;},0);
 
@@ -3448,6 +3762,8 @@ function submitCheckout(){
     cost:roomCost,cash:roomCash,instapay:roomIP,cashier:checkoutCashier,
     discount:discount,
     notes:s.notes,usedPackage:usedPackage,
+    roomVisits:(s.roomVisits&&s.roomVisits.length)?JSON.parse(JSON.stringify(s.roomVisits)):undefined,
+    roomVisitsCost:roomVisitsCost||undefined,
     rating:_coRating||0,feedback:(document.getElementById('co-feedback-comment')||{}).value||'',
     created_by:currentUser?currentUser.id:null
   };
@@ -3552,7 +3868,7 @@ function tryTrialClient(){
     openSessionModal(pageId);
     document.getElementById('asm-instructor').value=tc.name;
     document.getElementById('asm-notes').value='🧪 Trial session (test data — safe to delete)';
-    showToast('🧪 Trial session filled in — set times and save to test!');
+    showToast(acIsDaily(academies[pageId])?'🧪 Trial attendance filled in — save to test!':'🧪 Trial session filled in — set times and save to test!');
   } else {
     // No form to fill on this tab — just drop a ready-made trial visit
     // straight into the Client Log so you can see it in context.
@@ -3810,6 +4126,9 @@ function printInvoice(visit){
     +'<div class="print-row"><span>Time Out</span><span>'+fmt12(visit.timeOut)+'</span></div>'
     +'<div class="print-row"><span>Duration</span><span>'+visit.hours+' hrs</span></div>'
     +(visit.guests&&visit.guests>1?'<div class="print-row"><span>Guests</span><span>'+visit.guests+'</span></div>':'')
+    +((visit.roomVisits&&visit.roomVisits.length)?
+      '<div class="print-row"><span>Also used</span><span>'+visit.roomVisits.map(function(v){return v.room+' ('+fmt12(v.timeIn)+'–'+fmt12(v.timeOut)+', '+(v.cost||0)+' LE)';}).join(', ')+'</span></div>'
+      :'')
     +'<hr class="print-divider">'
     +(pkg?
       '<div class="print-section-title">☕ Shared Space Package</div>'
@@ -4382,6 +4701,22 @@ function refreshDashboard(){
   renderAcademyDash();
 }
 
+// ============================================================
+// ACADEMY PACKAGE-TYPE HELPERS — 'hours' (default, existing behavior)
+// or 'days'. A daily-package academy still uses pkgHours/debtHours and
+// session.duration internally (1 unit = 1 day, always a flat 1 per
+// attendance mark) so all the existing balance/renewal/history math
+// keeps working untouched; these helpers only change what's displayed.
+// ============================================================
+function acIsDaily(a){ return !!a && a.packageType==='days'; }
+function acUnitWord(a,n){
+  if(acIsDaily(a)) return Math.abs(n)===1?'day':'days';
+  return Math.abs(n)===1?'hr':'hrs';
+}
+function acUnitLabel(a){ return acIsDaily(a)?'Days':'Hours'; }
+function acFmtUnits(a,n){ n=parseFloat(n)||0; return acIsDaily(a)?String(Math.round(n)):n.toFixed(1); }
+function acLowThreshold(a){ return acIsDaily(a)?3:5; }
+
 function renderAcademyDash(){
   var acCols={};
   academyOrder.forEach(function(k){
@@ -4395,7 +4730,7 @@ function renderAcademyDash(){
     var rem=Math.max(0,a.pkgHours-used);
     var pct=Math.round((used/a.pkgHours)*100);
     var bc=pct>90?'progress-red':pct>70?'progress-amber':'progress-green';
-    return '<div class="stat"><div class="stat-label">'+a.name+'</div><div style="font-size:20px;font-weight:600;color:'+acCols[k]+';">'+rem.toFixed(1)+' hrs</div><div style="font-size:11px;color:var(--text3);margin:4px 0 8px;">remaining of '+a.pkgHours+'</div><div class="progress-bar"><div class="progress-fill '+bc+'" style="width:'+pct+'%"></div></div>'+(rem<=5?'<div class="badge badge-red mt-8" style="font-size:10px;margin-top:8px;">Low hours!</div>':'')+'</div>';
+    return '<div class="stat"><div class="stat-label">'+a.name+'</div><div style="font-size:20px;font-weight:600;color:'+acCols[k]+';">'+acFmtUnits(a,rem)+' '+acUnitWord(a,rem)+'</div><div style="font-size:11px;color:var(--text3);margin:4px 0 8px;">remaining of '+a.pkgHours+'</div><div class="progress-bar"><div class="progress-fill '+bc+'" style="width:'+pct+'%"></div></div>'+(rem<=acLowThreshold(a)?'<div class="badge badge-red mt-8" style="font-size:10px;margin-top:8px;">Low '+acUnitLabel(a).toLowerCase()+'!</div>':'')+'</div>';
   }).join('');
 }
 
@@ -4959,38 +5294,44 @@ var currentAcademy=null;
 function renderAcademy(key){
   currentAcademy=key;
   var a=academies[key];
+  var daily=acIsDaily(a);
+  var unit=acUnitLabel(a); // 'Hours' or 'Days'
   var debt=parseFloat(a.debtHours)||0;
   var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
   var rem=Math.max(0,a.pkgHours-used);
+  var lowThresh=acLowThreshold(a);
   var pct=Math.min(100,Math.round((used/a.pkgHours)*100));
   var bc=pct>90?'progress-red':pct>70?'progress-amber':'progress-green';
   var col=a.color||'#6c63ff';
   var el=document.getElementById('academy-content-'+key);
   if(!el)return;
+  var theadCells=daily
+    ?'<th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Cumulative</th><th>Remaining</th><th>Notes</th><th></th>'
+    :'<th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Time In</th><th>Time Out</th><th>Duration</th><th>Cumulative</th><th>Remaining</th><th>Notes</th><th></th>';
   el.innerHTML=
     '<div class="page-header flex-between">'
-    +'<div><div class="page-title">'+a.name+' <button class="btn btn-outline btn-sm" onclick="quickRenameAcademy(\''+key+'\')" title="Rename Academy" style="font-size:11px;padding:2px 8px;vertical-align:middle;margin-left:6px;">✏️ Rename</button></div><div class="page-sub">'+a.room+' — Advance-paid hour package</div></div>'
+    +'<div><div class="page-title">'+a.name+' <button class="btn btn-outline btn-sm" onclick="quickRenameAcademy(\''+key+'\')" title="Rename Academy" style="font-size:11px;padding:2px 8px;vertical-align:middle;margin-left:6px;">✏️ Rename</button></div><div class="page-sub">'+a.room+' — Advance-paid '+(daily?'day':'hour')+' package</div></div>'
     +'<div style="display:flex;gap:10px;">'
     +(isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteAcademy(\''+key+'\')">Delete Academy</button>':'')
     +(isAdmin?'<button class="btn btn-amber btn-sm" onclick="archiveAcademy(\''+key+'\')">🗂 Archive</button>':'')
     +'<button class="btn btn-outline" onclick="openEditPaperModal(\''+key+'\')">✏️ Edit Paper</button>'
     +'<button class="btn btn-outline" onclick="openRenewModal(\''+key+'\')">Renew Package</button>'
-    +'<button class="btn btn-primary" onclick="openSessionModal(\''+key+'\')">+ Log Session</button>'
+    +'<button class="btn btn-primary" onclick="openSessionModal(\''+key+'\')">'+(daily?'+ Mark Attendance':'+ Log Session')+'</button>'
     +'</div></div>'
-    +(rem<=5?'<div class="alert alert-danger">⚠ Only '+rem.toFixed(1)+' hours remaining! Please renew soon.</div>':'')
+    +(rem<=lowThresh?'<div class="alert alert-danger">⚠ Only '+acFmtUnits(a,rem)+' '+acUnitWord(a,rem)+' remaining! Please renew soon.</div>':'')
     +'<div class="grid-4 mb-16">'
-    +'<div class="stat"><div class="stat-label">Hours Purchased</div><div class="stat-value">'+a.pkgHours+'</div><div class="stat-sub">current package</div></div>'
-    +'<div class="stat"><div class="stat-label">Hours Used</div><div class="stat-value" style="color:'+col+';">'+used.toFixed(1)+'</div><div class="stat-sub">'+a.sessions.length+' sessions</div></div>'
-    +'<div class="stat"><div class="stat-label">Hours Remaining</div><div class="stat-value" style="color:'+(rem<=5?'var(--red)':rem<=15?'var(--amber)':'var(--green)')+';">'+rem.toFixed(1)+'</div><div class="stat-sub">'+(100-pct)+'% left</div></div>'
-    +'<div class="stat"><div class="stat-label">Package Cost</div><div class="stat-value money" style="color:'+col+';">'+a.pkgCost.toLocaleString()+' LE</div><div class="stat-sub">'+a.pkgHours+' hours total</div></div>'
+    +'<div class="stat"><div class="stat-label">'+unit+' Purchased</div><div class="stat-value">'+a.pkgHours+'</div><div class="stat-sub">current package</div></div>'
+    +'<div class="stat"><div class="stat-label">'+unit+' Used</div><div class="stat-value" style="color:'+col+';">'+acFmtUnits(a,used)+'</div><div class="stat-sub">'+a.sessions.length+(daily?' day(s) attended':' sessions')+'</div></div>'
+    +'<div class="stat"><div class="stat-label">'+unit+' Remaining</div><div class="stat-value" style="color:'+(rem<=lowThresh?'var(--red)':rem<=lowThresh*3?'var(--amber)':'var(--green)')+';">'+acFmtUnits(a,rem)+'</div><div class="stat-sub">'+(100-pct)+'% left</div></div>'
+    +'<div class="stat"><div class="stat-label">Package Cost</div><div class="stat-value money" style="color:'+col+';">'+a.pkgCost.toLocaleString()+' LE</div><div class="stat-sub">'+a.pkgHours+' '+acUnitWord(a,a.pkgHours)+' total</div></div>'
     +'</div>'
     +'<div class="card mb-16"><div class="card-title">Package Usage</div>'
     +'<div style="display:flex;align-items:center;gap:16px;"><div style="flex:1;"><div class="progress-bar" style="height:16px;"><div class="progress-fill '+bc+'" style="width:'+pct+'%;"></div></div></div><div style="font-size:14px;font-weight:600;min-width:48px;">'+pct+'%</div></div>'
-    +'<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--text3);"><span>0 hrs</span><span>'+a.pkgHours+' hrs</span></div></div>'
-    +'<div class="card"><div class="card-title flex-between"><span>Session Log — Current Package</span><button class="btn btn-outline btn-sm" onclick="printAcademySessions(\''+key+'\')">🖨 Print</button></div>'
-    +(a.debtHours&&a.debtHours>0?'<div class="alert alert-warning" style="margin-bottom:12px;">⚠ This package started with <strong>'+parseFloat(a.debtHours).toFixed(2)+' hrs</strong> carried over from previous package (used in advance).</div>':'')
+    +'<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--text3);"><span>0 '+acUnitWord(a,0)+'</span><span>'+a.pkgHours+' '+acUnitWord(a,a.pkgHours)+'</span></div></div>'
+    +'<div class="card"><div class="card-title flex-between"><span>'+(daily?'Attendance Log':'Session Log')+' — Current Package</span><button class="btn btn-outline btn-sm" onclick="printAcademySessions(\''+key+'\')">🖨 Print</button></div>'
+    +(a.debtHours&&a.debtHours>0?'<div class="alert alert-warning" style="margin-bottom:12px;">⚠ This package started with <strong>'+acFmtUnits(a,a.debtHours)+' '+acUnitWord(a,a.debtHours)+'</strong> carried over from previous package (used in advance).</div>':'')
     +'<div class="table-wrap"><table>'
-    +'<thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Time In</th><th>Time Out</th><th>Duration</th><th>Cumulative</th><th>Remaining</th><th>Notes</th><th></th></tr></thead>'
+    +'<thead><tr>'+theadCells+'</tr></thead>'
     +'<tbody id="academy-sessions-'+key+'">'+renderAcademySessions(key)+'</tbody>'
     +'</table></div></div>'
     +renderPackageHistory(key);
@@ -4998,18 +5339,29 @@ function renderAcademy(key){
 
 function renderAcademySessions(key){
   var a=academies[key];
-  if(!a.sessions.length)return '<tr class="empty-row"><td colspan="11">No sessions logged yet</td></tr>';
+  var daily=acIsDaily(a);
+  var colspan=daily?8:11;
+  if(!a.sessions.length)return '<tr class="empty-row"><td colspan="'+colspan+'">'+(daily?'No attendance marked yet':'No sessions logged yet')+'</td></tr>';
   var debt=parseFloat(a.debtHours)||0;
+  var lowThresh=acLowThreshold(a);
   var cumulative=debt; // start from debt so remaining is accurate
   return a.sessions.map(function(s,i){
     cumulative+=(parseFloat(s.duration)||0);
     var rem=Math.max(0,a.pkgHours-cumulative);
     var isInDebt=cumulative<=debt;
+    var remColor=rem<=lowThresh?'var(--red)':rem<=lowThresh*3?'var(--amber)':'var(--green)';
+    if(daily){
+      return '<tr'+(isInDebt?' style="opacity:0.55;"':'')+'><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td>'
+        +'<td>'+acFmtUnits(a,cumulative)+'</td>'
+        +'<td style="color:'+remColor+';">'+acFmtUnits(a,rem)+'</td>'
+        +'<td style="color:var(--text3);font-size:12px;">'+(s.notes||'-')+'</td>'
+        +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditSession(\''+key+'\','+i+')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteSession(\''+key+'\','+i+')">✕</button></td></tr>';
+    }
     return '<tr'+(isInDebt?' style="opacity:0.55;"':'')+'><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td>'
       +'<td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td>'
       +'<td><strong>'+parseFloat(s.duration).toFixed(2)+'</strong></td>'
       +'<td>'+cumulative.toFixed(2)+'</td>'
-      +'<td style="color:'+(rem<=5?'var(--red)':rem<=15?'var(--amber)':'var(--green)')+';">'+rem.toFixed(2)+'</td>'
+      +'<td style="color:'+remColor+';">'+rem.toFixed(2)+'</td>'
       +'<td style="color:var(--text3);font-size:12px;">'+(s.notes||'-')+'</td>'
       +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditSession(\''+key+'\','+i+')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteSession(\''+key+'\','+i+')">✕</button></td></tr>';
   }).join('');
@@ -5017,26 +5369,38 @@ function renderAcademySessions(key){
 
 function printAcademySessions(key){
   var a=academies[key];
+  var daily=acIsDaily(a);
+  var unit=acUnitLabel(a);
   var debt=parseFloat(a.debtHours)||0;
   var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
   var pa=document.getElementById('print-area');
   pa.innerHTML=
-    printHeader(a.name+' — Session Log')
+    printHeader(a.name+' — '+(daily?'Attendance Log':'Session Log'))
     +'<hr class="print-divider">'
     +'<div class="print-row"><span>Room</span><span>'+a.room+'</span></div>'
-    +'<div class="print-row"><span>Package Hours</span><span>'+a.pkgHours+' hrs</span></div>'
-    +'<div class="print-row"><span>Hours Used</span><span>'+used.toFixed(2)+' hrs</span></div>'
-    +'<div class="print-row bold"><span>Hours Remaining</span><span>'+Math.max(0,a.pkgHours-used).toFixed(2)+' hrs</span></div>'
+    +'<div class="print-row"><span>Package '+unit+'</span><span>'+a.pkgHours+' '+acUnitWord(a,a.pkgHours)+'</span></div>'
+    +'<div class="print-row"><span>'+unit+' Used</span><span>'+acFmtUnits(a,used)+' '+acUnitWord(a,used)+'</span></div>'
+    +'<div class="print-row bold"><span>'+unit+' Remaining</span><span>'+acFmtUnits(a,Math.max(0,a.pkgHours-used))+' '+acUnitWord(a,Math.max(0,a.pkgHours-used))+'</span></div>'
     +'<hr class="print-divider">'
-    +'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>In</th><th>Out</th><th>Duration</th><th>Cumulative</th></tr></thead><tbody>'
-    +(function(){
-      var cum=0;
-      return a.sessions.map(function(s,i){
-        cum+=(parseFloat(s.duration)||0);
-        return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td><td>'+parseFloat(s.duration).toFixed(2)+'</td><td>'+cum.toFixed(2)+'</td></tr>';
-      }).join('');
-    })()
-    +'</tbody></table>'
+    +(daily
+      ?'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Cumulative</th></tr></thead><tbody>'
+        +(function(){
+          var cum=0;
+          return a.sessions.map(function(s,i){
+            cum+=(parseFloat(s.duration)||0);
+            return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+acFmtUnits(a,cum)+'</td></tr>';
+          }).join('');
+        })()
+        +'</tbody></table>'
+      :'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>In</th><th>Out</th><th>Duration</th><th>Cumulative</th></tr></thead><tbody>'
+        +(function(){
+          var cum=0;
+          return a.sessions.map(function(s,i){
+            cum+=(parseFloat(s.duration)||0);
+            return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td><td>'+parseFloat(s.duration).toFixed(2)+'</td><td>'+cum.toFixed(2)+'</td></tr>';
+          }).join('');
+        })()
+        +'</tbody></table>')
     +'<div class="print-footer">Space-Co Management System</div>';
   window.print();
 }
@@ -5046,35 +5410,52 @@ function printOldPackageSessions(key, pkgIndex){
   var a=academies[key];
   if(!a||!a.packages||!a.packages[pkgIndex])return;
   var pkg=a.packages[pkgIndex];
-  var pkgLabel='Package #'+(pkgIndex+1)+' — '+pkg.pkgHours+' hrs @ '+pkg.pkgCost.toLocaleString()+' LE';
+  var daily=acIsDaily(a);
+  var unit=acUnitLabel(a);
+  var pkgLabel='Package #'+(pkgIndex+1)+' — '+pkg.pkgHours+' '+acUnitWord(a,pkg.pkgHours)+' @ '+pkg.pkgCost.toLocaleString()+' LE';
   var pa=document.getElementById('print-area');
   pa.innerHTML=
-    printHeader(a.name+' — Session Log ('+pkgLabel+')')
+    printHeader(a.name+' — '+(daily?'Attendance Log':'Session Log')+' ('+pkgLabel+')')
     +'<hr class="print-divider">'
     +'<div class="print-row"><span>Room</span><span>'+a.room+'</span></div>'
-    +'<div class="print-row"><span>Package Hours</span><span>'+pkg.pkgHours+' hrs</span></div>'
-    +'<div class="print-row"><span>Hours Used</span><span>'+pkg.usedHours.toFixed(2)+' hrs</span></div>'
+    +'<div class="print-row"><span>Package '+unit+'</span><span>'+pkg.pkgHours+' '+acUnitWord(a,pkg.pkgHours)+'</span></div>'
+    +'<div class="print-row"><span>'+unit+' Used</span><span>'+acFmtUnits(a,pkg.usedHours)+' '+acUnitWord(a,pkg.usedHours)+'</span></div>'
     +(pkg.renewedAt?'<div class="print-row"><span>Renewed On</span><span>'+formatDate(pkg.renewedAt)+'</span></div>':'')
     +'<hr class="print-divider">'
-    +'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>In</th><th>Out</th><th>Duration</th><th>Cumulative</th></tr></thead><tbody>'
-    +(function(){
-      var cum=0;
-      return (pkg.sessions||[]).map(function(s,i){
-        cum+=(parseFloat(s.duration)||0);
-        return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td><td>'+parseFloat(s.duration).toFixed(2)+'</td><td>'+cum.toFixed(2)+'</td></tr>';
-      }).join('');
-    })()
-    +'</tbody></table>'
+    +(daily
+      ?'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Cumulative</th></tr></thead><tbody>'
+        +(function(){
+          var cum=0;
+          return (pkg.sessions||[]).map(function(s,i){
+            cum+=(parseFloat(s.duration)||0);
+            return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+acFmtUnits(a,cum)+'</td></tr>';
+          }).join('');
+        })()
+        +'</tbody></table>'
+      :'<table class="print-table"><thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>In</th><th>Out</th><th>Duration</th><th>Cumulative</th></tr></thead><tbody>'
+        +(function(){
+          var cum=0;
+          return (pkg.sessions||[]).map(function(s,i){
+            cum+=(parseFloat(s.duration)||0);
+            return '<tr><td>'+(i+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td><td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td><td>'+parseFloat(s.duration).toFixed(2)+'</td><td>'+cum.toFixed(2)+'</td></tr>';
+          }).join('');
+        })()
+        +'</tbody></table>')
     +'<div class="print-footer">Space-Co Management System</div>';
   window.print();
 }
 
 function openSessionModal(key){
   currentAcademy=key;
-  document.getElementById('asm-title').textContent='Log Session — '+academies[key].name;
+  var a=academies[key];
+  var daily=acIsDaily(a);
+  document.getElementById('asm-title').textContent=(daily?'Mark Attendance — ':'Log Session — ')+a.name;
   document.getElementById('asm-date').value=today();
   ['asm-instructor','asm-timein','asm-timeout','asm-type','asm-notes'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('asm-duration-preview').style.display='none';
+  document.getElementById('asm-time-row').style.display=daily?'none':'';
+  document.getElementById('asm-type-label').textContent=daily?'Type (optional)':'Session Type';
+  document.getElementById('asm-daily-note').style.display=daily?'block':'none';
   openModal('academy-session-modal');
 }
 
@@ -5087,13 +5468,26 @@ function previewDuration(){
 }
 
 function submitAcademySession(){
+  var a=academies[currentAcademy];
+  var daily=acIsDaily(a);
+  var debt=parseFloat(a.debtHours)||0;
+  var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
+
+  if(daily){
+    var d=document.getElementById('asm-date').value||today();
+    if(1>a.pkgHours-used){showToast('Warning: exceeds remaining days!',true);}
+    a.sessions.push({date:d,instructor:document.getElementById('asm-instructor').value,timeIn:null,timeOut:null,duration:1,type:document.getElementById('asm-type').value,notes:document.getElementById('asm-notes').value});
+    saveData('academies',academies);
+    closeModal('academy-session-modal');
+    renderAcademy(currentAcademy);
+    showToast('Attendance marked!');
+    return;
+  }
+
   var tin=document.getElementById('asm-timein').value;
   var tout=document.getElementById('asm-timeout').value;
   var hrs=calcHours(tin,tout);
   if(hrs<=0){showToast('Please enter valid time in and out',true);return;}
-  var a=academies[currentAcademy];
-  var debt=parseFloat(a.debtHours)||0;
-  var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
   if(hrs>a.pkgHours-used){showToast('Warning: exceeds remaining hours!',true);}
   a.sessions.push({date:document.getElementById('asm-date').value,instructor:document.getElementById('asm-instructor').value,timeIn:tin,timeOut:tout,duration:hrs.toFixed(2),type:document.getElementById('asm-type').value,notes:document.getElementById('asm-notes').value});
   saveData('academies',academies);
@@ -5120,9 +5514,11 @@ function deleteSession(key,idx){
 function openRenewModal(key){
   currentAcademy=key;
   var a=academies[key];
+  var unit=acUnitLabel(a);
   document.getElementById('renew-hours').value=a.pkgHours;
   document.getElementById('renew-cost').value=a.pkgCost;
   document.getElementById('renew-phone').value=a.phone||'';
+  document.getElementById('renew-hours-label').textContent='New '+unit+' Purchased';
   // Show current package summary
   var debt=parseFloat(a.debtHours)||0;
   var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
@@ -5131,11 +5527,11 @@ function openRenewModal(key){
   var summaryEl=document.getElementById('renew-current-summary');
   summaryEl.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">Current Package Status</div>'
     +'<div style="display:flex;gap:20px;flex-wrap:wrap;">'
-    +'<span>📦 Hours Purchased: <strong>'+a.pkgHours+'</strong></span>'
-    +'<span>⏱ Hours Used: <strong>'+used.toFixed(2)+'</strong></span>'
+    +'<span>📦 '+unit+' Purchased: <strong>'+a.pkgHours+'</strong></span>'
+    +'<span>⏱ '+unit+' Used: <strong>'+acFmtUnits(a,used)+'</strong></span>'
     +(overUsed>0
-      ?'<span style="color:var(--red);">⚠ Used in Advance: <strong>'+overUsed.toFixed(2)+' hrs</strong> (will be deducted from new package)</span>'
-      :'<span style="color:var(--green);">✓ Remaining: <strong>'+rem.toFixed(2)+' hrs</strong></span>')
+      ?'<span style="color:var(--red);">⚠ Used in Advance: <strong>'+acFmtUnits(a,overUsed)+' '+acUnitWord(a,overUsed)+'</strong> (will be deducted from new package)</span>'
+      :'<span style="color:var(--green);">✓ Remaining: <strong>'+acFmtUnits(a,rem)+' '+acUnitWord(a,rem)+'</strong></span>')
     +'</div>';
   updateRenewPreview();
   // Pre-fill payment date to today
@@ -5151,8 +5547,8 @@ function openRenewModal(key){
 function confirmRenew(){
   var hrs=parseInt(document.getElementById('renew-hours').value);
   var cost=parseInt(document.getElementById('renew-cost').value);
-  if(!hrs||!cost){showToast('Please fill hours and cost',true);return;}
   var a=academies[currentAcademy];
+  if(!hrs||!cost){showToast('Please fill '+acUnitLabel(a).toLowerCase()+' and cost',true);return;}
   // ── Archive current package into history ──
   if(!a.packages)a.packages=[];
   var prevDebt=parseFloat(a.debtHours)||0;
@@ -5219,7 +5615,7 @@ function confirmRenew(){
   renderAcademy(currentAcademy);
   refreshDashboard();
   var msg = overUsed > 0
-    ? 'Package renewed. '+overUsed.toFixed(2)+' hrs debt carried. '+cost.toLocaleString()+' LE added to shift!'
+    ? 'Package renewed. '+acFmtUnits(a,overUsed)+' '+acUnitWord(a,overUsed)+' debt carried. '+cost.toLocaleString()+' LE added to shift!'
     : 'Package renewed. '+cost.toLocaleString()+' LE added to shift payments ✓';
   showToast(msg);
 }
@@ -5234,6 +5630,23 @@ document.querySelectorAll('.color-dot').forEach(function(dot){
   });
 });
 
+function openAddAcademyModal(){
+  ['na-name','na-room','na-hours','na-cost'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('na-enforce-noshow').checked=true;
+  document.getElementById('na-pkgtype').value='hours';
+  onNaPkgTypeChange();
+  openModal('add-academy-modal');
+}
+
+// Toggles the Package Hours/Days label + placeholder as the Add Academy
+// modal's Package Type dropdown changes. Purely cosmetic — addNewAcademy()
+// reads the dropdown value itself when it saves.
+function onNaPkgTypeChange(){
+  var isDaily=document.getElementById('na-pkgtype').value==='days';
+  document.getElementById('na-hours-label').textContent=isDaily?'Package Days':'Package Hours';
+  document.getElementById('na-hours').placeholder=isDaily?'e.g. 20':'e.g. 40';
+}
+
 function addNewAcademy(){
   var name=document.getElementById('na-name').value.trim();
   if(!name){showToast('Academy name is required',true);return;}
@@ -5241,6 +5654,7 @@ function addNewAcademy(){
   academies[key]={
     name:name,
     room:document.getElementById('na-room').value.trim()||'TBD',
+    packageType:document.getElementById('na-pkgtype').value==='days'?'days':'hours',
     pkgHours:parseInt(document.getElementById('na-hours').value)||0,
     pkgCost:parseInt(document.getElementById('na-cost').value)||0,
     sessions:[],
@@ -5352,6 +5766,7 @@ function renderArchivedAcademies(){
   listEl.innerHTML=filtered.map(function(entry,i){
     var a=entry.data;
     var col=a.color||'#6c63ff';
+    var lowThresh=acLowThreshold(a);
     var debt=parseFloat(a.debtHours)||0;
     var used=debt+(a.sessions||[]).reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
     var rem=Math.max(0,a.pkgHours-used);
@@ -5373,12 +5788,12 @@ function renderArchivedAcademies(){
     h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">';
     h+='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Packages</div><div style="font-size:18px;font-weight:600;">'+pkgCount+'</div></div>';
     h+='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Sessions</div><div style="font-size:18px;font-weight:600;">'+(a.sessions?a.sessions.length:0)+'</div></div>';
-    h+='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Hrs Left (Last Pkg)</div><div style="font-size:18px;font-weight:600;color:'+(rem<=5?'var(--red)':'var(--green)')+';">'+rem.toFixed(1)+'</div></div>';
+    h+='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">'+acUnitWord(a,rem)+' Left (Last Pkg)</div><div style="font-size:18px;font-weight:600;color:'+(rem<=lowThresh?'var(--red)':'var(--green)')+';">'+acFmtUnits(a,rem)+'</div></div>';
     h+='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Last Pkg Cost</div><div style="font-size:18px;font-weight:600;font-family:Cairo,sans-serif;">'+a.pkgCost.toLocaleString()+' LE</div></div>';
     h+='</div>';
     h+='<div><div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Last Package Usage</div>';
     h+='<div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div class=\"progress-bar\"><div class=\"progress-fill '+bc+'\" style=\"width:'+pct+'%;\"></div></div></div>';
-    h+='<div style="font-size:12px;color:var(--text2);min-width:80px;">'+used.toFixed(1)+' / '+a.pkgHours+' hrs</div></div></div>';
+    h+='<div style="font-size:12px;color:var(--text2);min-width:80px;">'+acFmtUnits(a,used)+' / '+a.pkgHours+' '+acUnitWord(a,a.pkgHours)+'</div></div></div>';
     h+='</div>';
     return h;
   }).join('');
@@ -5533,7 +5948,7 @@ function renderAcademyEditor(){
       +'<div class="card-title" style="color:'+a.color+';">'+a.name+'</div>'
       +'<div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">'
       +'<div class="form-group"><label>Academy Name</label><input type="text" id="ae-name-'+k+'" value="'+a.name+'"></div>'
-      +'<div class="form-group"><label>Package Hours</label><input type="number" id="ae-hrs-'+k+'" value="'+a.pkgHours+'"></div>'
+      +'<div class="form-group"><label>Package '+acUnitLabel(a)+'</label><input type="number" id="ae-hrs-'+k+'" value="'+a.pkgHours+'"></div>'
       +'<div class="form-group"><label>Package Cost (LE)</label><input type="number" id="ae-cost-'+k+'" value="'+a.pkgCost+'"></div>'
       +'</div>'
       +'<div class="form-group"><label>Room Assignment</label><input type="text" id="ae-room-'+k+'" value="'+a.room+'"></div>'
@@ -5596,11 +6011,13 @@ function openEditPaperModal(key){
   document.getElementById('ep-cost').value=a.pkgCost;
   document.getElementById('ep-room').value=a.room||'';
   document.getElementById('ep-date').value=today();
+  document.getElementById('ep-hours-label').textContent='Package '+acUnitLabel(a);
   openModal('edit-paper-modal');
 }
 function saveAndPrintPaper(){
   var key=editPaperAcademyKey;
   var a=academies[key];
+  var daily=acIsDaily(a);
   a.paperPerson=document.getElementById('ep-person').value.trim();
   a.paperCompany=document.getElementById('ep-company').value.trim();
   a.phone=document.getElementById('ep-phone').value.trim();
@@ -5618,15 +6035,15 @@ function saveAndPrintPaper(){
     +(a.paperCompany?'<div class="print-row"><span>Company</span><span>'+a.paperCompany+'</span></div>':'')
     +(a.phone?'<div class="print-row"><span>Phone</span><span>'+a.phone+'</span></div>':'')
     +'<hr class="print-divider">'
-    +'<div style="font-size:13px;margin-bottom:12px;">Based on the updated subscription system and required usage hours, we would like to inform you of the updated monthly subscription details:</div>'
-    +'<div class="print-row bold"><span>Package</span><span>'+a.pkgHours+' Hours / Month</span></div>'
+    +'<div style="font-size:13px;margin-bottom:12px;">Based on the updated subscription system and required usage '+(daily?'days':'hours')+', we would like to inform you of the updated monthly subscription details:</div>'
+    +'<div class="print-row bold"><span>Package</span><span>'+a.pkgHours+' '+acUnitLabel(a)+' / Month</span></div>'
     +'<div class="print-row"><span>Room</span><span>'+a.room+'</span></div>'
     +'<div class="print-row bold" style="font-size:18px;"><span>Final Price</span><span>'+a.pkgCost.toLocaleString()+' LE / Month</span></div>'
     +'<hr class="print-divider">'
     +'<div class="print-section-title">Terms & Conditions</div>'
     +'<div style="font-size:13px;line-height:2;">'
     +'• Subscription valid for one month from activation date<br>'
-    +'• All hours must be used within the same month<br>'
+    +'• All '+(daily?'days':'hours')+' must be used within the same month<br>'
     +'• Schedule and attendance days must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
     +'• Private locker service available for 200 LE/month'
@@ -5846,8 +6263,133 @@ function printAcademyAttachment(key,i){
     window.print();
   }
 }
+
+// ============================================================
+// DOCUMENT SAFE — upload rules/contracts/other papers once, print anytime.
+// Stored the same way academy attachments are (base64 in the synced JSON
+// blob) rather than a real file host, matching this app's existing pattern.
+// ============================================================
+function renderDocumentLibrary(){
+  documentLibrary=loadData('documentLibrary',[]);
+  var filterEl=document.getElementById('doc-filter-category');
+  if(filterEl){
+    var cats=[];
+    documentLibrary.forEach(function(d){if(cats.indexOf(d.category)===-1)cats.push(d.category);});
+    var current=filterEl.value||'all';
+    filterEl.innerHTML='<option value="all">All Categories</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    filterEl.value=cats.indexOf(current)!==-1?current:'all';
+  }
+  var filterVal=filterEl?filterEl.value:'all';
+  var filtered=filterVal==='all'?documentLibrary:documentLibrary.filter(function(d){return d.category===filterVal;});
+
+  var listEl=document.getElementById('doc-list');
+  var emptyEl=document.getElementById('doc-empty');
+  if(!listEl)return;
+  if(!filtered.length){
+    listEl.innerHTML='';
+    if(emptyEl)emptyEl.style.display='';
+    return;
+  }
+  if(emptyEl)emptyEl.style.display='none';
+
+  var sorted=filtered.slice().sort(function(a,b){return new Date(b.uploadedAt)-new Date(a.uploadedAt);});
+  listEl.innerHTML=sorted.map(function(d){
+    var icon=d.type==='application/pdf'?'📄':'🖼️';
+    var dateStr=new Date(d.uploadedAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    return '<div class="card" style="padding:14px;">'
+      +'<div style="font-size:28px;margin-bottom:8px;">'+icon+'</div>'
+      +'<div style="font-weight:600;font-size:14px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+d.name+'">'+d.name+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;">'+d.category+' · '+dateStr+'</div>'
+      +'<div style="display:flex;gap:8px;">'
+      +'<button class="btn btn-outline btn-sm" onclick="printDocument(\''+d.id+'\')">🖨 Print</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteDocument(\''+d.id+'\')">✕</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function openUploadDocumentModal(){
+  document.getElementById('doc-name').value='';
+  document.getElementById('doc-category').value='Rules';
+  document.getElementById('doc-file-input').value='';
+  var btn=document.getElementById('doc-upload-confirm-btn');
+  btn.disabled=true;btn.textContent='Select a file';
+  openModal('upload-document-modal');
+}
+
+function onDocFileChange(){
+  var input=document.getElementById('doc-file-input');
+  var btn=document.getElementById('doc-upload-confirm-btn');
+  if(!input.files||!input.files[0]){btn.disabled=true;btn.textContent='Select a file';return;}
+  var file=input.files[0];
+  var nameEl=document.getElementById('doc-name');
+  if(!nameEl.value.trim())nameEl.value=file.name.replace(/\.[^.]+$/,'');
+  btn.disabled=false;
+  btn.textContent='Upload "'+file.name+'"';
+}
+
+function confirmUploadDocument(){
+  var input=document.getElementById('doc-file-input');
+  if(!input.files||!input.files[0]){showToast('Please choose a file',true);return;}
+  var name=document.getElementById('doc-name').value.trim();
+  if(!name){showToast('Please enter a document name',true);return;}
+  var category=document.getElementById('doc-category').value;
+  var file=input.files[0];
+  var reader=new FileReader();
+  reader.onload=function(e){
+    documentLibrary=loadData('documentLibrary',[]);
+    documentLibrary.push({
+      id:'doc_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),
+      name:name,category:category,data:e.target.result,type:file.type,
+      fileName:file.name,uploadedAt:new Date().toISOString()
+    });
+    saveData('documentLibrary',documentLibrary);
+    closeModal('upload-document-modal');
+    renderDocumentLibrary();
+    showToast('"'+name+'" uploaded ✓');
+  };
+  reader.readAsDataURL(file);
+}
+
+function printDocument(id){
+  documentLibrary=loadData('documentLibrary',[]);
+  var d=documentLibrary.find(function(x){return x.id===id;});
+  if(!d)return;
+  var pa=document.getElementById('print-area');
+  if(d.type==='application/pdf'){
+    pa.innerHTML='<iframe src="'+d.data+'" style="width:100%;height:100vh;border:none;"></iframe>';
+    setTimeout(function(){window.print();},500);
+  } else {
+    pa.innerHTML='<img src="'+d.data+'" style="max-width:100%;max-height:90vh;display:block;margin:0 auto;">';
+    window.print();
+  }
+}
+
+function deleteDocument(id){
+  documentLibrary=loadData('documentLibrary',[]);
+  var d=documentLibrary.find(function(x){return x.id===id;});
+  if(!d)return;
+  document.getElementById('confirm-modal-msg').textContent='Delete "'+d.name+'"? It will be moved to the Recycle Bin (recoverable for 30 days).';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    recycleBin=loadData('recycleBin',[]);
+    recycleBin.push({binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),type:'document',deletedAt:new Date().toISOString(),data:d});
+    saveData('recycleBin',recycleBin);
+    documentLibrary=documentLibrary.filter(function(x){return x.id!==id;});
+    saveData('documentLibrary',documentLibrary);
+    closeModal('confirm-modal');
+    renderDocumentLibrary();
+    updateBinBadge();
+    showToast('Document moved to Recycle Bin');
+  };
+  openModal('confirm-modal');
+}
+
 function printAcademyRenewalPaper(key){
   var a=academies[key];
+  var daily=acIsDaily(a);
+  var unitEn=daily?'days':'hours';
+  var unitAr=daily?'يوم':'ساعة';
+  var unitArPlural=daily?'الأيام':'الساعات';
   // BUG 1 FIX: Read from input fields so print shows the NEW (updated) package, not the old one
   var hrsInput=document.getElementById('renew-hours');
   var costInput=document.getElementById('renew-cost');
@@ -5871,13 +6413,13 @@ function printAcademyRenewalPaper(key){
     +'<div class="print-row"><span>Company / Client</span><span>'+a.name+'</span></div>'
     +(printPhone?'<div class="print-row"><span>Phone</span><span>'+printPhone+'</span></div>':'')
     +'<div class="print-row"><span>Room</span><span>'+a.room+'</span></div>'
-    +'<div class="print-row"><span>Package Hours</span><span>'+printHours+' hours / month</span></div>'
+    +'<div class="print-row"><span>Package '+(daily?'Days':'Hours')+'</span><span>'+printHours+' '+unitEn+' / month</span></div>'
     +'<div class="print-row bold"><span>Package Cost</span><span>'+printCost.toLocaleString()+' LE / month</span></div>'
     +'<hr class="print-divider">'
     +'<div class="print-section-title">Terms & Conditions</div>'
     +'<div style="font-size:13px;line-height:1.8;">'
     +'• Subscription valid for one month from activation date<br>'
-    +'• All hours must be used within the same month<br>'
+    +'• All '+unitEn+' must be used within the same month<br>'
     +'• Schedule must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
     +'• Private locker service available for 200 LE/month'
@@ -5891,13 +6433,13 @@ function printAcademyRenewalPaper(key){
     +'<div class="print-row print-rtl"><span>الشركة / العميل</span><span>'+a.name+'</span></div>'
     +(printPhone?'<div class="print-row print-rtl"><span>رقم الهاتف</span><span>'+printPhone+'</span></div>':'')
     +'<div class="print-row print-rtl"><span>القاعة</span><span>'+a.room+'</span></div>'
-    +'<div class="print-row print-rtl"><span>عدد الساعات</span><span>'+printHours+' ساعة / شهر</span></div>'
+    +'<div class="print-row print-rtl"><span>عدد '+unitArPlural+'</span><span>'+printHours+' '+unitAr+' / شهر</span></div>'
     +'<div class="print-row bold print-rtl"><span>قيمة الاشتراك</span><span>'+printCost.toLocaleString()+' جنيه / شهر</span></div>'
     +'<hr class="print-divider">'
     +'<div class="print-section-title print-rtl">الشروط والأحكام</div>'
     +'<div class="print-rtl" style="font-size:13px;line-height:1.8;">'
     +'• الاشتراك ساري لمدة شهر واحد من تاريخ التفعيل<br>'
-    +'• يجب استخدام جميع الساعات خلال نفس الشهر<br>'
+    +'• يجب استخدام جميع '+unitArPlural+' خلال نفس الشهر<br>'
     +'• يجب تأكيد الجدول الزمني قبل بدء الاشتراك<br>'
     +'• يجب إخطارنا مسبقًا بأي تغييرات في الجدول الزمني<br>'
     +'• خدمة الخزانة الخاصة متاحة مقابل 200 جنيه / شهر'
@@ -5912,6 +6454,10 @@ function printAcademyRenewalPaper(key){
 // Reads the same form fields as the print version so the exported doc matches.
 function exportAcademyRenewalWord(key){
   var a=academies[key];
+  var daily=acIsDaily(a);
+  var unitEn=daily?'days':'hours';
+  var unitAr=daily?'يوم':'ساعة';
+  var unitArPlural=daily?'الأيام':'الساعات';
   var hrsInput=document.getElementById('renew-hours');
   var costInput=document.getElementById('renew-cost');
   var phoneInput=document.getElementById('renew-phone');
@@ -5947,12 +6493,12 @@ function exportAcademyRenewalWord(key){
     +'<p><b>Company / Client:</b> '+a.name+'</p>'
     +(docPhone?'<p><b>Phone:</b> '+docPhone+'</p>':'')
     +'<p><b>Room:</b> '+a.room+'</p>'
-    +'<p><b>Package Hours:</b> '+docHours+' hours / month</p>'
+    +'<p><b>Package '+(daily?'Days':'Hours')+':</b> '+docHours+' '+unitEn+' / month</p>'
     +'<p><b>Package Cost:</b> '+docCost.toLocaleString()+' LE / month</p>'
     +'<hr><h3>Terms &amp; Conditions</h3>'
     +'<p>'
     +'• Subscription valid for one month from activation date<br>'
-    +'• All hours must be used within the same month<br>'
+    +'• All '+unitEn+' must be used within the same month<br>'
     +'• Schedule must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
     +'• Private locker service available for 200 LE/month'
@@ -5966,12 +6512,12 @@ function exportAcademyRenewalWord(key){
     +'<p><b>الشركة / العميل:</b> '+a.name+'</p>'
     +(docPhone?'<p><b>رقم الهاتف:</b> '+docPhone+'</p>':'')
     +'<p><b>القاعة:</b> '+a.room+'</p>'
-    +'<p><b>عدد الساعات:</b> '+docHours+' ساعة / شهر</p>'
+    +'<p><b>عدد '+unitArPlural+':</b> '+docHours+' '+unitAr+' / شهر</p>'
     +'<p><b>قيمة الاشتراك:</b> '+docCost.toLocaleString()+' جنيه / شهر</p>'
     +'<hr><h3>الشروط والأحكام</h3>'
     +'<p>'
     +'• الاشتراك ساري لمدة شهر واحد من تاريخ التفعيل<br>'
-    +'• يجب استخدام جميع الساعات خلال نفس الشهر<br>'
+    +'• يجب استخدام جميع '+unitArPlural+' خلال نفس الشهر<br>'
     +'• يجب تأكيد الجدول الزمني قبل بدء الاشتراك<br>'
     +'• يجب إخطارنا مسبقًا بأي تغييرات في الجدول الزمني<br>'
     +'• خدمة الخزانة الخاصة متاحة مقابل 200 جنيه / شهر'
@@ -7265,7 +7811,7 @@ function daysLeft(deletedAt){
 }
 
 function binTypeLabel(type){
-  var map={client:'👤 Client',visit:'📋 Visit',drink_order:'☕ Drink Order',shift:'⊕ Shift Record',academy:'🎓 Academy',session:'📚 Session',reservation:'📅 Reservation'};
+  var map={client:'👤 Client',visit:'📋 Visit',drink_order:'☕ Drink Order',shift:'⊕ Shift Record',academy:'🎓 Academy',session:'📚 Session',reservation:'📅 Reservation',cancelled_checkin:'🚫 Cancelled Check-in',document:'📁 Document'};
   return map[type]||type;
 }
 
@@ -7279,6 +7825,8 @@ function binItemSummary(item){
     case 'academy': return d.name||'Unknown Academy';
     case 'session': return (item.extra&&item.extra.academyName?item.extra.academyName+': ':'')+formatDate(d.date)+(d.instructor?' · '+d.instructor:'');
     case 'reservation': return (d.client||'?')+' · '+formatDate(d.date)+' · '+(d.room||'');
+    case 'cancelled_checkin': return (d.name||'?')+' · '+(d.room||'');
+    case 'document': return d.name||'Unknown Document';
     default: return JSON.stringify(d).substr(0,60);
   }
 }
@@ -7292,9 +7840,18 @@ function binItemDetails(item){
     case 'visit': return (d.room||'')+(d.hours?' · '+d.hours+'h':'')+' · '+(d.cost||0)+' LE';
     case 'drink_order': return (d.total||0)+' LE · '+(d.payment||'');
     case 'shift': return (d.cashier||'')+(d.total?' · '+(d.total)+' LE':'');
-    case 'academy': return (d.pkgHours||0)+'h package · '+(d.sessions?d.sessions.length:0)+' sessions';
-    case 'session': return formatDate(d.date)+' · '+(d.instructor||'')+(d.duration?' · '+d.duration+'h':'');
+    case 'academy': return (d.pkgHours||0)+(acIsDaily(d)?'d':'h')+' package · '+(d.sessions?d.sessions.length:0)+' sessions';
+    case 'session':
+      var sessAcademy=(item.extra&&item.extra.academyKey)?academies[item.extra.academyKey]:null;
+      var sessUnit=sessAcademy&&acIsDaily(sessAcademy)?'d':'h';
+      return formatDate(d.date)+' · '+(d.instructor||'')+(d.duration?' · '+d.duration+sessUnit:'');
     case 'reservation': return (d.from?fmt12(d.from):'')+' – '+(d.to?fmt12(d.to):'')+( d.notes?' · '+d.notes:'');
+    case 'cancelled_checkin':
+      var cancelledAt=(item.extra&&item.extra.cancelledAt)?item.extra.cancelledAt:null;
+      var sat=(d.timeIn&&cancelledAt)?calcHours(d.timeIn,cancelledAt):null;
+      var reason=(item.extra&&item.extra.reason)?item.extra.reason:'';
+      return (d.timeIn?'In: '+fmt12(d.timeIn):'')+(cancelledAt?' · Left: '+fmt12(cancelledAt):'')+(sat!==null?' · '+Math.round(sat*60)+' min':'')+(reason?' · '+reason:'');
+    case 'document': return (d.category||'')+(d.fileName?' · '+d.fileName:'');
     default: return '';
   }
 }
@@ -7391,6 +7948,7 @@ function performRestore(item){
   drinkOrders=loadData('drinkOrders',[]);
   academies=loadData('academies',{});
   academyOrder=loadData('academyOrder',[]);
+  documentLibrary=loadData('documentLibrary',[]);
 
   switch(item.type){
     case 'client':
@@ -7445,6 +8003,22 @@ function performRestore(item){
       if(!reservations.find(function(r){return r.id===item.data.id;})){
         reservations.push(item.data);
         saveData('reservations',reservations);
+      }
+      break;
+    case 'cancelled_checkin':
+      activeSessions=loadData('activeSessions',[]);
+      if(!activeSessions.find(function(x){return x.id===item.data.id;})){
+        activeSessions.push(item.data);
+        saveData('activeSessions',activeSessions);
+        renderActiveSessions();
+        if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+      }
+      break;
+    case 'document':
+      if(!documentLibrary.find(function(x){return x.id===item.data.id;})){
+        documentLibrary.push(item.data);
+        saveData('documentLibrary',documentLibrary);
+        renderDocumentLibrary();
       }
       break;
   }
@@ -7611,6 +8185,7 @@ function openEditSession(key, idx) {
   var a = academies[key];
   if(!a || !a.sessions[idx]) return;
   var s = a.sessions[idx];
+  var daily = acIsDaily(a);
   _editingSessionKey = key;
   _editingSessionIdx = idx;
   document.getElementById('ess-date').value = s.date || '';
@@ -7620,23 +8195,27 @@ function openEditSession(key, idx) {
   document.getElementById('ess-timeout').value = s.timeOut || '';
   document.getElementById('ess-duration').value = s.duration || '';
   document.getElementById('ess-notes').value = s.notes || '';
+  document.getElementById('ess-timein-group').style.display = daily ? 'none' : '';
+  document.getElementById('ess-timeout-group').style.display = daily ? 'none' : '';
+  document.getElementById('ess-duration-label').textContent = daily ? 'Days' : 'Duration (hrs)';
   openModal('edit-session-modal');
 }
 function saveEditSession() {
   var a = academies[_editingSessionKey];
   if(!a || _editingSessionIdx === null) return;
   var s = a.sessions[_editingSessionIdx];
+  var daily = acIsDaily(a);
   s.date = document.getElementById('ess-date').value;
   s.instructor = document.getElementById('ess-instructor').value.trim();
   s.type = document.getElementById('ess-type').value.trim();
-  s.timeIn = document.getElementById('ess-timein').value;
-  s.timeOut = document.getElementById('ess-timeout').value;
+  s.timeIn = daily ? null : document.getElementById('ess-timein').value;
+  s.timeOut = daily ? null : document.getElementById('ess-timeout').value;
   s.duration = parseFloat(document.getElementById('ess-duration').value) || 0;
   s.notes = document.getElementById('ess-notes').value.trim();
   saveData('academies', academies);
   closeModal('edit-session-modal');
   renderAcademy(_editingSessionKey);
-  showToast('Session updated ✓');
+  showToast((daily?'Attendance':'Session')+' updated ✓');
 }
 
 // ── Edit Reservation ──
@@ -7854,7 +8433,43 @@ function printEditedReceipt() {
 function renderPackageHistory(key) {
   var a = academies[key];
   if (!a.packages || !a.packages.length) return '';
-  return '<div class="card mt-16">'    + '<div class="card-title">📦 Package History ('+a.packages.length+' previous packages)</div>'    + a.packages.map(function(pkg, pi) {      var pkgLabel = 'Package #'+(pi+1)+' — '+pkg.pkgHours+' hrs @ '+pkg.pkgCost.toLocaleString()+' LE';      var renewed = pkg.renewedAt ? ' (renewed '+formatDate(pkg.renewedAt)+')' : '';      return '<div style="margin-bottom:12px;">'        + '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);" onclick="togglePkgHistory(\''+key+'\','+pi+')">'        + '<span style="font-size:13px;font-weight:600;">'+pkgLabel+renewed+'</span>'        + '<span style="font-size:12px;color:var(--text3);">Used: '+pkg.usedHours+' hrs'        + (pkg.overUsed>0?' &nbsp;|&nbsp; <span style="color:var(--red);">⚠ '+pkg.overUsed+' hrs debt carried</span>':'')        + '</span>'        + '<span style="color:var(--text3);font-size:14px;" id="pkgchev-'+key+'-'+pi+'">▶</span>'        + '</div>'        + '<div id="pkghist-'+key+'-'+pi+'" style="display:none;margin-top:6px;">'        + (pkg.sessions && pkg.sessions.length          ? '<div style="text-align:right;margin-bottom:6px;"><button class="btn btn-outline btn-sm" onclick="printOldPackageSessions(\''+key+'\','+pi+')">🖨 Print Old Package Sessions</button></div>'            + '<div class="table-wrap"><table>'            + '<thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Time In</th><th>Time Out</th><th>Duration</th><th>Notes</th></tr></thead><tbody>'            + pkg.sessions.map(function(s, si) {              return '<tr><td>'+(si+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td>'                +'<td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td>'                +'<td>'+parseFloat(s.duration).toFixed(2)+' hrs</td>'                +'<td style="font-size:12px;color:var(--text3);">'+(s.notes||'-')+'</td></tr>';            }).join('')            + '</tbody></table></div>'          : '<div style="padding:12px;color:var(--text3);font-size:13px;">No sessions in this package</div>')        + '</div>'        + '</div>';    }).join('')    + '</div>';}
+  var daily = acIsDaily(a);
+  return '<div class="card mt-16">'
+    + '<div class="card-title">📦 Package History ('+a.packages.length+' previous packages)</div>'
+    + a.packages.map(function(pkg, pi) {
+        var pkgLabel = 'Package #'+(pi+1)+' — '+pkg.pkgHours+' '+acUnitWord(a,pkg.pkgHours)+' @ '+pkg.pkgCost.toLocaleString()+' LE';
+        var renewed = pkg.renewedAt ? ' (renewed '+formatDate(pkg.renewedAt)+')' : '';
+        var tableHtml = pkg.sessions && pkg.sessions.length
+          ? '<div style="text-align:right;margin-bottom:6px;"><button class="btn btn-outline btn-sm" onclick="printOldPackageSessions(\''+key+'\','+pi+')">🖨 Print Old Package Sessions</button></div>'
+            + '<div class="table-wrap"><table>'
+            + (daily
+              ? '<thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Notes</th></tr></thead><tbody>'
+                + pkg.sessions.map(function(s, si) {
+                    return '<tr><td>'+(si+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td>'
+                      +'<td style="font-size:12px;color:var(--text3);">'+(s.notes||'-')+'</td></tr>';
+                  }).join('')
+              : '<thead><tr><th>#</th><th>Date</th><th>Instructor</th><th>Type</th><th>Time In</th><th>Time Out</th><th>Duration</th><th>Notes</th></tr></thead><tbody>'
+                + pkg.sessions.map(function(s, si) {
+                    return '<tr><td>'+(si+1)+'</td><td>'+formatDate(s.date)+'</td><td>'+(s.instructor||'-')+'</td><td>'+(s.type||'-')+'</td>'
+                      +'<td>'+fmt12(s.timeIn)+'</td><td>'+fmt12(s.timeOut)+'</td>'
+                      +'<td>'+parseFloat(s.duration).toFixed(2)+' hrs</td>'
+                      +'<td style="font-size:12px;color:var(--text3);">'+(s.notes||'-')+'</td></tr>';
+                  }).join(''))
+            + '</tbody></table></div>'
+          : '<div style="padding:12px;color:var(--text3);font-size:13px;">No sessions in this package</div>';
+        return '<div style="margin-bottom:12px;">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);" onclick="togglePkgHistory(\''+key+'\','+pi+')">'
+          + '<span style="font-size:13px;font-weight:600;">'+pkgLabel+renewed+'</span>'
+          + '<span style="font-size:12px;color:var(--text3);">Used: '+pkg.usedHours+' '+acUnitWord(a,pkg.usedHours)
+          + (pkg.overUsed>0?' &nbsp;|&nbsp; <span style="color:var(--red);">⚠ '+pkg.overUsed+' '+acUnitWord(a,pkg.overUsed)+' debt carried</span>':'')
+          + '</span>'
+          + '<span style="color:var(--text3);font-size:14px;" id="pkgchev-'+key+'-'+pi+'">▶</span>'
+          + '</div>'
+          + '<div id="pkghist-'+key+'-'+pi+'" style="display:none;margin-top:6px;">' + tableHtml + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
 
 function togglePkgHistory(key, idx) {
   var el = document.getElementById('pkghist-'+key+'-'+idx);  var chev = document.getElementById('pkgchev-'+key+'-'+idx);  if (!el) return;  var open = el.style.display !== 'none';  el.style.display = open ? 'none' : 'block';  if (chev) chev.textContent = open ? '▶' : '▼';}
@@ -7862,7 +8477,26 @@ function togglePkgHistory(key, idx) {
 // ── Renew Modal Live Preview ──
 function updateRenewPreview() {
   var a = academies[currentAcademy];
-  if (!a) return;  var newHrs = parseInt(document.getElementById('renew-hours').value) || 0;  if (!newHrs) { document.getElementById('renew-preview').style.display = 'none'; return; }  var debt = parseFloat(a.debtHours) || 0;  var used = debt + a.sessions.reduce(function(s, sess) { return s + (parseFloat(sess.duration)||0); }, 0);  var remaining = a.pkgHours - used;  var overUsed = remaining < 0 ? Math.abs(remaining) : 0;  var effectiveHrs = newHrs - overUsed;  var previewEl = document.getElementById('renew-preview');  previewEl.style.display = '';  previewEl.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">New Package Preview</div>'    + '<div style="display:flex;gap:20px;flex-wrap:wrap;">'    + '<span>📦 New Hours: <strong>'+newHrs+'</strong></span>'    + (overUsed > 0      ? '<span style="color:var(--red);">➖ Debt Deducted: <strong>'+overUsed.toFixed(2)+' hrs</strong></span>'        + '<span style="color:var(--green);">= Effective Hours: <strong>'+Math.max(0,effectiveHrs).toFixed(2)+' hrs</strong></span>'      : '<span style="color:var(--green);">✓ Full '+newHrs+' hrs available (no debt)</span>')    + '</div>';}
+  if (!a) return;
+  var unit = acUnitLabel(a);
+  var newHrs = parseInt(document.getElementById('renew-hours').value) || 0;
+  if (!newHrs) { document.getElementById('renew-preview').style.display = 'none'; return; }
+  var debt = parseFloat(a.debtHours) || 0;
+  var used = debt + a.sessions.reduce(function(s, sess) { return s + (parseFloat(sess.duration)||0); }, 0);
+  var remaining = a.pkgHours - used;
+  var overUsed = remaining < 0 ? Math.abs(remaining) : 0;
+  var effectiveHrs = newHrs - overUsed;
+  var previewEl = document.getElementById('renew-preview');
+  previewEl.style.display = '';
+  previewEl.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">New Package Preview</div>'
+    + '<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+    + '<span>📦 New '+unit+': <strong>'+newHrs+'</strong></span>'
+    + (overUsed > 0
+      ? '<span style="color:var(--red);">➖ Debt Deducted: <strong>'+acFmtUnits(a,overUsed)+' '+acUnitWord(a,overUsed)+'</strong></span>'
+        + '<span style="color:var(--green);">= Effective '+unit+': <strong>'+acFmtUnits(a,Math.max(0,effectiveHrs))+'</strong></span>'
+      : '<span style="color:var(--green);">✓ Full '+newHrs+' '+acUnitWord(a,newHrs)+' available (no debt)</span>')
+    + '</div>';
+}
 
 
 // ============================================================
@@ -8427,7 +9061,7 @@ function buildNotifications(){
     var debt=parseFloat(a.debtHours)||0;
     var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
     var rem=Math.max(0,a.pkgHours-used);
-    if(rem<=5)items.push({icon:'⚠️',text:a.name+' — only '+rem.toFixed(1)+' hrs left',color:'var(--red)'});
+    if(rem<=acLowThreshold(a))items.push({icon:'⚠️',text:a.name+' — only '+acFmtUnits(a,rem)+' '+acUnitWord(a,rem)+' left',color:'var(--red)'});
   });
   // Shared Space package holders running low on days or nearing their 30-day expiry
   Object.keys(sharedSpacePackages).forEach(function(pid){
@@ -8566,13 +9200,24 @@ function renderDashRoomGrid(){
   el.innerHTML=roomDefs.map(function(rk){
     var rName=rk;
     var active=activeSessions.find(function(s){return (s.roomKey||s.room)===rk||(s.room||'').toLowerCase().replace(/\s/g,'_')===rk;});
+    // A guest out on a room visit occupies that room too, even though their
+    // primary session is still tagged Shared Space.
+    var visiting=null;
+    if(!active){
+      activeSessions.some(function(s){
+        var v=(s.roomVisits||[]).find(function(x){return !x.timeOut&&x.roomKey===rk;});
+        if(v){visiting={name:s.name,timeIn:v.timeIn};return true;}
+        return false;
+      });
+    }
     var todayRes=reservations.filter(function(r){return r.date===today()&&(r.room===rk||r.room===rName);});
-    var status=active?'occupied':todayRes.length?'reserved':'free';
+    var status=(active||visiting)?'occupied':todayRes.length?'reserved':'free';
     var bg=status==='occupied'?'rgba(46,201,126,0.1)':status==='reserved'?'rgba(212,168,67,0.08)':'var(--bg3)';
     var badgeClass=status==='occupied'?'badge-green':status==='reserved'?'badge-amber':'badge-blue';
     var statusLabel=status==='occupied'?'Occupied':status==='reserved'?'Reserved':'Available';
-    var detail=status==='occupied'?(active.name+' · '+fmt12(active.timeIn||'')):(status==='reserved'?todayRes[0].client:'');
-    var timer=status==='occupied'?'<div class="live-timer" data-timein="'+(active.timeIn||'')+'">--:--:--</div>':'';
+    var occupant=active||visiting;
+    var detail=status==='occupied'?(occupant.name+' · '+fmt12(occupant.timeIn||'')+(visiting?' (room visit)':'')):(status==='reserved'?todayRes[0].client:'');
+    var timer=status==='occupied'?'<div class="live-timer" data-timein="'+(occupant.timeIn||'')+'">--:--:--</div>':'';
     return '<div style="background:'+bg+';border-radius:var(--radius-sm);padding:12px;border:1px solid var(--hairline);">'
       +'<div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px;">'+rk.replace(/_/g,' ').toUpperCase()+'</div>'
       +'<span class="badge '+badgeClass+'">'+statusLabel+'</span>'
@@ -8630,6 +9275,14 @@ renderActiveSessions=function(){
     return;
   }
   el.innerHTML=activeSessions.map(function(s){
+    var openVisit=(s.roomVisits||[]).find(function(v){return !v.timeOut;});
+    var closedVisits=(s.roomVisits||[]).filter(function(v){return v.timeOut;});
+    var roomVisitBtn='';
+    if(s.roomKey==='sharedSpace'){
+      roomVisitBtn=openVisit
+        ?'<button class="btn btn-outline btn-sm" onclick="openEndRoomVisitModal('+s.id+','+openVisit.id+')">↩ Back from '+openVisit.room+'</button>'
+        :'<button class="btn btn-outline btn-sm" onclick="openRoomVisitModal('+s.id+')">🚪 Take a Room</button>';
+    }
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
       +'<div style="position:relative;flex-shrink:0;">'
       +'<div class="avatar-initials">'+getInitials(s.name)+'</div>'
@@ -8640,8 +9293,12 @@ renderActiveSessions=function(){
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
+      +(openVisit?'<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+openVisit.room+' since '+fmt12(openVisit.timeIn)+'</div>':'')
+      +(closedVisits.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+closedVisits.length+' room visit(s) — '+closedVisits.reduce(function(a,v){return a+(v.cost||0);},0)+' LE</div>':'')
       +'</div>'
-      +'<button class="btn btn-outline btn-sm" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
+      +roomVisitBtn
+      +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
+      +'<button class="btn btn-danger btn-sm" style="margin-left:8px;" title="Void this check-in — no charge" onclick="openCancelCheckinModal('+s.id+')">✕ Cancel</button>'
       +'</div>';
   }).join('');
   startSessionTimer();
@@ -8850,7 +9507,7 @@ renderAcademy=function(key){
   var debt=parseFloat(a.debtHours)||0;
   var used=debt+a.sessions.reduce(function(s,sess){return s+(parseFloat(sess.duration)||0);},0);
   var rem=Math.max(0,a.pkgHours-used);
-  if(rem<=5&&a.phone){
+  if(rem<=acLowThreshold(a)&&a.phone){
     var btnArea=document.querySelector('#academy-content-'+key+' .alert-danger');
     if(btnArea){
       btnArea.innerHTML+=' <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openWhatsApp(\''+a.phone+'\',\''+a.name+'\')">💬 WhatsApp</button>';
@@ -9354,11 +10011,11 @@ refreshDashboard=function(){
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
       <div class="form-group"><label>Type</label><input type="text" id="ess-type" placeholder="e.g. Theory"></div>
-      <div class="form-group"><label>Time In</label><input type="time" id="ess-timein"></div>
-      <div class="form-group"><label>Time Out</label><input type="time" id="ess-timeout"></div>
+      <div class="form-group" id="ess-timein-group"><label>Time In</label><input type="time" id="ess-timein"></div>
+      <div class="form-group" id="ess-timeout-group"><label>Time Out</label><input type="time" id="ess-timeout"></div>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
-      <div class="form-group"><label>Duration (hrs)</label><input type="number" step="0.25" id="ess-duration" placeholder="1.5"></div>
+      <div class="form-group"><label id="ess-duration-label">Duration (hrs)</label><input type="number" step="0.25" id="ess-duration" placeholder="1.5"></div>
       <div class="form-group"><label>Notes</label><input type="text" id="ess-notes" placeholder="Optional"></div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
