@@ -265,9 +265,23 @@
   .tab-content{display:none;}.tab-content.active{display:block;}
   /* Print area hidden */
   #print-area{display:none;}
+  /* Zero page margin is the only thing that stops Chrome stamping its own
+     header/footer (date, page title, the site URL, page number) on every
+     printout. Real margins are put back inside the page instead: 14mm on the
+     sides here, and 14mm top/bottom on EVERY page via the .pp-frame table
+     that window.print() wraps around the content (see printWithMargins). */
+  @page{margin:0;}
   @media print{
+    html,body{background:#fff!important;}
     body>*{display:none!important;}
-    #print-area{display:block!important;position:static;width:100%;background:white;color:#111;font-family:'Cairo',sans-serif;padding:24px;}
+    #print-area{display:block!important;position:static;width:100%;background:white;color:#111;font-family:'Cairo',sans-serif;padding:0 14mm;}
+    .pp-frame,.pp-frame>thead>tr>td,.pp-frame>tbody>tr>td,.pp-frame>tfoot>tr>td{width:100%;padding:0!important;border:0!important;background:none!important;border-collapse:collapse;border-spacing:0;}
+    .pp-gap{height:14mm;}
+    /* Document Safe pages: one image per sheet, edge to edge (the PDF carries its own margins). */
+    .doc-pages{margin:0 -14mm;}
+    .doc-page{height:calc(100vh - 1px);overflow:hidden;break-after:page;page-break-after:always;}
+    .doc-page:last-child{break-after:auto;page-break-after:auto;}
+    .doc-page img{display:block;width:100%;height:100%;object-fit:contain;}
     .print-logo-img{display:block;margin:0 auto 4px;max-height:60px;width:auto;}
     .print-logo{font-size:22px;font-weight:700;text-align:center;margin-bottom:4px;}
     .print-sub{text-align:center;font-size:13px;margin-bottom:20px;color:#555;}
@@ -6440,14 +6454,34 @@ async function printPageImages(images){
     return im.decode?im.decode().catch(function(){}):Promise.resolve();
   }));
   var pa=document.getElementById('print-area');
-  // margin:-24px cancels #print-area's 24px print padding so the page fills the sheet.
-  pa.innerHTML='<div style="margin:-24px;">'+images.map(function(src,i){
-    var last=i===images.length-1;
-    return '<img src="'+src+'" style="display:block;width:100%;height:auto;max-height:268mm;object-fit:contain;margin:0 auto;'+(last?'':'page-break-after:always;break-after:page;')+'">';
+  // Each page is a block exactly one sheet tall (see .doc-page in the print CSS), scaled to fit
+  // whatever paper the print dialog uses — a fixed mm height assumed A4 and spilled onto an
+  // extra sheet on Letter.
+  pa.innerHTML='<div class="doc-pages">'+images.map(function(src){
+    return '<div class="doc-page"><img src="'+src+'"></div>';
   }).join('')+'</div>';
   window.addEventListener('afterprint',function(){pa.innerHTML='';},{once:true});
   window.print();
 }
+
+// Every printout in the app builds its content in #print-area and calls window.print().
+// Because @page margin is 0 (so Chrome can't stamp its header/footer with the site URL on the
+// paper), wrap the content in a table whose empty header/footer rows repeat on every page —
+// that puts a proper top/bottom margin on page 2, 3, … as well. Document Safe pages opt out
+// (they print edge to edge). The original content is restored once printing is done.
+(function(){
+  var nativePrint=window.print.bind(window);
+  window.print=function printWithMargins(){
+    var pa=document.getElementById('print-area');
+    if(!pa||pa.querySelector('.doc-pages')||pa.querySelector('.pp-frame')){nativePrint();return;}
+    var original=pa.innerHTML;
+    pa.innerHTML='<table class="pp-frame"><thead><tr><td><div class="pp-gap"></div></td></tr></thead>'
+      +'<tbody><tr><td>'+original+'</td></tr></tbody>'
+      +'<tfoot><tr><td><div class="pp-gap"></div></td></tr></tfoot></table>';
+    window.addEventListener('afterprint',function(){pa.innerHTML=original;},{once:true});
+    nativePrint();
+  };
+})();
 
 function openDocumentInNewTab(d){
   var url;
