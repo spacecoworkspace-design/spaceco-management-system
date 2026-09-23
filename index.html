@@ -6302,7 +6302,7 @@ function renderDocumentLibrary(){
 
   var sorted=filtered.slice().sort(function(a,b){return new Date(b.uploadedAt)-new Date(a.uploadedAt);});
   listEl.innerHTML=sorted.map(function(d){
-    var icon=d.type==='application/pdf'?'📄':'🖼️';
+    var icon=docKind(d)==='pdf'?'📄':'🖼️';
     var dateStr=new Date(d.uploadedAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     return '<div class="card" style="padding:14px;">'
       +'<div style="font-size:28px;margin-bottom:8px;">'+icon+'</div>'
@@ -6359,17 +6359,130 @@ function confirmUploadDocument(){
   reader.readAsDataURL(file);
 }
 
-function printDocument(id){
+// Printing a stored PDF used to drop it into a hidden <iframe> inside
+// #print-area and call window.print(). #print-area is display:none until the
+// print dialog opens, so the PDF viewer never rendered (0x0 iframe) and the
+// printout came out blank/errored. Instead each PDF page is rasterized to an
+// image (pdf.js, loaded on first use) and printed through #print-area — the
+// same path every other printout in the app uses.
+var PDFJS_BASE='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+var _pdfjsPromise=null;
+var _docPrintBusy=false;
+
+function loadPdfJs(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  if(_pdfjsPromise)return _pdfjsPromise;
+  _pdfjsPromise=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src=PDFJS_BASE+'pdf.min.js';
+    s.onload=function(){
+      if(!window.pdfjsLib){_pdfjsPromise=null;reject(new Error('PDF engine did not start'));return;}
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_BASE+'pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    s.onerror=function(){_pdfjsPromise=null;reject(new Error('could not load the PDF engine — check the internet connection'));};
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromise;
+}
+
+function withTimeout(promise,ms,msg){
+  return new Promise(function(resolve,reject){
+    var t=setTimeout(function(){reject(new Error(msg));},ms);
+    promise.then(function(v){clearTimeout(t);resolve(v);},function(e){clearTimeout(t);reject(e);});
+  });
+}
+
+function dataUriToBytes(dataUri){
+  var bin=atob(dataUri.substring(dataUri.indexOf(',')+1));
+  var bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return bytes;
+}
+
+// Some browsers report an empty MIME type for a file, so also go by the
+// data-URI header and the original file name before giving up.
+function docKind(d){
+  var t=(d.type||'').toLowerCase();
+  var head=(d.data||'').substr(0,40).toLowerCase();
+  var fn=(d.fileName||'').toLowerCase();
+  if(t==='application/pdf'||head.indexOf('data:application/pdf')===0||/\.pdf$/.test(fn))return 'pdf';
+  if(t.indexOf('image/')===0||head.indexOf('data:image/')===0||/\.(png|jpe?g)$/.test(fn))return 'image';
+  return 'unknown';
+}
+
+async function pdfDataUriToPageImages(dataUri){
+  var pdfjsLib=await loadPdfJs();
+  var pdf=await pdfjsLib.getDocument({data:dataUriToBytes(dataUri)}).promise;
+  var images=[];
+  for(var n=1;n<=pdf.numPages;n++){
+    var page=await pdf.getPage(n);
+    var base=page.getViewport({scale:1});
+    // ~216 dpi for A4, capped so an oversized page can't blow the canvas limit
+    var scale=Math.min(3,3600/Math.max(base.width,base.height));
+    var vp=page.getViewport({scale:scale});
+    var canvas=document.createElement('canvas');
+    canvas.width=Math.floor(vp.width);canvas.height=Math.floor(vp.height);
+    var ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    // intent:'print' renders without requestAnimationFrame, so it still
+    // finishes if the tab loses focus mid-render (default 'display' stalls).
+    await page.render({canvasContext:ctx,viewport:vp,intent:'print'}).promise;
+    images.push(canvas.toDataURL('image/png'));
+  }
+  return images;
+}
+
+async function printPageImages(images){
+  // Decode first so the print dialog never opens on half-loaded images.
+  await Promise.all(images.map(function(src){
+    var im=new Image();im.src=src;
+    return im.decode?im.decode().catch(function(){}):Promise.resolve();
+  }));
+  var pa=document.getElementById('print-area');
+  // margin:-24px cancels #print-area's 24px print padding so the page fills the sheet.
+  pa.innerHTML='<div style="margin:-24px;">'+images.map(function(src,i){
+    var last=i===images.length-1;
+    return '<img src="'+src+'" style="display:block;width:100%;height:auto;max-height:268mm;object-fit:contain;margin:0 auto;'+(last?'':'page-break-after:always;break-after:page;')+'">';
+  }).join('')+'</div>';
+  window.addEventListener('afterprint',function(){pa.innerHTML='';},{once:true});
+  window.print();
+}
+
+function openDocumentInNewTab(d){
+  var url;
+  try{
+    var mime=docKind(d)==='pdf'?'application/pdf':(d.type||'application/octet-stream');
+    url=URL.createObjectURL(new Blob([dataUriToBytes(d.data)],{type:mime}));
+  }catch(e){return false;}
+  var w=window.open(url,'_blank');
+  if(!w){showToast('Pop-up blocked — allow pop-ups for this site and try again',true);return false;}
+  setTimeout(function(){URL.revokeObjectURL(url);},60000);
+  return true;
+}
+
+async function printDocument(id){
+  if(_docPrintBusy)return;
   documentLibrary=loadData('documentLibrary',[]);
   var d=documentLibrary.find(function(x){return x.id===id;});
   if(!d)return;
-  var pa=document.getElementById('print-area');
-  if(d.type==='application/pdf'){
-    pa.innerHTML='<iframe src="'+d.data+'" style="width:100%;height:100vh;border:none;"></iframe>';
-    setTimeout(function(){window.print();},500);
-  } else {
-    pa.innerHTML='<img src="'+d.data+'" style="max-width:100%;max-height:90vh;display:block;margin:0 auto;">';
-    window.print();
+  var kind=docKind(d);
+  if(kind==='unknown'){showToast('This file type can\'t be printed from here',true);return;}
+  _docPrintBusy=true;
+  try{
+    if(kind==='image'){
+      await printPageImages([d.data]);
+    } else {
+      showToast('Preparing "'+d.name+'" for printing…');
+      var images=await withTimeout(pdfDataUriToPageImages(d.data),45000,'preparing the PDF took too long');
+      await printPageImages(images);
+    }
+  }catch(e){
+    console.warn('printDocument failed',e);
+    var opened=openDocumentInNewTab(d);
+    showToast('Couldn\'t print directly ('+e.message+')'+(opened?' — opened in a new tab, print it from there':''),true);
+  }finally{
+    _docPrintBusy=false;
   }
 }
 
