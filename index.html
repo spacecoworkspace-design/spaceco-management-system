@@ -159,6 +159,8 @@
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
+  .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
   .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
   .stat-label{font-size:12px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;}
   .stat-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--bg3);margin-right:8px;font-size:13px;flex-shrink:0;}
@@ -685,6 +687,7 @@
         <select id="co-payment">
           <option value="cash">Cash</option>
           <option value="instapay">Instapay</option>
+          <option value="visa">Visa</option>
         </select>
       </div>
     </div>
@@ -747,13 +750,13 @@
   <!-- SHIFT SETTLEMENT FORMULA -->
   <div class="card mb-16" style="border-color:rgba(108,99,255,0.3);">
     <div class="card-title">💰 Shift End Settlement</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Cash = Room cash payments · Instapay = Room instapay payments · Drinks &amp; Snacks = drinks/snacks orders total</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Cash = Room cash payments · Instapay = Room instapay payments · Visa = Room visa payments · Drinks &amp; Snacks = drinks/snacks orders total</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;margin-bottom:14px;align-items:end;">
       <div><label>Date</label><input type="date" id="settle-date" onchange="calcSettlement()"></div>
       <div><label>Cashier</label><select id="settle-cashier" onchange="calcSettlement()"><option value="all">All Cashiers</option><option value="Aya">Aya (9:00 AM – 4:00 PM)</option><option value="Youssef">Youssef (4:00 PM – 11:00 PM)</option><option value="Nour">Nour (Fri &amp; Sat both shifts)</option></select></div>
       <div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;">
+    <div class="settle-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;">
       <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;text-align:center;">
         <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">🚪 Rooms Revenue</div>
         <div class="money" style="font-size:20px;color:var(--amber);" id="settle-rooms">11220 LE</div>
@@ -769,6 +772,10 @@
       <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;text-align:center;">
         <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">📱 Instapay Collected</div>
         <div class="money" style="font-size:20px;color:var(--blue);" id="settle-ip">730 LE</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;text-align:center;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">💳 Visa Collected</div>
+        <div class="money" style="font-size:20px;color:var(--accent);" id="settle-visa">0 LE</div>
       </div>
       <div style="background:rgba(46,201,126,0.12);border:1px solid rgba(46,201,126,0.3);border-radius:var(--radius-sm);padding:14px;text-align:center;">
         <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">🧾 Grand Total</div>
@@ -807,7 +814,7 @@
       <span class="money" style="font-size:18px;color:var(--accent2);" id="drk-order-total">0 LE</span>
     </div>
     <div style="display:flex;gap:10px;align-items:end;">
-      <div style="flex:1;"><label>Payment Method</label><select id="drk-payment"><option value="cash">Cash</option><option value="instapay">Instapay</option></select></div>
+      <div style="flex:1;"><label>Payment Method</label><select id="drk-payment"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select></div>
       <button class="btn btn-primary" style="height:40px;" onclick="submitDrinkOrder()">✓ Save Order</button>
       <button class="btn btn-outline" style="height:40px;" onclick="clearDrinkOrder()">Clear</button>
     </div>
@@ -866,10 +873,11 @@
         <span class="money" style="font-size:18px;color:var(--green);" id="mg-calc-cost">0 LE</span>
       </div>
     </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
       <div class="form-group"><label>Total Cost (LE) *</label><input type="number" id="mg-cost" placeholder="Auto-calculated or override" min="0"></div>
       <div class="form-group"><label>Cash (LE)</label><input type="number" id="mg-cash" placeholder="0" oninput="calcManualBalance()"></div>
       <div class="form-group"><label>Instapay (LE)</label><input type="number" id="mg-instapay" placeholder="0" oninput="calcManualBalance()"></div>
+      <div class="form-group"><label>Visa (LE)</label><input type="number" id="mg-visa" placeholder="0" oninput="calcManualBalance()"></div>
     </div>
     <div id="mg-balance-row" style="display:none;font-size:12px;color:var(--text3);margin-bottom:10px;text-align:right;">
       Balance / Change: <span id="mg-balance" class="money" style="color:var(--amber);">0 LE</span>
@@ -884,11 +892,12 @@
   <!-- MANUAL SHIFT ENTRY -->
   <div class="card mb-16">
     <div class="card-title">Add Manual Shift Entry</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;">
       <div><label>Date</label><input type="date" id="sp-date"></div>
       <div><label>Cashier</label><select id="sp-cashier"><option value="Aya">Aya (9:00 AM – 4:00 PM)</option><option value="Youssef">Youssef (4:00 PM – 11:00 PM)</option><option value="Nour">Nour (Fri &amp; Sat both shifts)</option></select></div>
       <div><label>Cash — Rooms (LE)</label><input type="number" id="sp-rooms" placeholder="0"></div>
       <div><label>Instapay — Rooms (LE)</label><input type="number" id="sp-instapay2" placeholder="0"></div>
+      <div><label>Visa — Rooms (LE)</label><input type="number" id="sp-visa2" placeholder="0"></div>
       <div><label>Other (LE)</label><input type="number" id="sp-other" placeholder="0"></div>
       <div><button class="btn btn-primary" onclick="addShiftPayment()">+ Add</button></div>
     </div>
@@ -898,7 +907,7 @@
     <div class="card-title">Shift Payment Records</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Date</th><th>Day</th><th>Cashier</th><th>Cash (LE)</th><th>Instapay (LE)</th><th>Other (LE)</th><th>Total (LE)</th><th>Action</th></tr></thead>
+        <thead><tr><th>Date</th><th>Day</th><th>Cashier</th><th>Cash (LE)</th><th>Instapay (LE)</th><th>Visa (LE)</th><th>Other (LE)</th><th>Total (LE)</th><th>Action</th></tr></thead>
         <tbody id="shifts-tbody"><tr><td>09/07/2026</td><td>Thu</td><td><span class="badge badge-blue">Youssef</span></td><td>10500 LE</td><td>0 LE</td><td>0 LE</td><td class="money money-green">10500 LE</td><td></td><td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditShift(1783612619653)" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteShift(1783612619653)">Del</button></td></tr></tbody>
       </table>
     </div>
@@ -1109,10 +1118,11 @@
       <button class="btn btn-primary" onclick="openModal(&#39;add-expense-modal&#39;)">+ Add Expense</button>
     </div>
   </div>
-  <div class="grid-4 mb-16">
+  <div class="grid-4 mb-16" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
     <div class="stat"><div class="stat-label">Total Expenses</div><div class="stat-value money" id="exp-total" style="color:var(--red);">0 LE</div><div class="stat-sub">this month</div></div>
     <div class="stat"><div class="stat-label">Paid Cash</div><div class="stat-value money" id="exp-cash" style="color:var(--amber);">0 LE</div><div class="stat-sub">cash outflow</div></div>
     <div class="stat"><div class="stat-label">Paid Instapay</div><div class="stat-value money" id="exp-instapay" style="color:var(--blue);">0 LE</div><div class="stat-sub">instapay outflow</div></div>
+    <div class="stat"><div class="stat-label">Paid Visa</div><div class="stat-value money" id="exp-visa" style="color:var(--accent);">0 LE</div><div class="stat-sub">visa outflow</div></div>
     <div class="stat"><div class="stat-label">Net Revenue</div><div class="stat-value money" id="exp-net" style="color:var(--green);">0 LE</div><div class="stat-sub">revenue − expenses</div></div>
   </div>
   <div class="card mb-16"><div class="card-title">By Category</div><div id="exp-by-cat" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;"></div></div>
@@ -1359,6 +1369,7 @@
         <select id="renew-payment">
           <option value="cash">Cash</option>
           <option value="instapay">Instapay</option>
+          <option value="visa">Visa</option>
           <option value="other">Other / Bank</option>
         </select>
       </div>
@@ -1411,6 +1422,7 @@
         <select id="sp-payment">
           <option value="cash">Cash</option>
           <option value="instapay">Instapay</option>
+          <option value="visa">Visa</option>
           <option value="other">Other / Bank</option>
         </select>
       </div>
@@ -1944,6 +1956,9 @@ async function bootApp() {
 function normalizeStr(s){return (s||'').trim().toLowerCase();}
 function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function formatDate(d){if(!d)return '-';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+// Human label for a stored payment method. Anything that isn't cash/visa/other
+// has always been treated as Instapay in this app, so that stays the fallback.
+function payLabel(p){return p==='cash'?'Cash':p==='visa'?'Visa':p==='other'?'Other / Bank':'Instapay';}
 
 function startSidebarClock(){
   var el=document.getElementById('sidebar-clock');
@@ -2965,7 +2980,7 @@ function buildReceiptMessage(visit,grand,payment){
   var vars={
     client_name:visit.name,date:formatDate(visit.date),room:visit.room,
     duration:formatDurationLabel(visit.hours),room_cost:visit.cost,snacks_cost:drinksCost,
-    total:grand,payment_method:payment==='cash'?'Cash':'Instapay',cashier_name:visit.cashier||''
+    total:grand,payment_method:payLabel(payment),cashier_name:visit.cashier||''
   };
   var tmpl=getActiveTemplate('checkout_receipt_text');
   if(tmpl)return renderTemplate(tmpl.message_body,vars);
@@ -3770,10 +3785,11 @@ function submitCheckout(){
     roomCost=roomAfterDiscount;
   }
   var grand=roomCost+drinksCost;
-  // Room cash/instapay only — drinks are saved separately in drinkOrders
+  // Room cash/instapay/visa only — drinks are saved separately in drinkOrders
   // so calcSettlement and renderShiftCards won't double-count
   var roomCash=payment==='cash'?roomCost:0;
   var roomIP=payment==='instapay'?roomCost:0;
+  var roomVisa=payment==='visa'?roomCost:0;
 
 
   var visit={
@@ -3781,7 +3797,7 @@ function submitCheckout(){
     phone:s.phone,guests:s.guests,email:s.email,
     room:s.room,roomKey:s.roomKey,
     timeIn:s.timeIn,timeOut:tout,hours:hrs.toFixed(1),
-    cost:roomCost,cash:roomCash,instapay:roomIP,cashier:checkoutCashier,
+    cost:roomCost,cash:roomCash,instapay:roomIP,visa:roomVisa,cashier:checkoutCashier,
     discount:discount,
     notes:s.notes,usedPackage:usedPackage,
     roomVisits:(s.roomVisits&&s.roomVisits.length)?JSON.parse(JSON.stringify(s.roomVisits)):undefined,
@@ -4003,7 +4019,7 @@ function renderClients(){
       +'</tr>'
       +'<tr id="sessions-'+p.id+'" style="display:none;"><td colspan="8" style="padding:0;">'
       +'<div style="padding:8px 16px 16px;background:var(--bg);">'
-      +'<table><thead><tr><th>#</th><th>Date</th><th>Room</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Cashier</th><th></th></tr></thead>'
+      +'<table><thead><tr><th>#</th><th>Date</th><th>Room</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Visa</th><th>Cashier</th><th></th></tr></thead>'
       +'<tbody>'
       +visits.map(function(v,vi){
         return '<tr class="session-rows">'
@@ -4015,6 +4031,7 @@ function renderClients(){
           +'<td class="money money-green">'+v.cost+' LE</td>'
           +'<td>'+(v.cash?v.cash+' LE':'-')+'</td>'
           +'<td>'+(v.instapay?v.instapay+' LE':'-')+'</td>'
+          +'<td>'+(v.visa?v.visa+' LE':'-')+'</td>'
           +'<td><span class="badge badge-blue">'+v.cashier+'</span></td>'
           +'<td style="white-space:nowrap;">'
           +'<button class="btn btn-outline btn-sm" onclick="openEditVisit('+v.id+')" style="margin-right:4px;">✏️</button>'
@@ -4057,7 +4074,7 @@ function openSessionDetail(profileId){
     +'<div class="stat" style="flex:1;"><div class="stat-label">Total Spent</div><div class="stat-value money money-green">'+totalSpent+' LE</div></div>'
     +'</div>'
     +'<div class="table-wrap"><table>'
-    +'<thead><tr><th>#</th><th>Date</th><th>Room</th><th>In</th><th>Out</th><th>Hrs</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Cashier</th><th></th></tr></thead>'
+    +'<thead><tr><th>#</th><th>Date</th><th>Room</th><th>In</th><th>Out</th><th>Hrs</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Visa</th><th>Cashier</th><th></th></tr></thead>'
     +'<tbody>'
     +visits.map(function(v,i){
       return '<tr><td>'+(i+1)+'</td><td>'+formatDate(v.date)+'</td>'
@@ -4065,7 +4082,7 @@ function openSessionDetail(profileId){
         +'<td>'+fmt12(v.timeIn)+'</td><td>'+fmt12(v.timeOut)+'</td>'
         +'<td>'+v.hours+'</td>'
         +'<td class="money money-green">'+v.cost+' LE</td>'
-        +'<td>'+(v.cash||'-')+'</td><td>'+(v.instapay||'-')+'</td>'
+        +'<td>'+(v.cash||'-')+'</td><td>'+(v.instapay||'-')+'</td><td>'+(v.visa||'-')+'</td>'
         +'<td>'+v.cashier+'</td>'
         +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditVisit('+v.id+')" style="margin-right:4px;">✏️</button><button class="btn btn-outline btn-sm" onclick="printInvoice(clients.find(function(c){return c.id==='+v.id+'}))">🖨</button></td>'
         +'</tr>';
@@ -4174,6 +4191,7 @@ function printInvoice(visit){
     +(pkg?'<div class="print-row"><span>Room Fee</span><span>FREE — covered by package</span></div>':'')
     +(visit.cash?'<div class="print-row"><span>Cash (rooms + drinks)</span><span>'+(visit.cash+drinksTot)+' LE</span></div>':'')
     +(visit.instapay?'<div class="print-row"><span>Instapay (rooms + drinks)</span><span>'+(visit.instapay+drinksTot)+' LE</span></div>':'')
+    +(visit.visa?'<div class="print-row"><span>Visa (rooms + drinks)</span><span>'+(visit.visa+drinksTot)+' LE</span></div>':'')
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-row"><span>Cashier</span><span>'+visit.cashier+'</span></div>'
@@ -4320,11 +4338,12 @@ function submitDrinkOrder(){
   var sp=shiftPayments.find(function(x){return x.date===date&&x.cashier===cashier;});
   if(sp){
     if(payment==='cash')sp.rooms=(sp.rooms||0)+total;
+    else if(payment==='visa')sp.visa=(sp.visa||0)+total;
     else sp.instapay=(sp.instapay||0)+total;
-    sp.total=(sp.rooms||0)+(sp.instapay||0)+(sp.other||0);
+    sp.total=(sp.rooms||0)+(sp.instapay||0)+(sp.visa||0)+(sp.other||0);
   } else {
-    var nr={id:Date.now()+1,date:date,cashier:cashier,rooms:0,instapay:0,other:0,total:total};
-    if(payment==='cash')nr.rooms=total; else nr.instapay=total;
+    var nr={id:Date.now()+1,date:date,cashier:cashier,rooms:0,instapay:0,visa:0,other:0,total:total};
+    if(payment==='cash')nr.rooms=total; else if(payment==='visa')nr.visa=total; else nr.instapay=total;
     nr.total=total;
     shiftPayments.push(nr);
   }
@@ -4364,7 +4383,7 @@ function renderDrinkOrders(){
       +'<td>'+o.client+'</td>'
       +'<td style="font-size:12px;color:var(--text2);">'+itemStr+'</td>'
       +'<td class="money money-green">'+o.total+' LE</td>'
-      +'<td><span class="badge '+(o.payment==='cash'?'badge-green':'badge-blue')+'">'+o.payment+'</span></td>'
+      +'<td><span class="badge '+(o.payment==='cash'?'badge-green':o.payment==='visa'?'badge-purple':'badge-blue')+'">'+o.payment+'</span></td>'
       +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditDrinkOrder('+o.id+')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteDrinkOrder('+o.id+')">Del</button></td>'
       +'</tr>';
   }).join('');
@@ -4407,29 +4426,34 @@ function calcSettlement(){
   var roomRevenue=dayClients.reduce(function(s,c){return s+(c.cost||0);},0);
   var cashCollected=dayClients.reduce(function(s,c){return s+(c.cash||0);},0);
   var ipCollected=dayClients.reduce(function(s,c){return s+(c.instapay||0);},0);
+  var visaCollected=dayClients.reduce(function(s,c){return s+(c.visa||0);},0);
   // BUG 4 & 5 FIX: Drinks & snacks tracked separately — NOT added into cashCollected/ipCollected
   // to avoid double-counting in the grand total
   var drkToday=drinkOrders.filter(function(o){return o.date===d&&(cashier==='all'||o.cashier===cashier);});
-  var drinksCash=0, drinksIP=0;
+  var drinksCash=0, drinksIP=0, drinksVisa=0;
   drkToday.forEach(function(o){
     if(o.payment==='cash') drinksCash+=o.total;
+    else if(o.payment==='visa') drinksVisa+=o.total;
     else drinksIP+=o.total;
   });
-  var drinksNet=drinksCash+drinksIP;
+  var drinksNet=drinksCash+drinksIP+drinksVisa;
   var acEntries=shiftPayments.filter(function(s){return s.date===d&&s.academyPayments>0&&(cashier==='all'||s.cashier===cashier);});
   var acCash=acEntries.reduce(function(s,x){return s+(x.cash||0);},0);
   var acIP=acEntries.reduce(function(s,x){return s+(x.instapay||0);},0);
+  var acVisa=acEntries.reduce(function(s,x){return s+(x.visa||0);},0);
   var acOther=acEntries.reduce(function(s,x){return s+(x.other||0);},0);
-  var acTotal=acCash+acIP+acOther;
+  var acTotal=acCash+acIP+acVisa+acOther;
   var totalCash=cashCollected+drinksCash+acCash;
   var totalIP=ipCollected+drinksIP+acIP;
+  var totalVisa=visaCollected+drinksVisa+acVisa;
   document.getElementById('settle-cash').textContent=totalCash+' LE';
   document.getElementById('settle-ip').textContent=totalIP+' LE';
+  document.getElementById('settle-visa').textContent=totalVisa+' LE';
   document.getElementById('settle-rooms').textContent=roomRevenue+' LE';
   var dEl=document.getElementById('settle-drinks');
   dEl.textContent=drinksNet+' LE';
   dEl.style.color=drinksNet>=0?'var(--accent2)':'var(--red)';
-  document.getElementById('settle-grand').textContent=(totalCash+totalIP+acOther)+' LE';
+  document.getElementById('settle-grand').textContent=(totalCash+totalIP+totalVisa+acOther)+' LE';
 }
 
 // ============================================================
@@ -4440,10 +4464,11 @@ function addShiftPayment(){
   var cashier=document.getElementById('sp-cashier').value;
   var rooms=parseInt(document.getElementById('sp-rooms').value||0);
   var ip=parseInt(document.getElementById('sp-instapay2').value||0);
+  var visa=parseInt(document.getElementById('sp-visa2').value||0);
   var other=parseInt(document.getElementById('sp-other').value||0);
-  shiftPayments.push({id:Date.now(),date:date,cashier:cashier,rooms:rooms,instapay:ip,other:other,total:rooms+ip+other});
+  shiftPayments.push({id:Date.now(),date:date,cashier:cashier,rooms:rooms,instapay:ip,visa:visa,other:other,total:rooms+ip+visa+other});
   saveData('shiftPayments',shiftPayments);
-  ['sp-rooms','sp-instapay2','sp-other'].forEach(function(id){document.getElementById(id).value='';});
+  ['sp-rooms','sp-instapay2','sp-visa2','sp-other'].forEach(function(id){document.getElementById(id).value='';});
   renderShifts();renderShiftCards();
   showToast('Shift payment added');
 }
@@ -4456,11 +4481,11 @@ function renderShifts(){
     return true;
   }).reverse();
   var tbody=document.getElementById('shifts-tbody');
-  if(!filtered.length){tbody.innerHTML='<tr class="empty-row"><td colspan="8">No shift payments recorded</td></tr>';return;}
+  if(!filtered.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No shift payments recorded</td></tr>';return;}
   tbody.innerHTML=filtered.map(function(s){
     return '<tr><td>'+formatDate(s.date)+'</td><td>'+getDayName(s.date)+'</td>'
       +'<td><span class="badge badge-blue">'+s.cashier+'</span></td>'
-      +'<td>'+(s.rooms||0)+' LE</td><td>'+(s.instapay||0)+' LE</td><td>'+(s.other||0)+' LE</td>'
+      +'<td>'+(s.rooms||0)+' LE</td><td>'+(s.instapay||0)+' LE</td><td>'+(s.visa||0)+' LE</td><td>'+(s.other||0)+' LE</td>'
       +'<td class="money money-green">'+(s.total||0)+' LE</td>'
       +'<td>'+(s.academyPayments?'<span class="badge badge-purple" title="Academy Package Payment">🎓 '+s.academyPayments+' LE</span>':'')+(s.note?'<span style="font-size:11px;color:var(--text3);">&nbsp;'+s.note+'</span>':'')+'</td>'
       +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditShift('+s.id+')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteShift('+s.id+')">Del</button></td></tr>';
@@ -4491,31 +4516,35 @@ function renderShiftCards(){
   var dayShifts=loadData('shiftPayments',[]).filter(function(s){return s.date===d&&s.academyPayments>0;});
   // Build per-cashier breakdown
   var byP={};
-  staff.forEach(function(s){byP[s.name]={rooms:0,cash:0,instapay:0,drinks:0,drinksIP:0,acCash:0,acIP:0,acOther:0};});
+  staff.forEach(function(s){byP[s.name]={rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};});
   dayClients.forEach(function(c){
-    if(!byP[c.cashier])byP[c.cashier]={rooms:0,cash:0,instapay:0,drinks:0,drinksIP:0,acCash:0,acIP:0,acOther:0};
+    if(!byP[c.cashier])byP[c.cashier]={rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};
     byP[c.cashier].rooms+=(c.cost||0);
     byP[c.cashier].cash+=(c.cash||0);
     byP[c.cashier].instapay+=(c.instapay||0);
+    byP[c.cashier].visa+=(c.visa||0);
   });
   dayDrinks.forEach(function(o){
-    if(!byP[o.cashier])byP[o.cashier]={rooms:0,cash:0,instapay:0,drinks:0,drinksIP:0,acCash:0,acIP:0,acOther:0};
+    if(!byP[o.cashier])byP[o.cashier]={rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};
     if(o.payment==='cash') byP[o.cashier].drinks+=o.total;
+    else if(o.payment==='visa') byP[o.cashier].drinksVisa+=o.total;
     else byP[o.cashier].drinksIP+=o.total;
   });
   dayShifts.forEach(function(s){
-    if(!byP[s.cashier])byP[s.cashier]={rooms:0,cash:0,instapay:0,drinks:0,drinksIP:0,acCash:0,acIP:0,acOther:0};
+    if(!byP[s.cashier])byP[s.cashier]={rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};
     byP[s.cashier].acCash+=(s.cash||0);
     byP[s.cashier].acIP+=(s.instapay||0);
+    byP[s.cashier].acVisa+=(s.visa||0);
     byP[s.cashier].acOther+=(s.other||0);
   });
   document.getElementById('shifts-summary-cards').innerHTML=staff.map(function(st){
-    var p=byP[st.name]||{rooms:0,cash:0,instapay:0,drinks:0,drinksIP:0,acCash:0,acIP:0,acOther:0};
-    var totalDrinks=p.drinks+p.drinksIP;
-    var acTotal=p.acCash+p.acIP+p.acOther;
+    var p=byP[st.name]||{rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};
+    var totalDrinks=p.drinks+p.drinksIP+p.drinksVisa;
+    var acTotal=p.acCash+p.acIP+p.acVisa+p.acOther;
     var totalCash=p.cash+p.drinks+p.acCash;
     var totalIP=p.instapay+p.drinksIP+p.acIP;
-    var grand=totalCash+totalIP+p.acOther;
+    var totalVisa=p.visa+p.drinksVisa+p.acVisa;
+    var grand=totalCash+totalIP+totalVisa+p.acOther;
     var row=function(label,val,color){
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">'
         +'<span style="font-size:11px;color:var(--text3);">'+label+'</span>'
@@ -4532,6 +4561,7 @@ function renderShiftCards(){
       +(acTotal>0?row('🎓 Academy Packages',acTotal,'var(--pink)'):'')
       +row('💵 Cash',totalCash,'var(--green)')
       +row('📱 Instapay',totalIP,'var(--blue)')
+      +row('💳 Visa',totalVisa,'var(--accent)')
       +'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;">'
       +'<span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span>'
       +'<span class="money" style="font-size:16px;color:'+st.color+';">'+grand+' LE</span>'
@@ -4550,42 +4580,47 @@ function printShiftSummary(){
 
   // Per-cashier breakdown
   var cashierData={};
-  staff.forEach(function(s){cashierData[s.name]={rooms:0,instapay:0,cash:0,drinks:0,drinksInstapay:0,academyCash:0,academyInstapay:0,academyOther:0,clients:[],academyPayments:[]};});
+  staff.forEach(function(s){cashierData[s.name]={rooms:0,instapay:0,visa:0,cash:0,drinks:0,drinksInstapay:0,drinksVisa:0,academyCash:0,academyInstapay:0,academyVisa:0,academyOther:0,clients:[],academyPayments:[]};});
 
   dayClients.forEach(function(c){
-    if(!cashierData[c.cashier])cashierData[c.cashier]={rooms:0,instapay:0,cash:0,drinks:0,drinksInstapay:0,academyCash:0,academyInstapay:0,academyOther:0,clients:[],academyPayments:[]};
+    if(!cashierData[c.cashier])cashierData[c.cashier]={rooms:0,instapay:0,visa:0,cash:0,drinks:0,drinksInstapay:0,drinksVisa:0,academyCash:0,academyInstapay:0,academyVisa:0,academyOther:0,clients:[],academyPayments:[]};
     cashierData[c.cashier].rooms+=(c.cost||0);
     cashierData[c.cashier].cash+=(c.cash||0);
     cashierData[c.cashier].instapay+=(c.instapay||0);
+    cashierData[c.cashier].visa+=(c.visa||0);
     cashierData[c.cashier].clients.push(c);
   });
   drkToday.forEach(function(o){
-    if(!cashierData[o.cashier])cashierData[o.cashier]={rooms:0,instapay:0,cash:0,drinks:0,drinksInstapay:0,academyCash:0,academyInstapay:0,academyOther:0,clients:[],academyPayments:[]};
+    if(!cashierData[o.cashier])cashierData[o.cashier]={rooms:0,instapay:0,visa:0,cash:0,drinks:0,drinksInstapay:0,drinksVisa:0,academyCash:0,academyInstapay:0,academyVisa:0,academyOther:0,clients:[],academyPayments:[]};
     if(o.payment==='cash')cashierData[o.cashier].drinks+=o.total;
+    else if(o.payment==='visa')cashierData[o.cashier].drinksVisa+=o.total;
     else cashierData[o.cashier].drinksInstapay+=o.total;
   });
   // ── Include academy package payments from shiftPayments ──
   dayShiftPayments.forEach(function(s){
     if(!(s.academyPayments>0))return; // only entries that have academy money
-    if(!cashierData[s.cashier])cashierData[s.cashier]={rooms:0,instapay:0,cash:0,drinks:0,drinksInstapay:0,academyCash:0,academyInstapay:0,academyOther:0,clients:[],academyPayments:[]};
+    if(!cashierData[s.cashier])cashierData[s.cashier]={rooms:0,instapay:0,visa:0,cash:0,drinks:0,drinksInstapay:0,drinksVisa:0,academyCash:0,academyInstapay:0,academyVisa:0,academyOther:0,clients:[],academyPayments:[]};
     var cd=cashierData[s.cashier];
     cd.academyCash+=(s.cash||0);
     cd.academyInstapay+=(s.instapay||0);
+    cd.academyVisa+=(s.visa||0);
     cd.academyOther+=(s.other||0);
-    cd.academyPayments.push({note:s.note||'Academy payment',amount:s.academyPayments,cash:s.cash||0,instapay:s.instapay||0,other:s.other||0});
+    cd.academyPayments.push({note:s.note||'Academy payment',amount:s.academyPayments,cash:s.cash||0,instapay:s.instapay||0,visa:s.visa||0,other:s.other||0});
   });
 
-  var grandRooms=0,grandCash=0,grandIP=0,grandDrinks=0,grandDrinksIP=0,grandAcademy=0;
+  var grandRooms=0,grandCash=0,grandIP=0,grandVisa=0,grandDrinks=0,grandDrinksIP=0,grandDrinksVisa=0,grandAcademy=0;
   Object.keys(cashierData).forEach(function(n){
     var cd=cashierData[n];
     grandRooms+=cd.rooms;
     grandCash+=cd.cash;
     grandIP+=cd.instapay;
+    grandVisa+=cd.visa;
     grandDrinks+=cd.drinks;
     grandDrinksIP+=cd.drinksInstapay;
-    grandAcademy+=(cd.academyCash+cd.academyInstapay+cd.academyOther);
+    grandDrinksVisa+=cd.drinksVisa;
+    grandAcademy+=(cd.academyCash+cd.academyInstapay+cd.academyVisa+cd.academyOther);
   });
-  var grandTotal=grandCash+grandIP+grandDrinks+grandDrinksIP+grandAcademy;
+  var grandTotal=grandCash+grandIP+grandVisa+grandDrinks+grandDrinksIP+grandDrinksVisa+grandAcademy;
 
   var pa=document.getElementById('print-area');
   pa.innerHTML=printHeader('End of Day Summary — '+formatDate(d)+' ('+getDayName(d)+')')
@@ -4593,33 +4628,39 @@ function printShiftSummary(){
     +'<div class="print-section-title">Per Cashier Breakdown</div>'
     +Object.keys(cashierData).filter(function(n){
         var cd=cashierData[n];
-        return cd.rooms||cd.cash||cd.instapay||cd.drinks||cd.drinksInstapay||cd.clients.length;
+        return cd.rooms||cd.cash||cd.instapay||cd.visa||cd.drinks||cd.drinksInstapay||cd.drinksVisa||cd.clients.length;
       }).map(function(n){
       var cd=cashierData[n];
       var totalCash=cd.cash+cd.drinks;
       var totalIP=cd.instapay+cd.drinksInstapay;
+      var totalVisa=cd.visa+cd.drinksVisa;
       var totalCashAcademy=cd.academyCash;
       var totalIPAcademy=cd.academyInstapay;
-      var totalAcademy=cd.academyCash+cd.academyInstapay+cd.academyOther;
+      var totalVisaAcademy=cd.academyVisa;
+      var totalAcademy=cd.academyCash+cd.academyInstapay+cd.academyVisa+cd.academyOther;
       return '<div class="print-cashier-block">'
         +'<div class="print-cashier-name">'+n+'</div>'
         +'<div class="print-cashier-row"><span>🚪 Rooms Revenue</span><span>'+cd.rooms+' LE</span></div>'
         +'<div class="print-cashier-row"><span>💵 Cash (Rooms)</span><span>'+cd.cash+' LE</span></div>'
         +'<div class="print-cashier-row"><span>📱 Instapay (Rooms)</span><span>'+cd.instapay+' LE</span></div>'
+        +'<div class="print-cashier-row"><span>💳 Visa (Rooms)</span><span>'+cd.visa+' LE</span></div>'
         +'<div class="print-cashier-row"><span>☕ Drinks Cash</span><span>'+cd.drinks+' LE</span></div>'
         +'<div class="print-cashier-row"><span>☕ Drinks Instapay</span><span>'+cd.drinksInstapay+' LE</span></div>'
+        +'<div class="print-cashier-row"><span>☕ Drinks Visa</span><span>'+cd.drinksVisa+' LE</span></div>'
         +(totalAcademy>0
           ?'<div class="print-cashier-row" style="border-top:1px dashed #ccc;margin-top:4px;padding-top:6px;"><span>🎓 Academy Packages</span><span style="font-weight:700;">'+totalAcademy+' LE</span></div>'
-          +cd.academyPayments.map(function(ap){return '<div class="print-cashier-row" style="font-size:11px;padding-left:16px;"><span>'+ap.note+'</span><span>'+ap.amount+' LE'+(ap.cash?' cash':ap.instapay?' instapay':' other')+'</span></div>';}).join('')
+          +cd.academyPayments.map(function(ap){return '<div class="print-cashier-row" style="font-size:11px;padding-left:16px;"><span>'+ap.note+'</span><span>'+ap.amount+' LE'+(ap.cash?' cash':ap.instapay?' instapay':ap.visa?' visa':' other')+'</span></div>';}).join('')
           :'')
         +'<div class="print-cashier-row" style="font-weight:700;border-top:1px solid #ddd;margin-top:6px;padding-top:6px;">'
         +'<span>💰 Cash in Hand</span><span>'+(totalCash+totalCashAcademy+(cd.academyOther||0))+' LE</span></div>'
         +'<div class="print-cashier-row" style="font-weight:700;">'
         +'<span>📲 Instapay Total</span><span>'+(totalIP+totalIPAcademy)+' LE</span></div>'
-        +(totalAcademy>0?'<div class="print-cashier-row" style="font-weight:700;color:#333;"><span>💼 Total incl. Academy</span><span>'+(totalCash+totalIP+totalAcademy)+' LE</span></div>':'')
+        +'<div class="print-cashier-row" style="font-weight:700;">'
+        +'<span>💳 Visa Total</span><span>'+(totalVisa+totalVisaAcademy)+' LE</span></div>'
+        +(totalAcademy>0?'<div class="print-cashier-row" style="font-weight:700;color:#333;"><span>💼 Total incl. Academy</span><span>'+(totalCash+totalIP+totalVisa+totalAcademy)+' LE</span></div>':'')
         +(cd.clients.length?'<div style="margin-top:10px;"><div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Clients ('+cd.clients.length+')</div>'
-        +'<table class="print-table"><thead><tr><th>#</th><th>Name</th><th>Room</th><th>In</th><th>Out</th><th>Cost</th><th>Cash</th><th>Instapay</th></tr></thead><tbody>'
-        +cd.clients.map(function(c,ci){return '<tr><td>'+(ci+1)+'</td><td>'+c.name+'</td><td>'+c.room+'</td><td>'+fmt12(c.timeIn)+'</td><td>'+fmt12(c.timeOut)+'</td><td>'+c.cost+' LE</td><td>'+(c.cash||0)+' LE</td><td>'+(c.instapay||0)+' LE</td></tr>';}).join('')
+        +'<table class="print-table"><thead><tr><th>#</th><th>Name</th><th>Room</th><th>In</th><th>Out</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Visa</th></tr></thead><tbody>'
+        +cd.clients.map(function(c,ci){return '<tr><td>'+(ci+1)+'</td><td>'+c.name+'</td><td>'+c.room+'</td><td>'+fmt12(c.timeIn)+'</td><td>'+fmt12(c.timeOut)+'</td><td>'+c.cost+' LE</td><td>'+(c.cash||0)+' LE</td><td>'+(c.instapay||0)+' LE</td><td>'+(c.visa||0)+' LE</td></tr>';}).join('')
         +'</tbody></table></div>':'')
         +'</div>';
     }).join('')
@@ -4628,19 +4669,22 @@ function printShiftSummary(){
     +'<div class="print-row"><span>Total Rooms Revenue</span><span>'+grandRooms+' LE</span></div>'
     +'<div class="print-row"><span>Total Cash (Rooms)</span><span>'+grandCash+' LE</span></div>'
     +'<div class="print-row"><span>Total Instapay (Rooms)</span><span>'+grandIP+' LE</span></div>'
+    +'<div class="print-row"><span>Total Visa (Rooms)</span><span>'+grandVisa+' LE</span></div>'
     +'<div class="print-row"><span>Total Drinks Cash</span><span>'+grandDrinks+' LE</span></div>'
     +'<div class="print-row"><span>Total Drinks Instapay</span><span>'+grandDrinksIP+' LE</span></div>'
+    +'<div class="print-row"><span>Total Drinks Visa</span><span>'+grandDrinksVisa+' LE</span></div>'
     +(grandAcademy>0?'<div class="print-row" style="border-top:1px dashed #ccc;padding-top:6px;margin-top:4px;"><span>🎓 Academy Package Payments</span><span>'+grandAcademy+' LE</span></div>':'')
     +'<div class="print-row bold"><span>💵 Total Cash in Hand</span><span>'+(grandCash+grandDrinks)+' LE</span></div>'
     +'<div class="print-row bold"><span>📲 Total Instapay</span><span>'+(grandIP+grandDrinksIP)+' LE</span></div>'
-    +(grandAcademy>0?'<div class="print-row bold"><span>💼 Total incl. Academy</span><span>'+(grandCash+grandDrinks+grandIP+grandDrinksIP+grandAcademy)+' LE</span></div>':'')
+    +'<div class="print-row bold"><span>💳 Total Visa</span><span>'+(grandVisa+grandDrinksVisa)+' LE</span></div>'
+    +(grandAcademy>0?'<div class="print-row bold"><span>💼 Total incl. Academy</span><span>'+(grandCash+grandDrinks+grandIP+grandDrinksIP+grandVisa+grandDrinksVisa+grandAcademy)+' LE</span></div>':'')
     +'<div class="print-row bold" style="font-size:18px;"><span>GRAND TOTAL</span><span>'+grandTotal+' LE</span></div>'
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-section-title">All Client Visits</div>'
-    +'<table class="print-table"><thead><tr><th>#</th><th>Name</th><th>Room</th><th>In</th><th>Out</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Cashier</th></tr></thead><tbody>'
+    +'<table class="print-table"><thead><tr><th>#</th><th>Name</th><th>Room</th><th>In</th><th>Out</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Visa</th><th>Cashier</th></tr></thead><tbody>'
     +dayClients.map(function(c,i){
-      return '<tr><td>'+(i+1)+'</td><td>'+c.name+'</td><td>'+c.room+'</td><td>'+fmt12(c.timeIn)+'</td><td>'+fmt12(c.timeOut)+'</td><td>'+c.cost+' LE</td><td>'+(c.cash||0)+' LE</td><td>'+(c.instapay||0)+' LE</td><td>'+c.cashier+'</td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td>'+c.name+'</td><td>'+c.room+'</td><td>'+fmt12(c.timeIn)+'</td><td>'+fmt12(c.timeOut)+'</td><td>'+c.cost+' LE</td><td>'+(c.cash||0)+' LE</td><td>'+(c.instapay||0)+' LE</td><td>'+(c.visa||0)+' LE</td><td>'+c.cashier+'</td></tr>';
     }).join('')
     +'</tbody></table>'
     +(drkToday.length?('<hr class="print-divider"><div class="print-section-title">Drinks & Snacks Orders</div>'
@@ -4673,47 +4717,53 @@ function refreshDashboard(){
     +_allDrk.filter(function(o){return o.date&&o.date.startsWith(ms)&&o.payment==='cash';}).reduce(function(s,o){return s+(o.total||0);},0)
     +_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.cash||0);},0);
   var _ipMonth=_monthClients.reduce(function(s,c){return s+(c.instapay||0);},0)
-    +_allDrk.filter(function(o){return o.date&&o.date.startsWith(ms)&&o.payment!=='cash';}).reduce(function(s,o){return s+(o.total||0);},0)
+    +_allDrk.filter(function(o){return o.date&&o.date.startsWith(ms)&&o.payment!=='cash'&&o.payment!=='visa';}).reduce(function(s,o){return s+(o.total||0);},0)
     +_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.instapay||0);},0);
+  var _visaMonth=_monthClients.reduce(function(s,c){return s+(c.visa||0);},0)
+    +_allDrk.filter(function(o){return o.date&&o.date.startsWith(ms)&&o.payment==='visa';}).reduce(function(s,o){return s+(o.total||0);},0)
+    +_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.visa||0);},0);
   var _otherMonth=_sp.filter(function(s){return s.date&&s.date.startsWith(ms);}).reduce(function(s,x){return s+(x.other||0);},0);
-  var _netMonth=(_cashMonth+_ipMonth+_otherMonth)-_expMonth;
+  var _netMonth=(_cashMonth+_ipMonth+_visaMonth+_otherMonth)-_expMonth;
   animateNumberTo(document.getElementById('dash-today-clients'),tc.length);
   animateNumberTo(document.getElementById('dash-today-revenue'),tr+_drkToday+_acToday,' LE');
   animateNumberTo(document.getElementById('dash-total-clients'),clientProfiles.length);
   var _mEl=document.getElementById('dash-month-rev');
   animateNumberTo(_mEl,_netMonth,' LE');
-  _mEl.title='Cash: '+_cashMonth+' LE + Instapay: '+_ipMonth+' LE'+(_otherMonth?' + Other: '+_otherMonth+' LE':'')+' − Expenses: '+_expMonth+' LE';
+  _mEl.title='Cash: '+_cashMonth+' LE + Instapay: '+_ipMonth+' LE'+(_visaMonth?' + Visa: '+_visaMonth+' LE':'')+(_otherMonth?' + Other: '+_otherMonth+' LE':'')+' − Expenses: '+_expMonth+' LE';
   _mEl.style.color=_netMonth>=0?'var(--green)':'var(--red)';
   // Update dashboard staff cards dynamically (cash + instapay + drinks + academy, same as Shift Payments cards)
   var dayDrinks=_allDrk.filter(function(o){return o.date===d;});
   var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;});
   var byP={};
-  staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,other:0};});
+  staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,visa:0,other:0};});
   tc.forEach(function(c){
-    if(!byP[c.cashier])byP[c.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[c.cashier])byP[c.cashier]={cash:0,instapay:0,visa:0,other:0};
     byP[c.cashier].cash+=(c.cash||0);
     byP[c.cashier].instapay+=(c.instapay||0);
+    byP[c.cashier].visa+=(c.visa||0);
   });
   dayDrinks.forEach(function(o){
-    if(!byP[o.cashier])byP[o.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[o.cashier])byP[o.cashier]={cash:0,instapay:0,visa:0,other:0};
     if(o.payment==='cash') byP[o.cashier].cash+=(o.total||0);
+    else if(o.payment==='visa') byP[o.cashier].visa+=(o.total||0);
     else byP[o.cashier].instapay+=(o.total||0);
   });
   dayShifts.forEach(function(s){
-    if(!byP[s.cashier])byP[s.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[s.cashier])byP[s.cashier]={cash:0,instapay:0,visa:0,other:0};
     byP[s.cashier].cash+=(s.cash||0);
     byP[s.cashier].instapay+=(s.instapay||0);
+    byP[s.cashier].visa+=(s.visa||0);
     byP[s.cashier].other+=(s.other||0);
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
     dashStaff.innerHTML=staff.map(function(s){
-      var p=byP[s.name]||{cash:0,instapay:0,other:0};
-      var total=p.cash+p.instapay+p.other;
+      var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
+      var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
         +'<div><div style="font-size:14px;font-weight:600;">'+s.name+'</div><div style="font-size:12px;color:var(--text3);">'+s.shift+'</div></div>'
         +'<div style="text-align:right;"><div class="money" style="font-size:16px;color:'+s.color+';">'+total+' LE</div>'
-        +'<div style="font-size:11px;color:var(--text3);">💵 '+p.cash+' + 📱 '+p.instapay+(p.other?' + '+p.other:'')+'</div></div></div>';
+        +'<div style="font-size:11px;color:var(--text3);">💵 '+p.cash+' + 📱 '+p.instapay+(p.visa?' + 💳 '+p.visa:'')+(p.other?' + '+p.other:'')+'</div></div></div>';
     }).join('');
   }
   var recent=tc.slice(-5).reverse();
@@ -4811,6 +4861,7 @@ function renderExpenses(){
   var total=filtered.reduce(function(s,e){return s+(e.amount||0);},0);
   var cash=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='cash';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var ip=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='instapay';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var visaPaid=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='visa';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var ad=loadData('drinkOrders',[]),ac=loadData('clients',[]);
   var _spAll=loadData('shiftPayments',[]);
   var _acRev=_spAll.filter(function(s){return s.date&&s.date.startsWith(month)&&s.academyPayments>0;}).reduce(function(s,x){return s+(x.academyPayments||0);},0);
@@ -4821,6 +4872,7 @@ function renderExpenses(){
   document.getElementById('exp-total').textContent=total+' LE';
   document.getElementById('exp-cash').textContent=cash+' LE';
   document.getElementById('exp-instapay').textContent=ip+' LE';
+  document.getElementById('exp-visa').textContent=visaPaid+' LE';
   document.getElementById('exp-net').textContent=net+' LE';
   document.getElementById('exp-net').style.color=net>=0?'var(--green)':'var(--red)';
   var cats={};
@@ -5107,7 +5159,7 @@ function confirmSellPackage(){
 
   // ── Add to shift payments (same bucket academy renewals use, so
   // existing settlement/print reports pick it up with no other changes) ──
-  var isCash=payment==='cash', isInstapay=payment==='instapay', isOther=payment==='other';
+  var isCash=payment==='cash', isInstapay=payment==='instapay', isVisa=payment==='visa', isOther=payment==='other';
   var existingShift=null;
   for(var si=0;si<shiftPayments.length;si++){
     if(shiftPayments[si].date===payDate && shiftPayments[si].cashier===cashier){existingShift=shiftPayments[si];break;}
@@ -5115,13 +5167,14 @@ function confirmSellPackage(){
   if(existingShift){
     if(isCash)existingShift.cash=(existingShift.cash||0)+tier.cost;
     if(isInstapay)existingShift.instapay=(existingShift.instapay||0)+tier.cost;
+    if(isVisa)existingShift.visa=(existingShift.visa||0)+tier.cost;
     if(isOther)existingShift.other=(existingShift.other||0)+tier.cost;
     existingShift.academyPayments=(existingShift.academyPayments||0)+tier.cost;
-    existingShift.total=(existingShift.rooms||0)+(existingShift.cash||0)+(existingShift.instapay||0)+(existingShift.other||0);
+    existingShift.total=(existingShift.rooms||0)+(existingShift.cash||0)+(existingShift.instapay||0)+(existingShift.visa||0)+(existingShift.other||0);
   } else {
     shiftPayments.push({
       id:Date.now()+3,date:payDate,cashier:cashier,rooms:0,
-      cash:isCash?tier.cost:0,instapay:isInstapay?tier.cost:0,other:isOther?tier.cost:0,
+      cash:isCash?tier.cost:0,instapay:isInstapay?tier.cost:0,visa:isVisa?tier.cost:0,other:isOther?tier.cost:0,
       academyPayments:tier.cost,total:tier.cost,
       note:profile.name+' — Shared Space '+tier.label+' package'
     });
@@ -5143,7 +5196,7 @@ function confirmSellPackage(){
 function printPackageReceipt(pkg,tier,profile,payment,cashier){
   if(!pkg||!tier)return;
   var pa=document.getElementById('print-area');
-  var paymentLabel=payment==='cash'?'Cash':payment==='instapay'?'Instapay':'Other / Bank';
+  var paymentLabel=payLabel(payment);
   pa.innerHTML=
     printHeader('Package Subscription Receipt')
     +'<hr class="print-divider">'
@@ -5252,8 +5305,10 @@ function printMonthlyReport(){
   var acRev=msp.reduce(function(s,x){return s+(x.academyPayments||0);},0);
   var acCash=msp.reduce(function(s,x){return s+(x.cash||0);},0);
   var acIP=msp.reduce(function(s,x){return s+(x.instapay||0);},0);
+  var acVisa=msp.reduce(function(s,x){return s+(x.visa||0);},0);
   var totalCash=mc.reduce(function(s,c){return s+(c.cash||0);},0)+md.filter(function(o){return o.payment==='cash';}).reduce(function(s,o){return s+(o.total||0);},0)+acCash;
   var totalIP=mc.reduce(function(s,c){return s+(c.instapay||0);},0)+md.filter(function(o){return o.payment==='instapay';}).reduce(function(s,o){return s+(o.total||0);},0)+acIP;
+  var totalVisa=mc.reduce(function(s,c){return s+(c.visa||0);},0)+md.filter(function(o){return o.payment==='visa';}).reduce(function(s,o){return s+(o.total||0);},0)+acVisa;
   var totalExp=me.reduce(function(s,e){return s+(e.amount||0);},0);
   var roomMap={};
   mc.forEach(function(c){if(!roomMap[c.room])roomMap[c.room]={n:0,rev:0};roomMap[c.room].n++;roomMap[c.room].rev+=(c.cost||0);});
@@ -5274,6 +5329,7 @@ function printMonthlyReport(){
     +'<div class="print-row bold"><span>Total Revenue</span><span>'+(roomRev+drkRev+acRev)+' LE</span></div>'
     +'<div class="print-row"><span>Cash Collected</span><span>'+totalCash+' LE</span></div>'
     +'<div class="print-row"><span>Instapay Collected</span><span>'+totalIP+' LE</span></div>'
+    +'<div class="print-row"><span>Visa Collected</span><span>'+totalVisa+' LE</span></div>'
     +(totalExp>0?'<div class="print-row" style="color:#c0392b;"><span>Total Expenses</span><span>- '+totalExp+' LE</span></div>':'')
     +'<div class="print-row bold" style="font-size:16px;border-top:2px solid #333;padding-top:8px;margin-top:4px;"><span>NET REVENUE</span><span>'+(roomRev+drkRev+acRev-totalExp)+' LE</span></div>'
     +'<hr class="print-divider">'
@@ -5600,6 +5656,7 @@ function confirmRenew(){
   if(payCashier && cost > 0) {
     var isCash = payMethod === 'cash';
     var isInstapay = payMethod === 'instapay';
+    var isVisa = payMethod === 'visa';
     var isOther = payMethod === 'other';
     // Find existing shift entry for this cashier+date, or create one
     var existing = null;
@@ -5611,9 +5668,10 @@ function confirmRenew(){
     if(existing) {
       if(isCash)    { existing.cash    = (existing.cash||0)    + cost; }
       if(isInstapay){ existing.instapay= (existing.instapay||0)+ cost; }
+      if(isVisa)    { existing.visa    = (existing.visa||0)    + cost; }
       if(isOther)   { existing.other   = (existing.other||0)   + cost; }
       existing.academyPayments = (existing.academyPayments||0) + cost;
-      existing.total = (existing.rooms||0)+(existing.cash||0)+(existing.instapay||0)+(existing.other||0);
+      existing.total = (existing.rooms||0)+(existing.cash||0)+(existing.instapay||0)+(existing.visa||0)+(existing.other||0);
     } else {
       shiftPayments.push({
         id: Date.now()+2,
@@ -5622,6 +5680,7 @@ function confirmRenew(){
         rooms: 0,
         cash: isCash ? cost : 0,
         instapay: isInstapay ? cost : 0,
+        visa: isVisa ? cost : 0,
         other: isOther ? cost : 0,
         academyPayments: cost,
         total: cost,
@@ -8302,6 +8361,7 @@ function openEditVisit(visitId) {
   document.getElementById('ev-cost').value = v.cost || 0;
   document.getElementById('ev-cash').value = v.cash || 0;
   document.getElementById('ev-instapay').value = v.instapay || 0;
+  document.getElementById('ev-visa').value = v.visa || 0;
   document.getElementById('ev-notes').value = v.notes || '';
   // Populate cashier dropdown
   var opts = staff.map(function(s){ return '<option value="'+s.name+'"'+(s.name===v.cashier?' selected':'')+'>'+s.name+'</option>'; }).join('');
@@ -8324,6 +8384,7 @@ function saveEditVisit() {
   v.cost = parseFloat(document.getElementById('ev-cost').value) || 0;
   v.cash = parseFloat(document.getElementById('ev-cash').value) || 0;
   v.instapay = parseFloat(document.getElementById('ev-instapay').value) || 0;
+  v.visa = parseFloat(document.getElementById('ev-visa').value) || 0;
   v.notes = document.getElementById('ev-notes').value.trim();
   v.cashier = document.getElementById('ev-cashier').value;
   saveData('clients', clients);
@@ -8575,6 +8636,7 @@ function printEditedReceipt() {
     +'<div class="print-row bold"><span>TOTAL</span><span>'+grandTotal+' LE</span></div>'
     +(visit.cash?'<div class="print-row"><span>Cash (rooms + drinks)</span><span>'+(visit.cash+drinksTot)+' LE</span></div>':'')
     +(visit.instapay?'<div class="print-row"><span>Instapay (rooms + drinks)</span><span>'+(visit.instapay+drinksTot)+' LE</span></div>':'')
+    +(visit.visa?'<div class="print-row"><span>Visa (rooms + drinks)</span><span>'+(visit.visa+drinksTot)+' LE</span></div>':'')
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-row"><span>Cashier</span><span>'+visit.cashier+'</span></div>'
@@ -8684,7 +8746,8 @@ function calcManualBalance() {
   var cost = parseFloat(document.getElementById('mg-cost').value) || 0;
   var cash = parseFloat(document.getElementById('mg-cash').value) || 0;
   var ip = parseFloat(document.getElementById('mg-instapay').value) || 0;
-  var paid = cash + ip;
+  var visa = parseFloat(document.getElementById('mg-visa').value) || 0;
+  var paid = cash + ip + visa;
   if (paid > 0 || cost > 0) {
     document.getElementById('mg-balance-row').style.display = '';
     document.getElementById('mg-balance').textContent = (paid - cost) + ' LE';
@@ -8710,6 +8773,7 @@ function submitManualGuest() {
   var hrs = parseFloat(document.getElementById('mg-hours').value) || (tin && tout ? calcHours(tin, tout) : 0);
   var cash = parseFloat(document.getElementById('mg-cash').value) || 0;
   var ip = parseFloat(document.getElementById('mg-instapay').value) || 0;
+  var visa = parseFloat(document.getElementById('mg-visa').value) || 0;
   var phone = document.getElementById('mg-phone').value.trim();
   var guests = parseInt(document.getElementById('mg-guests').value) || 1;
   var notes = document.getElementById('mg-notes').value.trim();
@@ -8733,6 +8797,7 @@ function submitManualGuest() {
     cost: cost,
     cash: cash,
     instapay: ip,
+    visa: visa,
     cashier: cashier,
     notes: (notes ? '[Manual] ' + notes : '[Manual entry]'),
     manual: true
@@ -8751,11 +8816,12 @@ function submitManualGuest() {
   if (existing) {
     existing.rooms = (existing.rooms || 0) + cash;
     existing.instapay = (existing.instapay || 0) + ip;
-    existing.total = (existing.rooms || 0) + (existing.instapay || 0) + (existing.other || 0);
+    existing.visa = (existing.visa || 0) + visa;
+    existing.total = (existing.rooms || 0) + (existing.instapay || 0) + (existing.visa || 0) + (existing.other || 0);
   } else {
     shiftPayments.push({
       id: Date.now() + 1, date: date, cashier: cashier,
-      rooms: cash, instapay: ip, other: 0, total: cost
+      rooms: cash, instapay: ip, visa: visa, other: 0, total: cost
     });
   }
   saveData('shiftPayments', shiftPayments);
@@ -8775,7 +8841,7 @@ function submitManualGuest() {
 }
 
 function clearManualGuest() {
-  ['mg-name','mg-phone','mg-timein','mg-timeout','mg-hours','mg-notes','mg-cost','mg-cash','mg-instapay'].forEach(function(id){
+  ['mg-name','mg-phone','mg-timein','mg-timeout','mg-hours','mg-notes','mg-cost','mg-cash','mg-instapay','mg-visa'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -9497,9 +9563,9 @@ function exportClientsCSV(){
 }
 
 function exportShiftsCSV(){
-  var rows=[['Date','Cashier','Cash','Instapay','Total']];
+  var rows=[['Date','Cashier','Cash','Instapay','Visa','Total']];
   shiftPayments.forEach(function(s){
-    rows.push([s.date,s.cashier,s.cash||0,s.instapay||0,s.total||0]);
+    rows.push([s.date,s.cashier,s.cash||0,s.instapay||0,s.visa||0,s.total||0]);
   });
   downloadCSV(rows,'spaceco_shifts.csv');
 }
@@ -9624,7 +9690,7 @@ renderClients=function(){
       +'</tr>'
       +'<tr id="sessions-'+p.id+'" style="display:none;"><td colspan="9" style="padding:0;">'
       +'<div style="padding:8px 16px 16px;background:var(--bg);">'
-      +'<table><thead><tr><th>#</th><th>Date</th><th>Room</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Cashier</th><th></th></tr></thead>'
+      +'<table><thead><tr><th>#</th><th>Date</th><th>Room</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Cost</th><th>Cash</th><th>Instapay</th><th>Visa</th><th>Cashier</th><th></th></tr></thead>'
       +'<tbody>'
       +visits.map(function(v,vi){
         return '<tr class="session-rows">'
@@ -9636,6 +9702,7 @@ renderClients=function(){
           +'<td class="money money-green">'+v.cost+' LE</td>'
           +'<td>'+(v.cash?v.cash+' LE':'-')+'</td>'
           +'<td>'+(v.instapay?v.instapay+' LE':'-')+'</td>'
+          +'<td>'+(v.visa?v.visa+' LE':'-')+'</td>'
           +'<td><span class="badge badge-blue">'+v.cashier+'</span></td>'
           +'<td style="white-space:nowrap;">'
           +'<button class="btn btn-outline btn-sm" onclick="openEditVisit('+v.id+')" style="margin-right:4px;">✏️</button>'
@@ -10053,50 +10120,57 @@ refreshDashboard=function(){
   var _acRevMonth=_monthShifts.reduce(function(s,x){return s+(x.academyPayments||0);},0);
   var _acCashMonth=_monthShifts.reduce(function(s,x){return s+(x.cash||0);},0);
   var _acIPMonth=_monthShifts.reduce(function(s,x){return s+(x.instapay||0);},0);
+  var _acVisaMonth=_monthShifts.reduce(function(s,x){return s+(x.visa||0);},0);
   var _cashMonth=_monthClients.reduce(function(s,c){return s+(c.cash||0);},0)
     +_monthDrinks.filter(function(o){return o.payment==='cash';}).reduce(function(s,o){return s+(o.total||0);},0)
     +_acCashMonth;
   var _ipMonth=_monthClients.reduce(function(s,c){return s+(c.instapay||0);},0)
     +_monthDrinks.filter(function(o){return o.payment==='instapay';}).reduce(function(s,o){return s+(o.total||0);},0)
     +_acIPMonth;
+  var _visaMonth=_monthClients.reduce(function(s,c){return s+(c.visa||0);},0)
+    +_monthDrinks.filter(function(o){return o.payment==='visa';}).reduce(function(s,o){return s+(o.total||0);},0)
+    +_acVisaMonth;
   var _expMonth=loadData('expenses',[]).filter(function(e){return (e.date||'').startsWith(ms);}).reduce(function(s,e){return s+(e.amount||0);},0);
   var _netMonth=(_roomRevMonth+_drkRevMonth+_acRevMonth)-_expMonth;
   var _mEl=document.getElementById('dash-month-rev');
   if(_mEl){
     _mEl.textContent=_netMonth+' LE';
-    _mEl.title='Cash: '+_cashMonth+' LE + Instapay: '+_ipMonth+' LE − Expenses: '+_expMonth+' LE';
+    _mEl.title='Cash: '+_cashMonth+' LE + Instapay: '+_ipMonth+' LE'+(_visaMonth?' + Visa: '+_visaMonth+' LE':'')+' − Expenses: '+_expMonth+' LE';
     _mEl.style.color=_netMonth>=0?'var(--green)':'var(--red)';
   }
   var tc=clients.filter(function(c){return c.date===d;});
   var dayDrinks=_allDrk.filter(function(o){return o.date===d;});
   var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;});
   var byP={};
-  staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,other:0};});
+  staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,visa:0,other:0};});
   tc.forEach(function(c){
-    if(!byP[c.cashier])byP[c.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[c.cashier])byP[c.cashier]={cash:0,instapay:0,visa:0,other:0};
     byP[c.cashier].cash+=(c.cash||0);
     byP[c.cashier].instapay+=(c.instapay||0);
+    byP[c.cashier].visa+=(c.visa||0);
   });
   dayDrinks.forEach(function(o){
-    if(!byP[o.cashier])byP[o.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[o.cashier])byP[o.cashier]={cash:0,instapay:0,visa:0,other:0};
     if(o.payment==='cash') byP[o.cashier].cash+=(o.total||0);
+    else if(o.payment==='visa') byP[o.cashier].visa+=(o.total||0);
     else byP[o.cashier].instapay+=(o.total||0);
   });
   dayShifts.forEach(function(s){
-    if(!byP[s.cashier])byP[s.cashier]={cash:0,instapay:0,other:0};
+    if(!byP[s.cashier])byP[s.cashier]={cash:0,instapay:0,visa:0,other:0};
     byP[s.cashier].cash+=(s.cash||0);
     byP[s.cashier].instapay+=(s.instapay||0);
+    byP[s.cashier].visa+=(s.visa||0);
     byP[s.cashier].other+=(s.other||0);
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
     dashStaff.innerHTML=staff.map(function(s){
-      var p=byP[s.name]||{cash:0,instapay:0,other:0};
-      var total=p.cash+p.instapay+p.other;
+      var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
+      var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
         +'<div><div style="font-size:14px;font-weight:600;">'+s.name+'</div><div style="font-size:12px;color:var(--text3);">'+s.shift+'</div></div>'
         +'<div style="text-align:right;"><div class="money" style="font-size:16px;color:'+s.color+';">'+total+' LE</div>'
-        +'<div style="font-size:11px;color:var(--text3);">💵 '+p.cash+' + 📱 '+p.instapay+(p.other?' + '+p.other:'')+'</div></div></div>';
+        +'<div style="font-size:11px;color:var(--text3);">💵 '+p.cash+' + 📱 '+p.instapay+(p.visa?' + 💳 '+p.visa:'')+(p.other?' + '+p.other:'')+'</div></div></div>';
     }).join('');
   }
 };
@@ -10121,10 +10195,11 @@ refreshDashboard=function(){
       <div class="form-group"><label>Hours</label><input type="number" step="0.5" id="ev-hours" placeholder="0"></div>
       <div class="form-group"><label>Guests</label><input type="number" id="ev-guests" placeholder="1" min="1"></div>
     </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
       <div class="form-group"><label>Total Cost (LE)</label><input type="number" id="ev-cost" placeholder="0"></div>
       <div class="form-group"><label>Cash (LE)</label><input type="number" id="ev-cash" placeholder="0"></div>
       <div class="form-group"><label>Instapay (LE)</label><input type="number" id="ev-instapay" placeholder="0"></div>
+      <div class="form-group"><label>Visa (LE)</label><input type="number" id="ev-visa" placeholder="0"></div>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
       <div class="form-group"><label>Cashier</label><select id="ev-cashier"><option value="Aya">Aya (9:00 AM – 4:00 PM)</option><option value="Youssef">Youssef (4:00 PM – 11:00 PM)</option><option value="Nour">Nour (Fri &amp; Sat both shifts)</option></select></div>
@@ -10226,7 +10301,7 @@ refreshDashboard=function(){
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
       <div class="form-group"><label>Total (LE)</label><input type="number" id="ed-total" placeholder="0"></div>
       <div class="form-group"><label>Payment</label>
-        <select id="ed-payment"><option value="cash">Cash</option><option value="instapay">Instapay</option></select>
+        <select id="ed-payment"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select>
       </div>
     </div>
     <div class="form-group"><label>Cashier</label><select id="ed-cashier"><option value="Aya">Aya (9:00 AM – 4:00 PM)</option><option value="Youssef">Youssef (4:00 PM – 11:00 PM)</option><option value="Nour">Nour (Fri &amp; Sat both shifts)</option></select></div>
@@ -10387,7 +10462,7 @@ refreshDashboard=function(){
         </select>
       </div>
       <div class="form-group"><label>Paid From</label>
-        <select id="exp-paid-from"><option value="cash">Cash</option><option value="instapay">Instapay</option></select>
+        <select id="exp-paid-from"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select>
       </div>
     </div>
     <div class="form-group"><label>Note (optional)</label><input type="text" id="exp-note" placeholder="Any extra details..."></div>
