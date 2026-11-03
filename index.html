@@ -161,6 +161,33 @@
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
   .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── LOCKERS ── */
+  .lk-map{position:relative;width:100%;aspect-ratio:1520/1170;background:#dcdde0;border-radius:12px;container-type:inline-size;overflow:hidden;user-select:none;}
+  .lk-door{position:absolute;box-sizing:border-box;border:3px solid #dcdde0;border-radius:10px;background:#f6f7f8;color:#1f2933;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2px;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease;}
+  .lk-door:hover{transform:scale(1.025);z-index:5;box-shadow:0 8px 22px rgba(0,0,0,.28);}
+  .lk-door.green{background:#5f8f6b;color:#fff;}
+  .lk-door.blue{background:#a8d4d4;color:#17323a;}
+  .lk-door.occupied{box-shadow:inset 0 0 0 4px #111827;}
+  .lk-door.occupied:hover{box-shadow:inset 0 0 0 4px #111827,0 8px 22px rgba(0,0,0,.28);}
+  .lk-door.overdue{box-shadow:inset 0 0 0 4px #dc2626;}
+  .lk-door.overdue:hover{box-shadow:inset 0 0 0 4px #dc2626,0 8px 22px rgba(0,0,0,.28);}
+  .lk-door.reserved{box-shadow:inset 0 0 0 4px #f59e0b;}
+  .lk-door.reserved:hover{box-shadow:inset 0 0 0 4px #f59e0b,0 8px 22px rgba(0,0,0,.28);}
+  .lk-name{font-weight:800;font-size:clamp(11px,2.3cqw,24px);line-height:1.1;}
+  .lk-sub{font-size:clamp(8px,1.2cqw,12px);opacity:.75;line-height:1.2;}
+  .lk-who{margin-top:3px;max-width:94%;font-size:clamp(8px,1.35cqw,13px);font-weight:700;line-height:1.2;background:rgba(17,24,39,.88);color:#fff;border-radius:6px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lk-door.overdue .lk-who{background:#dc2626;}
+  .lk-door.reserved .lk-who{background:#b45309;}
+  .lk-until{font-size:clamp(7px,1.1cqw,11px);margin-top:2px;font-weight:600;line-height:1.15;}
+  .lk-shelf{position:absolute;box-sizing:border-box;border:2px dashed #b58a5b;background:rgba(181,138,91,.12);border-radius:6px;}
+  .lk-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:10px;}
+  .lk-legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;background:#f6f7f8;}
+  .lk-seg{display:flex;gap:6px;margin-bottom:14px;}
+  .lk-seg button{flex:1;padding:9px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;}
+  .lk-seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .lk-warn{display:none;background:var(--amber-bg);color:#92400e;border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;margin-bottom:12px;}
+  .lk-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;background:var(--bg3);}
+  .lk-price-input{width:100%;min-width:60px;padding:6px 8px;font-size:13px;}
   .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
   .stat-label{font-size:12px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;}
   .stat-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--bg3);margin-right:8px;font-size:13px;flex-shrink:0;}
@@ -489,6 +516,7 @@
       <button class="nav-item" data-page="checkin" onclick="showPage(&#39;checkin&#39;,this)"><span class="nav-icon">✚</span> Guest Check-in</button>
       <button class="nav-item" data-page="reservations" id="nav-reservations" onclick="showPage(&#39;reservations&#39;,this);renderReservations();"><span class="nav-icon">📅</span> Reservations <span id="pending-res-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="packagerequests" id="nav-packagerequests" onclick="showPage(&#39;packagerequests&#39;,this);renderPackageRequests();"><span class="nav-icon">📦</span> Package Requests <span id="pending-pkg-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
+      <button class="nav-item" data-page="lockers" id="nav-lockers" onclick="showPage(&#39;lockers&#39;,this)"><span class="nav-icon">🔐</span> Lockers</button>
       <button class="nav-item" data-page="clients" onclick="showPage(&#39;clients&#39;,this)"><span class="nav-icon">☰</span> Client Log</button>
       <button class="nav-item" data-page="topclients" onclick="showPage(&#39;topclients&#39;,this);renderTopClients();"><span class="nav-icon">🏆</span> Top Performers</button>
     </div>
@@ -1218,6 +1246,64 @@
   </div>
 </div>
 
+<!-- LOCKERS PAGE — the wall, bookings, price lists -->
+<div id="page-lockers" class="page">
+  <div class="page-header flex-between">
+    <div>
+      <div class="page-title">🔐 Lockers</div>
+      <div class="page-sub">15 lockers — book by the hour, day or month, reserve ahead, and see who has which key</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="lk-search" placeholder="Search renter, phone or locker…" style="width:230px;" oninput="renderLockerTable()">
+      <button class="btn btn-primary" onclick="openLockerBooking()">+ New Booking</button>
+    </div>
+  </div>
+
+  <div class="grid-4 mb-16" id="lk-stats" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));"></div>
+
+  <div class="card mb-16">
+    <div class="card-title flex-between" style="flex-wrap:wrap;gap:10px;">
+      <span>🧱 The Wall</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:400;">
+        <button class="btn btn-outline btn-sm" onclick="lkShiftViewDate(-1)" title="Previous day">‹</button>
+        <input type="date" id="lk-view-date" style="width:160px;" onchange="lkSetViewDate(this.value)">
+        <button class="btn btn-outline btn-sm" onclick="lkShiftViewDate(1)" title="Next day">›</button>
+        <button class="btn btn-outline btn-sm" onclick="lkSetViewDate('')">Today</button>
+      </span>
+    </div>
+    <div class="lk-legend" id="lk-legend"></div>
+    <div id="lk-map" class="lk-map"></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;">Click a free locker to book it, or a taken one to see who has it. Use the date arrows to check any day ahead.</div>
+  </div>
+
+  <div class="card mb-16">
+    <div class="card-title flex-between" style="flex-wrap:wrap;gap:10px;">
+      <span>📋 Bookings</span>
+      <select id="lk-filter" onchange="renderLockerTable()" style="width:210px;font-weight:400;">
+        <option value="active">Active &amp; upcoming</option>
+        <option value="attention">Needs attention</option>
+        <option value="history">History (returned / cancelled)</option>
+        <option value="all">Everything</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Locker</th><th>Renter</th><th>From</th><th>To</th><th>Status</th><th>Money</th><th>Actions</th></tr></thead>
+        <tbody id="lk-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title flex-between" style="flex-wrap:wrap;gap:10px;">
+      <span>💲 Price Lists &amp; Who Each Locker Is For</span>
+      <button class="btn btn-primary btn-sm" onclick="lkSaveConfig()">Save Prices</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">Set a price once per size and it applies to every locker of that size. A price typed on a single locker below overrides it. Leave a price empty if you haven't decided it yet — you can type the price when you book. Changing prices never changes bookings already made.</div>
+    <div id="lk-prices"></div>
+  </div>
+</div>
+
 <!-- WHATSAPP MESSAGES MANAGER PAGE -->
 <div id="page-watemplates" class="page">
   <div class="page-header flex-between">
@@ -1761,6 +1847,152 @@
   </div>
 </div>
 
+<!-- LOCKER BOOKING MODAL — the one form for every locker booking: client or academy,
+     hours / days / months, now or reserved ahead, paid now or later. -->
+<div class="modal-overlay" id="locker-booking-modal">
+  <div class="modal" style="width:780px;">
+    <div class="modal-header"><div class="modal-title" id="lkb-title">🔐 New Locker Booking</div><button class="close-btn" onclick="closeModal(&#39;locker-booking-modal&#39;)">✕</button></div>
+
+    <div class="lk-seg">
+      <button type="button" id="lkb-type-client" class="active" onclick="lkbSetType('client')">👤 Client</button>
+      <button type="button" id="lkb-type-academy" onclick="lkbSetType('academy')">🎓 Academy</button>
+    </div>
+
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group">
+        <label id="lkb-renter-label">Client name *</label>
+        <div class="name-wrap" id="lkb-name-wrap">
+          <input type="text" id="lkb-name" placeholder="Full name" autocomplete="off" oninput="lkbNameSearch(this.value)">
+          <div class="suggestions" id="lkb-sug" style="display:none;"></div>
+        </div>
+        <select id="lkb-academy" style="display:none;" onchange="lkbAcademyChange()"></select>
+      </div>
+      <div class="form-group"><label>Phone</label><input type="text" id="lkb-phone" placeholder="01X-XXXXXXXX"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Locker *</label>
+      <select id="lkb-locker" onchange="lkbRecalc('locker')"></select>
+      <div id="lkb-locker-info" style="font-size:11px;color:var(--text3);margin-top:5px;"></div>
+    </div>
+
+    <div class="form-row" style="grid-template-columns:1.2fr 1fr 1.2fr;">
+      <div class="form-group"><label>From *</label><input type="datetime-local" id="lkb-start" oninput="lkbRecalc('start')"></div>
+      <div class="form-group"><label>For</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="lkb-qty" min="0.5" step="0.5" value="1" style="width:64px;flex:none;" oninput="lkbRecalc('qty')">
+          <select id="lkb-unit" style="flex:1;min-width:92px;" onchange="lkbRecalc('unit')">
+            <option value="hour">Hours</option><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Until *</label><input type="datetime-local" id="lkb-end" oninput="lkbRecalc('end')"></div>
+    </div>
+
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Price (LE)</label><input type="number" id="lkb-price" min="0" step="1" placeholder="0" oninput="lkbPriceTouched()"><div id="lkb-price-hint" style="font-size:11px;color:var(--text3);margin-top:5px;"></div></div>
+      <div class="form-group"><label>Payment</label>
+        <select id="lkb-method" onchange="lkbMethodChange()">
+          <option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="other">Other / Bank</option><option value="unpaid">Pay later (not paid yet)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="lkb-pay-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Cashier</label><select id="lkb-cashier"></select></div>
+      <div class="form-group"><label>Date paid</label><input type="date" id="lkb-paydate"></div>
+    </div>
+
+    <div class="form-group"><label>Notes</label><input type="text" id="lkb-notes" placeholder="Optional — e.g. key tag, what's inside"></div>
+
+    <div class="lk-warn" id="lkb-warn"></div>
+    <button class="btn btn-success btn-full" id="lkb-confirm-btn" onclick="confirmLockerBooking()">✓ Confirm Booking</button>
+  </div>
+</div>
+
+<!-- LOCKER DETAILS MODAL — everything about one locker: current/upcoming bookings, actions, history -->
+<div class="modal-overlay" id="locker-details-modal">
+  <div class="modal" style="width:700px;">
+    <div class="modal-header"><div class="modal-title" id="lkd-title">🔐 Locker</div><button class="close-btn" onclick="closeModal(&#39;locker-details-modal&#39;)">✕</button></div>
+    <div id="lkd-body"></div>
+  </div>
+</div>
+
+<!-- LOCKER RENEW MODAL — extend a booking -->
+<div class="modal-overlay" id="locker-renew-modal">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><div class="modal-title">🔄 Extend Locker Booking</div><button class="close-btn" onclick="closeModal(&#39;locker-renew-modal&#39;)">✕</button></div>
+    <div id="lkr-summary" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Extend from</label>
+        <select id="lkr-from" onchange="lkrRecalc()"><option value="end">Current end</option><option value="now">Right now</option></select>
+      </div>
+      <div class="form-group"><label>By</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="lkr-qty" min="0.5" step="0.5" value="1" style="width:64px;flex:none;" oninput="lkrRecalc()">
+          <select id="lkr-unit" style="flex:1;min-width:92px;" onchange="lkrRecalc(true)"><option value="hour">Hours</option><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="lkr-newend" style="font-size:13px;margin-bottom:12px;color:var(--text2);"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Price (LE)</label><input type="number" id="lkr-price" min="0" step="1" oninput="_lkrPriceManual=true"><div id="lkr-price-hint" style="font-size:11px;color:var(--text3);margin-top:5px;"></div></div>
+      <div class="form-group"><label>Payment</label>
+        <select id="lkr-method" onchange="lkrMethodChange()">
+          <option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="other">Other / Bank</option><option value="unpaid">Pay later (not paid yet)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="lkr-pay-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Cashier</label><select id="lkr-cashier"></select></div>
+      <div class="form-group"><label>Date paid</label><input type="date" id="lkr-paydate"></div>
+    </div>
+    <div class="lk-warn" id="lkr-warn"></div>
+    <button class="btn btn-success btn-full" onclick="lkConfirmRenew()">✓ Confirm Extension</button>
+  </div>
+</div>
+
+<!-- LOCKER PAY MODAL — collect money still owed -->
+<div class="modal-overlay" id="locker-pay-modal">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header"><div class="modal-title">💰 Collect Locker Payment</div><button class="close-btn" onclick="closeModal(&#39;locker-pay-modal&#39;)">✕</button></div>
+    <div id="lkp-summary" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;font-size:13px;"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Amount (LE)</label><input type="number" id="lkp-amount" min="0" step="1"></div>
+      <div class="form-group"><label>Payment</label>
+        <select id="lkp-method"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="other">Other / Bank</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Cashier</label><select id="lkp-cashier"></select></div>
+      <div class="form-group"><label>Date paid</label><input type="date" id="lkp-paydate"></div>
+    </div>
+    <button class="btn btn-success btn-full" onclick="lkConfirmPay()">✓ Record Payment</button>
+  </div>
+</div>
+
+<!-- LOCKER EDIT MODAL — fix a typo in the renter's details -->
+<div class="modal-overlay" id="locker-edit-modal">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header"><div class="modal-title">✏️ Edit Booking Details</div><button class="close-btn" onclick="closeModal(&#39;locker-edit-modal&#39;)">✕</button></div>
+    <div class="form-group"><label>Renter name</label><input type="text" id="lke-name"></div>
+    <div class="form-group"><label>Phone</label><input type="text" id="lke-phone"></div>
+    <div class="form-group"><label>Notes</label><input type="text" id="lke-notes"></div>
+    <button class="btn btn-primary btn-full" onclick="lkSaveEdit()">Save</button>
+  </div>
+</div>
+
+<!-- LOCKER CONFIRM MODAL — "are you sure" for return / cancel -->
+<div class="modal-overlay" id="locker-confirm-modal">
+  <div class="modal" style="width:400px;">
+    <div class="modal-header"><div class="modal-title" id="lkc-title">Confirm</div><button class="close-btn" onclick="closeModal(&#39;locker-confirm-modal&#39;)">✕</button></div>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;" id="lkc-msg"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal(&#39;locker-confirm-modal&#39;)">Back</button>
+      <button class="btn btn-primary" id="lkc-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // SUPABASE CONFIG
@@ -1939,6 +2171,10 @@ async function bootApp() {
       reservations=freshRes||[];
       roomBlocks=freshBlocks||[];
       packageRequests=freshPkgs||[];
+      var freshLkB=await sbGet('lockerBookings',lockerBookings);
+      var freshLkC=await sbGet('lockerConfig',lockerConfig);
+      if(Array.isArray(freshLkB))lockerBookings=freshLkB;
+      lockerConfig=lkNormalizeConfig(freshLkC);
       updatePendingResBadge();
       updatePendingPkgBadge();
       renderNotifPanel();
@@ -1946,6 +2182,8 @@ async function bootApp() {
       if(resPage&&resPage.classList.contains('active'))renderReservations();
       var pkgPage=document.getElementById('page-packagerequests');
       if(pkgPage&&pkgPage.classList.contains('active'))renderPackageRequests();
+      var lkPage=document.getElementById('page-lockers');
+      if(lkPage&&lkPage.classList.contains('active'))renderLockers(false);
     }catch(e){ console.warn('live sync poll failed',e); }
   }, 30000);
 }
@@ -2106,6 +2344,7 @@ function initData(){
   packageRequests=loadData('packageRequests',[]);
   expenses=loadData('expenses',[]);
   sharedSpacePackages=loadData('sharedSpacePackages',{});
+  lkLoad();
   staffDebts=loadData('staffDebts',[]);
   // Migrate: ensure clientProfiles have notes/noShows fields
   clientProfiles.forEach(function(p){if(p.notes===undefined)p.notes='';if(p.noShows===undefined)p.noShows=0;});
@@ -2240,7 +2479,7 @@ function renderRoomCards(){
 // ============================================================
 var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
-  checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',
+  checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
   shifts:'finance',staffdebts:'finance',expenses:'finance',
   watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
@@ -2294,6 +2533,7 @@ function showPage(id,btn){
   if(id==='packagerequests')renderPackageRequests();
   if(id==='expenses'){if(document.getElementById('exp-filter-month')&&!document.getElementById('exp-filter-month').value)document.getElementById('exp-filter-month').value=today().substring(0,7);renderExpenses();}
   if(id==='sharedpkgs')renderSharedSpacePackages();
+  if(id==='lockers'){renderLockers(true);lkRefreshFromCloud();}
   if(academies[id])renderAcademy(id);
   syncNavCategoryForPage(id);
 }
@@ -6598,6 +6838,818 @@ function deleteDocument(id){
   openModal('confirm-modal');
 }
 
+// ============================================================
+// LOCKERS — Stage 1: the wall map, per-size/per-locker price lists, ONE booking
+// form (client or academy · hours / days / months · now or reserved ahead ·
+// paid now or later), payments into the shift settlement, returns, and
+// "please empty your locker" alerts.
+//
+// Data (both synced like everything else through saveData):
+//   lockerBookings — every booking ever made (history is never deleted)
+//   lockerConfig   — price lists + which lockers are for clients / academies
+// The layout of the wall itself (names, sizes, positions) is fixed in LOCKER_DEFS.
+// ============================================================
+var lockerBookings=[];
+var lockerConfig={prices:{},overrides:{},who:{}};
+var lkViewDate='';   // '' = today; otherwise YYYY-MM-DD shown on the map
+
+var LOCKER_SIZES=['XL','L','M','S'];
+var LOCKER_UNITS=['hour','day','week','month'];
+// What the price lists start as, until the owner saves their own: per-size prices, which academy owns each
+// XL locker, and the long-rental discount (percent off when renting this many months or more).
+var LOCKER_DEFAULT_CONFIG={
+  prices:{S:{day:30,week:120,month:300},M:{day:40,week:160,month:400},L:{day:50,week:200,month:500},XL:{month:700}},
+  overrides:{},
+  who:{XL1:'academy:dina',XL2:'academy:ima'},
+  discounts:{3:10,6:15,12:20}
+};
+var LOCKER_COLORS={green:'Green',blue:'Blue'};
+// x/y/w/h are measured on the photo of the real wall so the map keeps its true proportions.
+var LOCKER_DEFS=[
+  {id:'XL1',size:'XL',x:68,y:28,w:239,h:897},
+  {id:'XL2',size:'XL',x:307,y:28,w:248,h:897},
+  {id:'S1',size:'S',x:555,y:20,w:253,h:262},
+  {id:'S2',size:'S',x:810,y:20,w:244,h:260},
+  {id:'S3',size:'S',x:1055,y:15,w:253,h:263},
+  {id:'M1',size:'M',x:570,y:285,w:355,h:237},
+  {id:'M2',size:'M',x:928,y:282,w:352,h:240},
+  {id:'L4',size:'L',x:1280,y:280,w:277,h:362},
+  {id:'S4',size:'S',x:580,y:525,w:228,h:220},
+  {id:'S5',size:'S',x:810,y:525,w:225,h:220},
+  {id:'S6',size:'S',x:1037,y:525,w:226,h:223,color:'blue'},
+  {id:'S7',size:'S',x:1265,y:642,w:225,h:218},
+  {id:'L1',size:'L',x:590,y:742,w:222,h:423,color:'green'},
+  {id:'L2',size:'L',x:815,y:748,w:218,h:422},
+  {id:'L3',size:'L',x:1035,y:748,w:203,h:417}
+];
+// The open cubbies/shelves on the real wall — drawn only so the map looks like the photo.
+var LOCKER_SHELVES=[{x:1310,y:10,w:265,h:265},{x:185,y:925,w:415,h:225},{x:1240,y:860,w:245,h:305}];
+var LOCKER_MAP_BOX={x:60,y:5,w:1520,h:1170};
+
+function lkNormalizeConfig(c){
+  c=(c&&typeof c==='object'&&!Array.isArray(c))?c:{};
+  c.prices=(c.prices&&typeof c.prices==='object')?c.prices:{};
+  c.overrides=(c.overrides&&typeof c.overrides==='object')?c.overrides:{};
+  c.who=(c.who&&typeof c.who==='object')?c.who:{};
+  c.discounts=(c.discounts&&typeof c.discounts==='object')?c.discounts:JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG.discounts));
+  return c;
+}
+function lkLoad(){
+  lockerBookings=loadData('lockerBookings',[]);
+  if(!Array.isArray(lockerBookings))lockerBookings=[];
+  var saved=loadData('lockerConfig',{});
+  // nothing saved yet -> start from the standard price list; once the owner presses Save, theirs wins
+  lockerConfig=lkNormalizeConfig((saved&&saved.saved)?saved:JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG)));
+}
+
+// ── small helpers ──
+function lkPad(n){return String(n).padStart(2,'0');}
+function lkToStr(d){return d.getFullYear()+'-'+lkPad(d.getMonth()+1)+'-'+lkPad(d.getDate())+'T'+lkPad(d.getHours())+':'+lkPad(d.getMinutes());}
+function lkMs(s){var t=new Date(s).getTime();return isFinite(t)?t:NaN;}
+function lkNowStr(){return lkToStr(new Date());}
+function lkEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function lkEl(id){return document.getElementById(id);}
+function lkDef(id){return LOCKER_DEFS.find(function(d){return d.id===id;});}
+function lkLabel(id){var d=lkDef(id);return d?d.id+(d.color?' ('+LOCKER_COLORS[d.color]+')':''):String(id);}
+function lkMoney(n){return (Math.round((parseFloat(n)||0)*100)/100)+' LE';}
+function lkFind(bid){return lockerBookings.find(function(b){return b.id===bid;});}
+function lkNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
+function lkAddUnits(startStr,unit,qty){
+  var d=new Date(startStr);
+  if(unit==='hour'){d.setTime(d.getTime()+Math.round(qty*60)*60000);}
+  else if(unit==='day'){d.setDate(d.getDate()+Math.round(qty));}
+  else if(unit==='week'){d.setDate(d.getDate()+Math.round(qty*7));}
+  else{
+    var day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+Math.round(qty));
+    var dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,dim));
+  }
+  return lkToStr(d);
+}
+function lkFmt(s){
+  var d=new Date(s);if(isNaN(d))return '-';
+  var h=d.getHours(),ap=h>=12?'PM':'AM';h=h%12||12;
+  var yr=d.getFullYear()!==new Date().getFullYear()?'/'+d.getFullYear():'';
+  return lkPad(d.getDate())+'/'+lkPad(d.getMonth()+1)+yr+' '+h+':'+lkPad(d.getMinutes())+' '+ap;
+}
+// "3:30 PM" if it's today, otherwise "05/11" — short enough for a door.
+function lkShortTime(s){
+  var e=new Date(s),n=new Date();
+  if(e.getFullYear()===n.getFullYear()&&e.getMonth()===n.getMonth()&&e.getDate()===n.getDate()){
+    var h=e.getHours(),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+lkPad(e.getMinutes())+' '+ap;
+  }
+  return lkPad(e.getDate())+'/'+lkPad(e.getMonth()+1);
+}
+function lkUnitWord(unit,qty){var w={hour:'hour',day:'day',week:'week',month:'month'}[unit]||unit;return (parseFloat(qty)===1)?w:w+'s';}
+
+// ── price lists ──
+function lkSizePrice(size,unit){var p=lockerConfig.prices[size];return p?lkNum(p[unit]):null;}
+function lkUnitPrice(id,unit){
+  var o=lockerConfig.overrides[id];
+  if(o&&lkNum(o[unit])!==null)return lkNum(o[unit]);
+  var d=lkDef(id);return d?lkSizePrice(d.size,unit):null;
+}
+function lkWho(id){return lockerConfig.who[id]||'any';}
+// who: 'any' | 'client' | 'academy' (any academy) | 'academy:<key>' (one particular academy)
+function lkAllowed(id,type,academyKey){
+  var w=lkWho(id);
+  if(w==='any'||w===type)return true;
+  if(w.indexOf('academy:')===0)return type==='academy'&&(!academyKey||w==='academy:'+academyKey);
+  return false;
+}
+function lkWhoText(id){
+  var w=lkWho(id);
+  if(w==='client')return 'Clients only';
+  if(w==='academy')return 'Academies only';
+  if(w.indexOf('academy:')===0){var a=academies[w.slice(8)];return (a?a.name:w.slice(8))+' only';}
+  return 'Anyone';
+}
+// Long rentals get a discount: the biggest "months or more" step that the booking reaches.
+function lkDiscountPct(unit,qty){
+  if(unit!=='month')return 0;
+  var best=0,bestAt=0;
+  Object.keys(lockerConfig.discounts||{}).forEach(function(k){
+    var at=parseFloat(k),pct=lkNum(lockerConfig.discounts[k]);
+    if(pct!==null&&isFinite(at)&&qty>=at&&at>=bestAt){best=pct;bestAt=at;}
+  });
+  return best;
+}
+function lkQuote(price,unit,qty){
+  var gross=Math.round(price*qty*100)/100,pct=lkDiscountPct(unit,qty);
+  return {gross:gross,pct:pct,total:Math.round(gross*(100-pct))/100};
+}
+function lkQuoteText(price,unit,qty,q){
+  return 'Price list: '+lkMoney(price)+' per '+unit+' × '+qty+' = '+lkMoney(q.gross)+(q.pct?', minus '+q.pct+'% for '+qty+' months = '+lkMoney(q.total):'');
+}
+
+// ── money on a booking ──
+function lkCharged(b){return (b.charges||[]).reduce(function(s,c){return s+(parseFloat(c.amount)||0);},0);}
+function lkPaid(b){return (b.payments||[]).reduce(function(s,p){return s+(parseFloat(p.amount)||0);},0);}
+function lkDue(b){return Math.max(0,Math.round((lkCharged(b)-lkPaid(b))*100)/100);}
+
+// ── status & availability ──
+function lkStatus(b,nowMs){
+  if(b.cancelled)return 'cancelled';
+  if(b.returnedAt)return 'returned';
+  var s=lkMs(b.start),e=lkMs(b.end);
+  if(nowMs<s)return 'reserved';
+  if(nowMs<=e)return 'occupied';
+  return 'overdue';
+}
+// Until when a booking really holds its locker: until the key comes back; an
+// unreturned expired booking keeps holding it (Infinity) until someone returns the key.
+function lkEffEnd(b){
+  if(b.cancelled)return null;
+  if(b.returnedAt)return lkMs(b.returnedAt);
+  var e=lkMs(b.end);
+  return Date.now()>e?Infinity:e;
+}
+function lkConflicts(id,sMs,eMs,ignoreId){
+  return lockerBookings.filter(function(b){
+    if(b.lockerId!==id||b.id===ignoreId||b.cancelled)return false;
+    var bs=lkMs(b.start),be=lkEffEnd(b);
+    if(be===null||be<=bs)return false;
+    return sMs<be&&eMs>bs;
+  });
+}
+function lkNowState(id){
+  var now=Date.now(),over=null,occ=null,next=null;
+  lockerBookings.forEach(function(b){
+    if(b.lockerId!==id)return;
+    var st=lkStatus(b,now);
+    if(st==='overdue'&&!over)over=b;
+    else if(st==='occupied'&&!occ)occ=b;
+    else if(st==='reserved'&&(!next||lkMs(b.start)<lkMs(next.start)))next=b;
+  });
+  if(over)return {state:'overdue',booking:over,next:next,count:1};
+  if(occ)return {state:'occupied',booking:occ,next:next,count:1};
+  return {state:'free',booking:null,next:next,count:0};
+}
+// What the map shows for a locker on the chosen day.
+function lkMapState(id,vd){
+  var td=today();
+  if(!vd||vd===td){
+    var st=lkNowState(id);
+    var endOfToday=new Date(td+'T00:00').getTime()+86400000;
+    if(st.state==='free'&&st.next&&lkMs(st.next.start)<endOfToday)return {state:'reserved',booking:st.next,next:null,count:1};
+    return st;
+  }
+  var ds=new Date(vd+'T00:00').getTime(),de=ds+86400000,hit=null,count=0;
+  lockerBookings.forEach(function(b){
+    if(b.lockerId!==id||b.cancelled)return;
+    var s=lkMs(b.start),e=lkEffEnd(b);
+    if(e===null||e<=s)return;
+    if(s<de&&e>ds){count++;if(!hit||s<lkMs(hit.start))hit=b;}
+  });
+  if(!hit)return {state:'free',booking:null,next:null,count:0};
+  return {state:vd<td?'occupied':'reserved',booking:hit,next:null,count:count};
+}
+function lkLongBooking(b){return (lkMs(b.end)-lkMs(b.start))>=20*3600000;}
+function lkEndingSoon(b,now){
+  return lkStatus(b,now)==='occupied'&&lkLongBooking(b)&&(lkMs(b.end)-now)<=3*86400000;
+}
+function lkNeedsAttention(b,now){
+  var st=lkStatus(b,now);
+  if(st==='overdue'||lkEndingSoon(b,now))return true;
+  return st!=='cancelled'&&lkDue(b)>0;
+}
+
+// ── payments → shift settlement ──
+// Each locker payment becomes its OWN shift-payment record flagged like package payments
+// (academyPayments), so the settlement boxes, cashier cards, printed summary and monthly
+// report all pick it up with no other changes.
+function lkRecordPayment(b,amount,method,cashier,date){
+  amount=Math.round((parseFloat(amount)||0)*100)/100;
+  if(amount<=0)return null;
+  var rec={
+    id:Date.now()+Math.floor(Math.random()*100000),date:date||today(),cashier:cashier,rooms:0,
+    cash:method==='cash'?amount:0,instapay:method==='instapay'?amount:0,visa:method==='visa'?amount:0,other:method==='other'?amount:0,
+    academyPayments:amount,total:amount,note:'Locker '+lkLabel(b.lockerId)+' — '+b.name
+  };
+  shiftPayments.push(rec);
+  saveData('shiftPayments',shiftPayments);
+  b.payments=b.payments||[];
+  b.payments.push({id:'lp_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),amount:amount,method:method,cashier:cashier,date:rec.date,shiftId:rec.id,at:new Date().toISOString()});
+  return rec;
+}
+function lkRefreshMoneyViews(){
+  try{renderShiftCards();renderShifts();calcSettlement();refreshDashboard();}catch(e){console.warn('locker money refresh',e);}
+}
+
+// ── creating a booking (used by the form now, and by check-in / reservations / academies later) ──
+function lkCreateBooking(p){
+  var type=p.type==='academy'?'academy':'client';
+  var name=(p.name||'').trim(),academyKey=null;
+  if(type==='academy'){
+    var a=academies[p.academyKey];
+    if(!a)return {ok:false,error:'Please choose an academy'};
+    academyKey=p.academyKey;name=a.name;
+  }else if(!name){return {ok:false,error:'Please enter the client name'};}
+  var def=lkDef(p.lockerId);
+  if(!def)return {ok:false,error:'Please choose a locker'};
+  if(!lkAllowed(def.id,type,academyKey))return {ok:false,error:def.id+' is set aside for: '+lkWhoText(def.id)};
+  var sMs=lkMs(p.start),eMs=lkMs(p.end);
+  if(!isFinite(sMs)||!isFinite(eMs))return {ok:false,error:'Please set both the From and Until date and time'};
+  if(eMs<=sMs)return {ok:false,error:'"Until" must be after "From"'};
+  var clash=lkConflicts(def.id,sMs,eMs);
+  if(clash.length){var c=clash[0];return {ok:false,error:def.id+' is already booked by '+c.name+' ('+lkFmt(c.start)+' to '+lkFmt(c.end)+')'};}
+  var price=parseFloat(p.price);if(!isFinite(price)||price<0)price=0;
+  var method=p.method||'cash';
+  if(method!=='unpaid'&&price>0&&!p.cashier)return {ok:false,error:'Please choose the cashier'};
+  var profile=null;
+  if(type==='client')profile=findOrCreateProfile(name,p.phone||'','');
+  var iso=new Date().toISOString();
+  var b={
+    id:'lb_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    lockerId:def.id,renterType:type,profileId:profile?profile.id:null,academyKey:academyKey,
+    name:name,phone:(p.phone||'').trim(),start:p.start,end:p.end,unit:p.unit||'hour',qty:parseFloat(p.qty)||1,
+    notes:(p.notes||'').trim(),charges:[],payments:[],returnedAt:null,cancelled:false,
+    createdAt:iso,createdBy:currentStaffName||''
+  };
+  if(price>0)b.charges.push({id:'lc_'+Date.now(),amount:price,label:'Rental',at:iso});
+  lockerBookings.push(b);
+  if(price>0&&method!=='unpaid')lkRecordPayment(b,price,method,p.cashier,p.payDate||today());
+  saveData('lockerBookings',lockerBookings);
+  return {ok:true,booking:b};
+}
+
+// ============================================================
+// RENDERING — stats, map, bookings table, price lists
+// ============================================================
+function renderLockers(withPrices){
+  renderLockerStats();renderLockerLegend();renderLockerMap();renderLockerTable();
+  var vd=lkEl('lk-view-date');if(vd)vd.value=lkViewDate||today();
+  if(withPrices)renderLockerPrices();
+}
+
+function renderLockerStats(){
+  var el=lkEl('lk-stats');if(!el)return;
+  var now=Date.now(),occ=0,over=0,res=0,soon=0,dueCount=0,dueAmt=0;
+  LOCKER_DEFS.forEach(function(d){var st=lkNowState(d.id).state;if(st==='occupied'||st==='overdue')occ++;});
+  lockerBookings.forEach(function(b){
+    var st=lkStatus(b,now);
+    if(st==='overdue')over++;
+    if(st==='reserved')res++;
+    if(lkEndingSoon(b,now))soon++;
+    if(st!=='cancelled'&&lkDue(b)>0){dueCount++;dueAmt+=lkDue(b);}
+  });
+  var card=function(label,val,sub,color){return '<div class="stat"><div class="stat-label">'+label+'</div><div class="stat-value" style="color:'+color+';">'+val+'</div><div class="stat-sub">'+sub+'</div></div>';};
+  el.innerHTML=card('Free now',LOCKER_DEFS.length-occ,'of '+LOCKER_DEFS.length+' lockers','var(--green)')
+    +card('In use',occ,'right now','var(--text)')
+    +card('Reserved ahead',res,'future bookings','var(--blue)')
+    +card('Ending soon',soon,'within 3 days',soon?'var(--amber)':'var(--text3)')
+    +card('Overdue',over,'not returned yet',over?'var(--red)':'var(--text3)')
+    +card('Money owed',lkMoney(dueAmt),dueCount+' booking'+(dueCount!==1?'s':''),dueAmt?'var(--red)':'var(--text3)');
+}
+
+function renderLockerLegend(){
+  var el=lkEl('lk-legend');if(!el)return;
+  el.innerHTML='<span><i style="border:1px solid #c7c9cd;"></i>Free</span>'
+    +'<span><i style="box-shadow:inset 0 0 0 3px #111827;"></i>In use</span>'
+    +'<span><i style="box-shadow:inset 0 0 0 3px #f59e0b;"></i>Reserved</span>'
+    +'<span><i style="box-shadow:inset 0 0 0 3px #dc2626;"></i>Overdue</span>'
+    +'<span style="opacity:.8;">Green and blue doors are just how the real doors look</span>';
+}
+
+function renderLockerMap(){
+  var el=lkEl('lk-map');if(!el)return;
+  var B=LOCKER_MAP_BOX;
+  var pos=function(o){return 'left:'+((o.x-B.x)/B.w*100).toFixed(3)+'%;top:'+((o.y-B.y)/B.h*100).toFixed(3)+'%;width:'+(o.w/B.w*100).toFixed(3)+'%;height:'+(o.h/B.h*100).toFixed(3)+'%;';};
+  var html=LOCKER_SHELVES.map(function(s){return '<div class="lk-shelf" style="'+pos(s)+'"></div>';}).join('');
+  html+=LOCKER_DEFS.map(function(d){
+    var st=lkMapState(d.id,lkViewDate),b=st.booking;
+    var cls='lk-door'+(d.color?' '+d.color:'')+(st.state!=='free'?' '+st.state:'');
+    var inner='<div class="lk-name">'+d.id+'</div><div class="lk-sub">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div>';
+    var title=lkLabel(d.id)+' · size '+d.size;
+    if(b){
+      inner+='<div class="lk-who">'+(st.state==='overdue'?'⚠ ':'🔒 ')+lkEsc(b.name)+(st.count>1?' +'+(st.count-1):'')+'</div>';
+      inner+='<div class="lk-until">'+(st.state==='reserved'?'from '+lkShortTime(b.start):(st.state==='overdue'?'ended '+lkShortTime(b.end):'until '+lkShortTime(b.end)))+'</div>';
+      title+=' — '+b.name+', '+lkFmt(b.start)+' to '+lkFmt(b.end);
+    }else if(st.next){
+      inner+='<div class="lk-until">next: '+lkShortTime(st.next.start)+'</div>';
+      title+=' — free (next booking '+lkFmt(st.next.start)+')';
+    }else{title+=' — free';}
+    return '<div class="'+cls+'" id="lk-door-'+d.id+'" style="'+pos(d)+'" onclick="lkDoorClick(\''+d.id+'\')" title="'+lkEsc(title)+'">'+inner+'</div>';
+  }).join('');
+  el.innerHTML=html;
+}
+
+function lkBadge(st){
+  var m={occupied:['badge-green','In use'],overdue:['badge-red','Overdue'],reserved:['badge-blue','Reserved'],returned:['badge-purple','Returned'],cancelled:['badge-amber','Cancelled']};
+  var x=m[st]||['badge-blue',st];return '<span class="badge '+x[0]+'">'+x[1]+'</span>';
+}
+function lkMoneyCell(b){
+  var charged=lkCharged(b),due=lkDue(b);
+  if(charged<=0)return '<span style="color:var(--text3);">Free</span>';
+  return lkMoney(charged)+'<div style="font-size:11px;color:'+(due>0?'var(--red)':'var(--green)')+';">'+(due>0?'Due '+lkMoney(due):'Paid')+'</div>';
+}
+
+function renderLockerTable(){
+  var tb=lkEl('lk-tbody');if(!tb)return;
+  var f=(lkEl('lk-filter')||{}).value||'active';
+  var q=normalizeStr((lkEl('lk-search')||{}).value||'');
+  var now=Date.now();
+  var rows=lockerBookings.filter(function(b){
+    var st=lkStatus(b,now);
+    if(f==='active'&&!(st==='occupied'||st==='overdue'||st==='reserved'))return false;
+    if(f==='history'&&!(st==='returned'||st==='cancelled'))return false;
+    if(f==='attention'&&!lkNeedsAttention(b,now))return false;
+    if(q&&normalizeStr(b.name+' '+(b.phone||'')+' '+b.lockerId+' '+lkLabel(b.lockerId)).indexOf(q)===-1)return false;
+    return true;
+  });
+  rows.sort(function(a,b2){return (f==='history'||f==='all')?lkMs(b2.start)-lkMs(a.start):lkMs(a.end)-lkMs(b2.end);});
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">'+(f==='active'?'No active or upcoming locker bookings':'Nothing to show here')+'</td></tr>';return;}
+  tb.innerHTML=rows.map(function(b){
+    var st=lkStatus(b,now),d=lkDef(b.lockerId)||{size:'',color:null};
+    var live=(st==='occupied'||st==='overdue'||st==='reserved');
+    return '<tr>'
+      +'<td><strong>'+lkEsc(b.lockerId)+'</strong><div style="font-size:11px;color:var(--text3);">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div></td>'
+      +'<td>'+(b.renterType==='academy'?'🎓 ':'👤 ')+lkEsc(b.name)+(b.phone?'<div style="font-size:11px;color:var(--text3);">'+lkEsc(b.phone)+'</div>':'')+'</td>'
+      +'<td>'+lkFmt(b.start)+'</td><td>'+lkFmt(b.end)+(b.returnedAt?'<div style="font-size:11px;color:var(--text3);">returned '+lkFmt(b.returnedAt)+'</div>':'')+'</td>'
+      +'<td>'+lkBadge(st)+'</td><td>'+lkMoneyCell(b)+'</td>'
+      +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openLockerDetails(\''+b.lockerId+'\')">Details</button>'
+      +((live&&b.phone)?' <button class="btn btn-outline btn-sm" title="Ask them to empty the locker (WhatsApp)" onclick="lkWhatsapp(\''+b.id+'\')">💬</button>':'')
+      +(lkDue(b)>0&&st!=='cancelled'?' <button class="btn btn-outline btn-sm" title="Collect payment" onclick="lkOpenPay(\''+b.id+'\')">💰</button>':'')
+      +'</td></tr>';
+  }).join('');
+}
+
+function lkWhoAcademyOptions(w){
+  var keys=(academyOrder||[]).slice();
+  if(w.indexOf('academy:')===0&&keys.indexOf(w.slice(8))===-1)keys.push(w.slice(8));
+  return keys.map(function(k){var a=academies[k];return '<option value="academy:'+lkEsc(k)+'"'+(w==='academy:'+k?' selected':'')+'>Only '+lkEsc(a?a.name:k)+'</option>';}).join('');
+}
+function renderLockerPrices(){
+  var el=lkEl('lk-prices');if(!el)return;
+  var inp=function(id,val,ph){return '<input type="number" min="0" step="1" class="lk-price-input" id="'+id+'" value="'+(val==null?'':val)+'" placeholder="'+ph+'">';};
+  var h='<div class="table-wrap"><table><thead><tr><th>Size</th><th>Lockers</th><th>Per hour (LE)</th><th>Per day (LE)</th><th>Per week (LE)</th><th>Per month (LE)</th></tr></thead><tbody>';
+  LOCKER_SIZES.forEach(function(sz){
+    var ids=LOCKER_DEFS.filter(function(d){return d.size===sz;}).map(function(d){return d.id;}).join(', ');
+    var p=lockerConfig.prices[sz]||{};
+    h+='<tr><td><strong>'+sz+'</strong></td><td style="font-size:12px;color:var(--text3);">'+ids+'</td>'
+      +LOCKER_UNITS.map(function(u){return '<td>'+inp('lkp-'+sz+'-'+u,lkNum(p[u]),'not set')+'</td>';}).join('')+'</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin:18px 0 8px;">Single-locker prices &amp; who each locker is for</div>';
+  h+='<div class="table-wrap"><table><thead><tr><th>Locker</th><th>Who it\'s for</th><th>Hour</th><th>Day</th><th>Week</th><th>Month</th></tr></thead><tbody>';
+  LOCKER_DEFS.forEach(function(d){
+    var o=lockerConfig.overrides[d.id]||{},w=lkWho(d.id);
+    h+='<tr><td><strong>'+d.id+'</strong>'+(d.color?' <span style="font-size:11px;color:var(--text3);">'+LOCKER_COLORS[d.color]+'</span>':'')+'</td>'
+      +'<td><select id="lkw-'+d.id+'" style="padding:5px 8px;font-size:12px;">'
+      +'<option value="any"'+(w==='any'?' selected':'')+'>Anyone</option>'
+      +'<option value="client"'+(w==='client'?' selected':'')+'>Clients only</option>'
+      +'<option value="academy"'+(w==='academy'?' selected':'')+'>Any academy</option>'
+      +lkWhoAcademyOptions(w)+'</select></td>'
+      +LOCKER_UNITS.map(function(u){var sp=lkSizePrice(d.size,u);return '<td>'+inp('lko-'+d.id+'-'+u,lkNum(o[u]),sp!==null?String(sp):'size price')+'</td>';}).join('')+'</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin:18px 0 8px;">Long-rental discount (monthly rentals only)</div>';
+  h+='<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--text2);">'
+    +[[3,'3 months or more'],[6,'6 months or more'],[12,'1 year (12 months)']].map(function(r){
+      var v=lkNum((lockerConfig.discounts||{})[r[0]]);
+      return '<label style="display:flex;align-items:center;gap:6px;">'+r[1]+': <input type="number" min="0" max="100" step="1" class="lk-price-input" id="lkdisc-'+r[0]+'" value="'+(v==null?'':v)+'" placeholder="0"> % off</label>';
+    }).join('')+'</div>';
+  el.innerHTML=h;
+}
+
+function lkSaveConfig(){
+  var cfg={saved:true,prices:{},overrides:{},who:{},discounts:{}},bad=false;
+  var read=function(id){
+    var e=lkEl(id);if(!e)return null;
+    var v=e.value.trim();if(v==='')return null;
+    var n=parseFloat(v);if(!isFinite(n)||n<0){bad=true;return null;}
+    return n;
+  };
+  LOCKER_SIZES.forEach(function(sz){cfg.prices[sz]={};LOCKER_UNITS.forEach(function(u){cfg.prices[sz][u]=read('lkp-'+sz+'-'+u);});});
+  LOCKER_DEFS.forEach(function(d){
+    var o={},any=false;
+    LOCKER_UNITS.forEach(function(u){var v=read('lko-'+d.id+'-'+u);o[u]=v;if(v!==null)any=true;});
+    if(any)cfg.overrides[d.id]=o;
+    var w=lkEl('lkw-'+d.id);if(w&&w.value!=='any')cfg.who[d.id]=w.value;
+  });
+  [3,6,12].forEach(function(m){var e=lkEl('lkdisc-'+m);var v=e?parseFloat(e.value):NaN;if(e&&e.value.trim()!==''){if(!isFinite(v)||v<0||v>100)bad=true;else cfg.discounts[m]=v;}});
+  if(bad){showToast('Prices must be numbers (0 or more) and discounts between 0 and 100',true);return;}
+  lockerConfig=cfg;
+  saveData('lockerConfig',lockerConfig);
+  renderLockers(true);
+  showToast('Locker prices saved ✓');
+}
+
+// ── map date controls & clicks ──
+function lkSetViewDate(v){lkViewDate=(v&&v!==today())?v:'';renderLockers();}
+function lkShiftViewDate(delta){
+  var d=new Date((lkViewDate||today())+'T00:00');d.setDate(d.getDate()+delta);
+  lkSetViewDate(d.getFullYear()+'-'+lkPad(d.getMonth()+1)+'-'+lkPad(d.getDate()));
+}
+function lkDoorClick(id){
+  var st=lkMapState(id,lkViewDate);
+  if(st.state==='free')openLockerBooking(id);else openLockerDetails(id);
+}
+
+// ============================================================
+// THE BOOKING FORM
+// ============================================================
+var _lkbType='client',_lkbPriceManual=false,_lkbPreLocker='',_lkbProfileId=null;
+
+function openLockerBooking(lockerId,opts){
+  opts=opts||{};
+  _lkbPriceManual=false;_lkbProfileId=opts.profileId||null;_lkbPreLocker=lockerId||'';
+  lkEl('lkb-locker').innerHTML='';   // forget the last selection so the clicked locker wins
+  ['lkb-name','lkb-phone','lkb-notes','lkb-price'].forEach(function(id){lkEl(id).value='';});
+  lkEl('lkb-sug').style.display='none';
+  lkEl('lkb-academy').innerHTML='<option value="">Select academy…</option>'+(academyOrder||[]).filter(function(k){return academies[k];}).map(function(k){return '<option value="'+k+'">'+lkEsc(academies[k].name)+'</option>';}).join('');
+  var cs=staff.map(function(s){return '<option value="'+lkEsc(s.name)+'">'+lkEsc(s.name)+(s.shift?' ('+lkEsc(s.shift)+')':'')+'</option>';}).join('');
+  lkEl('lkb-cashier').innerHTML=cs;
+  if(typeof currentStaffName!=='undefined'&&currentStaffName&&staff.some(function(s){return s.name===currentStaffName;}))lkEl('lkb-cashier').value=currentStaffName;
+  lkEl('lkb-paydate').value=today();
+  lkEl('lkb-method').value='cash';
+  var vd=lkViewDate||today();
+  lkEl('lkb-start').value=opts.start||(vd===today()?lkNowStr():vd+'T09:00');
+  lkEl('lkb-qty').value=opts.qty||1;
+  lkEl('lkb-title').textContent=lockerId?'🔐 Book '+lkLabel(lockerId):'🔐 New Locker Booking';
+  lkbSetType(opts.type||'client',true,opts);
+  if(opts.name)lkEl('lkb-name').value=opts.name;
+  if(opts.phone)lkEl('lkb-phone').value=opts.phone;
+  if(opts.academyKey){lkEl('lkb-academy').value=opts.academyKey;lkbAcademyChange();}
+  lkbMethodChange();
+  openModal('locker-booking-modal');
+}
+
+function lkbSetType(t,init,opts){
+  _lkbType=t==='academy'?'academy':'client';
+  var isA=_lkbType==='academy';
+  lkEl('lkb-type-client').classList.toggle('active',!isA);
+  lkEl('lkb-type-academy').classList.toggle('active',isA);
+  lkEl('lkb-name-wrap').style.display=isA?'none':'';
+  lkEl('lkb-academy').style.display=isA?'':'none';
+  lkEl('lkb-renter-label').textContent=isA?'Academy *':'Client name *';
+  lkEl('lkb-unit').value=(opts&&opts.unit)||(isA?'month':'hour');
+  if(!init||!(opts&&opts.qty))lkEl('lkb-qty').value=1;
+  lkbRecalc('type');
+}
+
+function lkbNameSearch(val){
+  _lkbProfileId=null;
+  var sug=lkEl('lkb-sug'),norm=normalizeStr(val),digits=norm.replace(/\D/g,'');
+  if(!norm||norm.length<2){sug.style.display='none';return;}
+  var matches=(clientProfiles||[]).filter(function(p){
+    return (p.normalizedName||normalizeStr(p.name)).indexOf(norm)!==-1||(digits.length>=3&&(p.phone||'').replace(/\D/g,'').indexOf(digits)!==-1);
+  }).slice(0,6);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.innerHTML=matches.map(function(p){return '<div class="suggestion-item" onclick="lkbPickClient(\''+p.id+'\')"><span class="s-name">'+lkEsc(p.name)+'</span><span class="s-phone">'+lkEsc(p.phone||'no phone')+'</span></div>';}).join('');
+  sug.style.display='block';
+}
+function lkbPickClient(pid){
+  var p=(clientProfiles||[]).find(function(x){return x.id===pid;});if(!p)return;
+  lkEl('lkb-name').value=p.name;lkEl('lkb-phone').value=p.phone||'';
+  _lkbProfileId=p.id;lkEl('lkb-sug').style.display='none';
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#lkb-name-wrap')){var s=lkEl('lkb-sug');if(s)s.style.display='none';}
+});
+function lkbAcademyChange(){
+  var a=academies[lkEl('lkb-academy').value];
+  if(a&&a.phone&&!lkEl('lkb-phone').value)lkEl('lkb-phone').value=a.phone;
+  lkbRebuildLockers();lkbUpdatePrice();   // which lockers are on offer depends on the academy
+}
+
+// Any change to type / locker / start / amount / unit / end flows through here.
+function lkbRecalc(src){
+  var start=lkEl('lkb-start').value,unit=lkEl('lkb-unit').value,qty=parseFloat(lkEl('lkb-qty').value);
+  if(src==='locker'||src==='unit'||src==='type')_lkbPriceManual=false;
+  if(src!=='end'&&start&&isFinite(qty)&&qty>0)lkEl('lkb-end').value=lkAddUnits(start,unit,qty);
+  lkbRebuildLockers();
+  lkbUpdatePrice();
+}
+
+function lkbRebuildLockers(){
+  var sel=lkEl('lkb-locker'),wanted=sel.value||_lkbPreLocker,type=_lkbType;
+  var sMs=lkMs(lkEl('lkb-start').value),eMs=lkMs(lkEl('lkb-end').value),unit=lkEl('lkb-unit').value;
+  var haveWin=isFinite(sMs)&&isFinite(eMs)&&eMs>sMs;
+  var opts=[],firstFree=null;
+  LOCKER_DEFS.forEach(function(d){
+    if(!lkAllowed(d.id,type,type==='academy'?lkEl('lkb-academy').value:''))return;
+    var taken=haveWin&&lkConflicts(d.id,sMs,eMs).length>0;
+    var p=lkUnitPrice(d.id,unit);
+    opts.push({id:d.id,taken:taken,label:d.id+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(p!==null?' · '+lkMoney(p)+'/'+unit:'')+(taken?' — booked then':'')});
+    if(!taken&&!firstFree)firstFree=d.id;
+  });
+  sel.innerHTML=opts.map(function(o){return '<option value="'+o.id+'"'+(o.taken?' disabled':'')+'>'+lkEsc(o.label)+'</option>';}).join('')||'<option value="">No locker is set aside for this renter type</option>';
+  var wantedOpt=opts.find(function(o){return o.id===wanted;});
+  var pick=(wantedOpt&&!wantedOpt.taken)?wanted:(firstFree||'');
+  sel.value=pick;_lkbPreLocker='';
+  var warn=[];
+  if(haveWin===false&&lkEl('lkb-start').value&&lkEl('lkb-end').value)warn.push('"Until" must be after "From".');
+  if(wantedOpt&&wantedOpt.taken&&pick)warn.push(wanted+' is already booked for part of that time, so '+pick+' is selected instead.');
+  if(wantedOpt&&wantedOpt.taken&&!pick)warn.push(wanted+' is already booked for part of that time, and no other locker is free then.');
+  if(!wantedOpt&&wanted&&opts.length)warn.push(wanted+' is set aside for: '+lkWhoText(wanted)+'.');
+  if(!pick&&opts.length&&!warn.length)warn.push('Every locker is booked for that time.');
+  var w=lkEl('lkb-warn');w.textContent=warn.join(' ');w.style.display=warn.length?'block':'none';
+  var d=pick?lkDef(pick):null;
+  lkEl('lkb-locker-info').textContent=d?('Size '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+' · Prices: '+LOCKER_UNITS.map(function(u){var p=lkUnitPrice(d.id,u);return (p!==null?lkMoney(p):'—')+'/'+u;}).join(' · ')):'';
+}
+
+function lkbUpdatePrice(){
+  var id=lkEl('lkb-locker').value,unit=lkEl('lkb-unit').value,qty=parseFloat(lkEl('lkb-qty').value);
+  var p=id?lkUnitPrice(id,unit):null,hint=lkEl('lkb-price-hint'),pr=lkEl('lkb-price');
+  if(p!==null&&isFinite(qty)&&qty>0){
+    var q=lkQuote(p,unit,qty),total=q.total;
+    if(!_lkbPriceManual)pr.value=total;
+    hint.textContent=lkQuoteText(p,unit,qty,q)+((_lkbPriceManual&&parseFloat(pr.value)!==total)?'  (you changed it)':'');
+  }else{
+    if(!_lkbPriceManual)pr.value='';
+    hint.textContent=id?'No price list for this locker yet — type the price (leave empty for free).':'';
+  }
+}
+function lkbPriceTouched(){_lkbPriceManual=true;lkbUpdatePrice();}
+function lkbMethodChange(){lkEl('lkb-pay-row').style.display=lkEl('lkb-method').value==='unpaid'?'none':'';}
+
+function confirmLockerBooking(){
+  var res=lkCreateBooking({
+    type:_lkbType,name:lkEl('lkb-name').value,phone:lkEl('lkb-phone').value,academyKey:lkEl('lkb-academy').value,
+    lockerId:lkEl('lkb-locker').value,start:lkEl('lkb-start').value,end:lkEl('lkb-end').value,
+    unit:lkEl('lkb-unit').value,qty:lkEl('lkb-qty').value,price:lkEl('lkb-price').value,notes:lkEl('lkb-notes').value,
+    method:lkEl('lkb-method').value,cashier:lkEl('lkb-cashier').value,payDate:lkEl('lkb-paydate').value
+  });
+  var w=lkEl('lkb-warn');
+  if(!res.ok){w.textContent=res.error;w.style.display='block';showToast(res.error,true);return;}
+  var b=res.booking;
+  closeModal('locker-booking-modal');
+  lkAfterChange();lkRefreshMoneyViews();
+  var st=lkStatus(b,Date.now());
+  showToast(lkLabel(b.lockerId)+(st==='reserved'?' reserved for ':' booked for ')+b.name+(lkDue(b)>0?' — '+lkMoney(lkDue(b))+' still to collect':'')+' ✓');
+}
+
+// ============================================================
+// DETAILS, RETURN, CANCEL, EXTEND, COLLECT, EDIT, WHATSAPP
+// ============================================================
+var _lkdLocker='';
+function lkAfterChange(){
+  renderLockers();
+  var m=lkEl('locker-details-modal');if(m&&m.classList.contains('open'))renderLockerDetails();
+  if(typeof renderNotifPanel==='function')renderNotifPanel();
+}
+function openLockerDetails(id){_lkdLocker=id;renderLockerDetails();openModal('locker-details-modal');}
+
+function lkBookingCard(b,now){
+  var st=lkStatus(b,now),due=lkDue(b);
+  var btn=function(label,fn,cls){return '<button class="btn '+(cls||'btn-outline')+' btn-sm" onclick="'+fn+'">'+label+'</button>';};
+  var acts=[];
+  if(st==='occupied'||st==='overdue'){
+    acts.push(btn('🔄 Extend','lkOpenRenew(\''+b.id+'\')'));
+    acts.push(btn('↩ Return key','lkReturnKey(\''+b.id+'\')'));
+    if(b.phone)acts.push(btn('💬 Ask to empty','lkWhatsapp(\''+b.id+'\')'));
+  }
+  if(st==='reserved')acts.push(btn('✕ Cancel booking','lkCancelBooking(\''+b.id+'\')','btn-danger'));
+  if(due>0&&st!=='cancelled')acts.push(btn('💰 Collect '+lkMoney(due),'lkOpenPay(\''+b.id+'\')'));
+  if(st!=='cancelled')acts.push(btn('✏️ Edit','lkOpenEdit(\''+b.id+'\')'));
+  return '<div class="lk-card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">'
+    +'<div><strong>'+(b.renterType==='academy'?'🎓 ':'👤 ')+lkEsc(b.name)+'</strong>'+(b.phone?' <span style="font-size:12px;color:var(--text3);">'+lkEsc(b.phone)+'</span>':'')+'</div>'+lkBadge(st)+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:6px;">'+lkFmt(b.start)+' → '+lkFmt(b.end)+' · '+b.qty+' '+lkUnitWord(b.unit,b.qty)+(b.returnedAt?' · returned '+lkFmt(b.returnedAt):'')+'</div>'
+    +'<div style="font-size:12px;margin-top:4px;">'+lkMoneyCell(b)+'</div>'
+    +(b.notes?'<div style="font-size:12px;color:var(--text3);margin-top:4px;">📝 '+lkEsc(b.notes)+'</div>':'')
+    +(acts.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">'+acts.join('')+'</div>':'')
+    +'</div>';
+}
+
+function renderLockerDetails(){
+  var id=_lkdLocker,d=lkDef(id);if(!d)return;
+  var now=Date.now();
+  lkEl('lkd-title').textContent='🔐 '+lkLabel(id)+' · size '+d.size;
+  var who=lkWhoText(id);
+  var prices=LOCKER_UNITS.map(function(u){var p=lkUnitPrice(id,u);return (p!==null?lkMoney(p):'—')+' / '+u;}).join(' · ');
+  var mine=lockerBookings.filter(function(b){return b.lockerId===id;});
+  var live=mine.filter(function(b){var s=lkStatus(b,now);return s==='occupied'||s==='overdue'||s==='reserved';}).sort(function(a,b2){return lkMs(a.start)-lkMs(b2.start);});
+  var past=mine.filter(function(b){var s=lkStatus(b,now);return s==='returned'||s==='cancelled';}).sort(function(a,b2){return lkMs(b2.start)-lkMs(a.start);}).slice(0,10);
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+    +'<div style="font-size:12px;color:var(--text3);">For: <strong style="color:var(--text2);">'+who+'</strong><br>'+prices+'</div>'
+    +'<button class="btn btn-primary btn-sm" onclick="closeModal(\'locker-details-modal\');openLockerBooking(\''+id+'\')">+ Book this locker</button></div>';
+  h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px;">Current &amp; upcoming</div>';
+  h+=live.length?live.map(function(b){return lkBookingCard(b,now);}).join(''):'<div style="font-size:13px;color:var(--text3);margin-bottom:12px;">Nobody has it booked right now.</div>';
+  if(past.length){
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.6px;">History</div>'+past.map(function(b){return lkBookingCard(b,now);}).join('');
+  }
+  lkEl('lkd-body').innerHTML=h;
+}
+
+function lkConfirm(title,msg,btnLabel,fn){
+  lkEl('lkc-title').textContent=title;lkEl('lkc-msg').textContent=msg;
+  var b=lkEl('lkc-btn');b.textContent=btnLabel;b.onclick=fn;
+  openModal('locker-confirm-modal');
+}
+function lkReturnKey(bid){
+  var b=lkFind(bid);if(!b)return;
+  lkConfirm('Return the key','Mark '+lkLabel(b.lockerId)+' as emptied and returned by '+b.name+'? The locker becomes free again right now.','Yes, returned',function(){
+    b.returnedAt=lkNowStr();
+    saveData('lockerBookings',lockerBookings);
+    closeModal('locker-confirm-modal');lkAfterChange();
+    showToast(lkLabel(b.lockerId)+' is free again ✓');
+  });
+}
+function lkCancelBooking(bid){
+  var b=lkFind(bid);if(!b)return;
+  var paid=lkPaid(b);
+  lkConfirm('Cancel this booking','Cancel '+lkLabel(b.lockerId)+' for '+b.name+' ('+lkFmt(b.start)+')?'+(paid>0?' '+lkMoney(paid)+' was already paid — it is NOT refunded automatically; adjust it in Shift Payments if you give it back.':''),'Yes, cancel it',function(){
+    b.cancelled=true;b.cancelledAt=new Date().toISOString();
+    saveData('lockerBookings',lockerBookings);
+    closeModal('locker-confirm-modal');lkAfterChange();
+    showToast('Booking cancelled');
+  });
+}
+
+// ── extend ──
+var _lkrId='',_lkrPriceManual=false;
+function lkOpenRenew(bid){
+  var b=lkFind(bid);if(!b)return;
+  _lkrId=bid;_lkrPriceManual=false;
+  var overdue=lkStatus(b,Date.now())==='overdue';
+  lkEl('lkr-from').innerHTML=overdue?'<option value="now">Right now (it has expired)</option><option value="end">Previous end</option>':'<option value="end">Current end</option>';
+  lkEl('lkr-from').value=overdue?'now':'end';
+  lkEl('lkr-unit').value=b.unit||'day';lkEl('lkr-qty').value=1;
+  lkEl('lkr-summary').innerHTML='<strong>'+lkEsc(lkLabel(b.lockerId))+'</strong> · '+lkEsc(b.name)+'<br><span style="color:var(--text3);">'+lkFmt(b.start)+' → '+lkFmt(b.end)+'</span>';
+  lkEl('lkr-cashier').innerHTML=lkEl('lkb-cashier').innerHTML||staff.map(function(s){return '<option value="'+lkEsc(s.name)+'">'+lkEsc(s.name)+'</option>';}).join('');
+  if(typeof currentStaffName!=='undefined'&&currentStaffName&&staff.some(function(s){return s.name===currentStaffName;}))lkEl('lkr-cashier').value=currentStaffName;
+  lkEl('lkr-paydate').value=today();lkEl('lkr-method').value='cash';
+  lkrMethodChange();lkrRecalc(true);
+  openModal('locker-renew-modal');
+}
+function lkrCalc(){
+  var b=lkFind(_lkrId);if(!b)return null;
+  var from=lkEl('lkr-from').value==='now'?lkNowStr():b.end;
+  var unit=lkEl('lkr-unit').value,qty=parseFloat(lkEl('lkr-qty').value);
+  if(!isFinite(qty)||qty<=0)return {b:b,from:from,newEnd:null,unit:unit,qty:qty};
+  return {b:b,from:from,newEnd:lkAddUnits(from,unit,qty),unit:unit,qty:qty};
+}
+function lkrRecalc(resetPrice){
+  var c=lkrCalc();if(!c)return;
+  if(resetPrice)_lkrPriceManual=false;
+  var warn=lkEl('lkr-warn'),pr=lkEl('lkr-price'),hint=lkEl('lkr-price-hint');
+  if(!c.newEnd){lkEl('lkr-newend').textContent='';warn.style.display='none';return;}
+  lkEl('lkr-newend').innerHTML='New end: <strong>'+lkFmt(c.newEnd)+'</strong>';
+  var p=lkUnitPrice(c.b.lockerId,c.unit);
+  if(p!==null){
+    var q=lkQuote(p,c.unit,c.qty),total=q.total;
+    if(!_lkrPriceManual)pr.value=total;
+    hint.textContent=lkQuoteText(p,c.unit,c.qty,q);
+  }else{
+    if(!_lkrPriceManual)pr.value='';
+    hint.textContent='No price list for this locker yet — type the price (leave empty for free).';
+  }
+  var clash=lkConflicts(c.b.lockerId,lkMs(c.from),lkMs(c.newEnd),c.b.id);
+  warn.textContent=clash.length?(lkLabel(c.b.lockerId)+' is already booked by '+clash[0].name+' ('+lkFmt(clash[0].start)+'), so it can\'t be extended that far.'):'';
+  warn.style.display=clash.length?'block':'none';
+}
+function lkrMethodChange(){lkEl('lkr-pay-row').style.display=lkEl('lkr-method').value==='unpaid'?'none':'';}
+function lkConfirmRenew(){
+  var c=lkrCalc();if(!c||!c.newEnd){showToast('Enter how long to extend by',true);return;}
+  var b=c.b;
+  if(lkConflicts(b.lockerId,lkMs(c.from),lkMs(c.newEnd),b.id).length){showToast('Another booking is in the way',true);return;}
+  var price=parseFloat(lkEl('lkr-price').value);if(!isFinite(price)||price<0)price=0;
+  var method=lkEl('lkr-method').value,cashier=lkEl('lkr-cashier').value;
+  if(method!=='unpaid'&&price>0&&!cashier){showToast('Please choose the cashier',true);return;}
+  var iso=new Date().toISOString();
+  b.renewals=(b.renewals||[]).concat([{at:iso,from:c.from,oldEnd:b.end,newEnd:c.newEnd,unit:c.unit,qty:c.qty,price:price}]);
+  b.end=c.newEnd;
+  if(price>0){
+    b.charges=b.charges||[];b.charges.push({id:'lc_'+Date.now(),amount:price,label:'Extension',at:iso});
+    if(method!=='unpaid')lkRecordPayment(b,price,method,cashier,lkEl('lkr-paydate').value||today());
+  }
+  saveData('lockerBookings',lockerBookings);
+  closeModal('locker-renew-modal');lkAfterChange();lkRefreshMoneyViews();
+  showToast(lkLabel(b.lockerId)+' extended until '+lkFmt(b.end)+' ✓');
+}
+
+// ── collect money still owed ──
+var _lkpId='';
+function lkOpenPay(bid){
+  var b=lkFind(bid);if(!b)return;
+  _lkpId=bid;
+  lkEl('lkp-summary').innerHTML='<strong>'+lkEsc(lkLabel(b.lockerId))+'</strong> · '+lkEsc(b.name)+'<br><span style="color:var(--text3);">Charged '+lkMoney(lkCharged(b))+' · paid '+lkMoney(lkPaid(b))+' · <strong style="color:var(--red);">due '+lkMoney(lkDue(b))+'</strong></span>';
+  lkEl('lkp-amount').value=lkDue(b);
+  lkEl('lkp-cashier').innerHTML=staff.map(function(s){return '<option value="'+lkEsc(s.name)+'">'+lkEsc(s.name)+(s.shift?' ('+lkEsc(s.shift)+')':'')+'</option>';}).join('');
+  if(typeof currentStaffName!=='undefined'&&currentStaffName&&staff.some(function(s){return s.name===currentStaffName;}))lkEl('lkp-cashier').value=currentStaffName;
+  lkEl('lkp-paydate').value=today();lkEl('lkp-method').value='cash';
+  openModal('locker-pay-modal');
+}
+function lkConfirmPay(){
+  var b=lkFind(_lkpId);if(!b)return;
+  var amt=parseFloat(lkEl('lkp-amount').value);
+  if(!isFinite(amt)||amt<=0){showToast('Enter the amount received',true);return;}
+  if(amt>lkDue(b)+0.001){showToast('That is more than the '+lkMoney(lkDue(b))+' owed',true);return;}
+  var cashier=lkEl('lkp-cashier').value;if(!cashier){showToast('Please choose the cashier',true);return;}
+  lkRecordPayment(b,amt,lkEl('lkp-method').value,cashier,lkEl('lkp-paydate').value||today());
+  saveData('lockerBookings',lockerBookings);
+  closeModal('locker-pay-modal');lkAfterChange();lkRefreshMoneyViews();
+  showToast(lkMoney(amt)+' recorded ✓');
+}
+
+// ── fix typos ──
+var _lkeId='';
+function lkOpenEdit(bid){
+  var b=lkFind(bid);if(!b)return;
+  _lkeId=bid;lkEl('lke-name').value=b.name;lkEl('lke-phone').value=b.phone||'';lkEl('lke-notes').value=b.notes||'';
+  openModal('locker-edit-modal');
+}
+function lkSaveEdit(){
+  var b=lkFind(_lkeId);if(!b)return;
+  var name=lkEl('lke-name').value.trim();if(!name){showToast('Name is required',true);return;}
+  b.name=name;b.phone=lkEl('lke-phone').value.trim();b.notes=lkEl('lke-notes').value.trim();
+  saveData('lockerBookings',lockerBookings);
+  closeModal('locker-edit-modal');lkAfterChange();showToast('Booking updated ✓');
+}
+
+// ── WhatsApp: "please empty your locker" ──
+// Kept emoji-free on purpose — see openWhatsapp().
+function lkBuildEmptyMessage(b){
+  var ended=lkMs(b.end)<Date.now();
+  return 'Hello '+b.name+', this is Space-Co Workspace. '
+    +'Your booking for locker '+lkLabel(b.lockerId)+(ended?' ended on ':' ends on ')+lkFmt(b.end)+'. '
+    +'Please empty the locker and return the key to the front desk'+(ended?' as soon as you can':' before then')+'. '
+    +'If you would like to keep it longer, just tell us and we will extend it for you. Thank you!';
+}
+function lkWhatsapp(bid){
+  var b=lkFind(bid);if(!b)return;
+  var phone=normalizePhoneDigits(b.phone);
+  if(phone.length<8){showToast('No valid phone number on this booking',true);return;}
+  var msg=lkBuildEmptyMessage(b);
+  openWhatsapp(phone,msg);
+  logWhatsapp({client_phone:phone,client_name:b.name,message_type:'locker_empty_request',message_content:msg,status:'sent',session_id:b.id});
+  showToast('WhatsApp opened for '+b.name);
+}
+
+// ── alerts (Needs Attention + bell) ──
+function lkNotifications(){
+  var out=[],now=Date.now();
+  lockerBookings.forEach(function(b){
+    if(b.cancelled)return;
+    var st=lkStatus(b,now),key=b.id+'-'+b.end;
+    var who=lkEsc(b.name)+(b.phone?' ('+lkEsc(b.phone)+')':''),lk=lkEsc(lkLabel(b.lockerId));
+    if(st==='overdue'){
+      out.push({id:'lkover-'+key,icon:'🔐',text:'Locker '+lk+' — '+who+' — booking ended '+lkFmt(b.end)+' and the key is not back. Ask them to empty it.',color:'var(--red)'});
+    }else if(lkEndingSoon(b,now)){
+      var e0=new Date(lkMs(b.end));e0.setHours(0,0,0,0);var t0=new Date(now);t0.setHours(0,0,0,0);
+      var days=Math.round((e0-t0)/86400000);   // calendar days, so 2 days 1 hour left reads "in 2 days", not 3
+      out.push({id:'lkexp-'+key,icon:'🔐',text:'Locker '+lk+' — '+who+' — '+(days<=0?'ends today at '+lkShortTime(b.end):days===1?'ends tomorrow at '+lkShortTime(b.end):'ends in '+days+' days ('+lkFmt(b.end)+')')+'. Tell them to empty it or extend.',color:'var(--amber)'});
+    }
+    var due=lkDue(b);
+    if(due>0)out.push({id:'lkdue-'+b.id+'-'+due,icon:'💰',text:'Locker '+lk+' — '+who+' still owes '+lkMoney(due),color:'var(--amber)'});
+  });
+  return out;
+}
+
+// ── keep several screens in sync ──
+async function lkRefreshFromCloud(){
+  try{
+    var b=await sbGet('lockerBookings',lockerBookings);
+    var c=await sbGet('lockerConfig',lockerConfig);
+    if(Array.isArray(b))lockerBookings=b;
+    lockerConfig=lkNormalizeConfig(c);
+    var pg=lkEl('page-lockers');
+    if(pg&&pg.classList.contains('active'))renderLockers(false);
+  }catch(e){console.warn('lockers cloud refresh failed',e);}
+}
+// Statuses depend on the clock, so repaint the page every minute while it is open.
+setInterval(function(){var pg=lkEl('page-lockers');if(pg&&pg.classList.contains('active'))renderLockers(false);},60000);
+
 function printAcademyRenewalPaper(key){
   var a=academies[key];
   var daily=acIsDaily(a);
@@ -9338,6 +10390,7 @@ function buildNotifications(){
   var expSoon=recycleBin.filter(function(b){var d=daysLeft(b.deletedAt);return d<=3;});
   if(expSoon.length)items.push({icon:'🗑️',text:expSoon.length+' recycle bin item'+(expSoon.length>1?'s':'')+' expiring in ≤3 days',color:'var(--amber)'});
   if(typeof waitlist!=='undefined'&&waitlist.length)items.push({icon:'📋',text:waitlist.length+' client'+(waitlist.length>1?'s':'')+' on waitlist',color:'var(--teal)'});
+  lkNotifications().forEach(function(it){items.push(it);});
   return items;
 }
 
