@@ -173,7 +173,7 @@
   .lk-door.overdue:hover{box-shadow:inset 0 0 0 4px #dc2626,0 8px 22px rgba(0,0,0,.28);}
   .lk-door.reserved{box-shadow:inset 0 0 0 4px #f59e0b;}
   .lk-door.reserved:hover{box-shadow:inset 0 0 0 4px #f59e0b,0 8px 22px rgba(0,0,0,.28);}
-  .lk-name{font-weight:800;font-size:clamp(11px,2.3cqw,24px);line-height:1.1;}
+  .lk-name{font-weight:800;font-size:clamp(11px,2.3cqw,24px);line-height:1.1;max-width:94%;overflow:hidden;text-align:center;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .lk-sub{font-size:clamp(8px,1.2cqw,12px);opacity:.75;line-height:1.2;}
   .lk-who{margin-top:3px;max-width:94%;font-size:clamp(8px,1.35cqw,13px);font-weight:700;line-height:1.2;background:rgba(17,24,39,.88);color:#fff;border-radius:6px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .lk-door.overdue .lk-who{background:#dc2626;}
@@ -6888,18 +6888,24 @@ var LOCKER_MAP_BOX={x:60,y:5,w:1520,h:1170};
 
 function lkNormalizeConfig(c){
   c=(c&&typeof c==='object'&&!Array.isArray(c))?c:{};
+  // never saved by the owner yet -> start from the standard price list (keeping any names they gave lockers);
+  // once they press Save Prices, what they saved wins
+  if(!c.saved){
+    var names=(c.names&&typeof c.names==='object')?c.names:{};
+    c=JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG));
+    c.names=names;
+  }
   c.prices=(c.prices&&typeof c.prices==='object')?c.prices:{};
   c.overrides=(c.overrides&&typeof c.overrides==='object')?c.overrides:{};
   c.who=(c.who&&typeof c.who==='object')?c.who:{};
+  c.names=(c.names&&typeof c.names==='object')?c.names:{};
   c.discounts=(c.discounts&&typeof c.discounts==='object')?c.discounts:JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG.discounts));
   return c;
 }
 function lkLoad(){
   lockerBookings=loadData('lockerBookings',[]);
   if(!Array.isArray(lockerBookings))lockerBookings=[];
-  var saved=loadData('lockerConfig',{});
-  // nothing saved yet -> start from the standard price list; once the owner presses Save, theirs wins
-  lockerConfig=lkNormalizeConfig((saved&&saved.saved)?saved:JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG)));
+  lockerConfig=lkNormalizeConfig(loadData('lockerConfig',{}));
 }
 
 // ── small helpers ──
@@ -6910,7 +6916,32 @@ function lkNowStr(){return lkToStr(new Date());}
 function lkEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function lkEl(id){return document.getElementById(id);}
 function lkDef(id){return LOCKER_DEFS.find(function(d){return d.id===id;});}
-function lkLabel(id){var d=lkDef(id);return d?d.id+(d.color?' ('+LOCKER_COLORS[d.color]+')':''):String(id);}
+// The locker's id (XL1, S3 ...) never changes — bookings are tied to it. What people SEE is its name,
+// which the owner can rename; until then the name is the id.
+function lkName(id){var n=lockerConfig.names&&lockerConfig.names[id];return n?n:String(id);}
+function lkLabel(id){var d=lkDef(id);return d?lkName(d.id)+(d.color?' ('+LOCKER_COLORS[d.color]+')':''):String(id);}
+// Checks a proposed name; returns {ok,name} (blank = back to the original) or {ok:false,error}.
+function lkCheckName(id,raw){
+  var n=String(raw==null?'':raw).trim().replace(/\s+/g,' ');
+  if(n===''||n===id)return {ok:true,name:''};
+  if(n.length>16)return {ok:false,error:'Keep the name to 16 characters or less so it fits on the door'};
+  var low=n.toLowerCase(),clash=LOCKER_DEFS.find(function(d){return d.id!==id&&(d.id.toLowerCase()===low||lkName(d.id).toLowerCase()===low);});
+  if(clash)return {ok:false,error:'"'+n+'" is already the name of another locker'};
+  return {ok:true,name:n};
+}
+function lkRenameLocker(id){
+  var d=lkDef(id);if(!d)return;
+  var raw=prompt('New name for this locker (leave empty to go back to "'+d.id+'"):',lkName(id));
+  if(raw===null)return;
+  var r=lkCheckName(id,raw);
+  if(!r.ok){showToast(r.error,true);return;}
+  if(r.name)lockerConfig.names[id]=r.name;else delete lockerConfig.names[id];
+  saveData('lockerConfig',lockerConfig);
+  renderLockers(true);
+  var m=lkEl('locker-details-modal');if(m&&m.classList.contains('open'))renderLockerDetails();
+  if(typeof renderNotifPanel==='function')renderNotifPanel();
+  showToast('Renamed to '+lkName(id)+' ✓');
+}
 function lkMoney(n){return (Math.round((parseFloat(n)||0)*100)/100)+' LE';}
 function lkFind(bid){return lockerBookings.find(function(b){return b.id===bid;});}
 function lkNum(v){var n=parseFloat(v);return isFinite(n)?n:null;}
@@ -7086,12 +7117,12 @@ function lkCreateBooking(p){
   }else if(!name){return {ok:false,error:'Please enter the client name'};}
   var def=lkDef(p.lockerId);
   if(!def)return {ok:false,error:'Please choose a locker'};
-  if(!lkAllowed(def.id,type,academyKey))return {ok:false,error:def.id+' is set aside for: '+lkWhoText(def.id)};
+  if(!lkAllowed(def.id,type,academyKey))return {ok:false,error:lkName(def.id)+' is set aside for: '+lkWhoText(def.id)};
   var sMs=lkMs(p.start),eMs=lkMs(p.end);
   if(!isFinite(sMs)||!isFinite(eMs))return {ok:false,error:'Please set both the From and Until date and time'};
   if(eMs<=sMs)return {ok:false,error:'"Until" must be after "From"'};
   var clash=lkConflicts(def.id,sMs,eMs);
-  if(clash.length){var c=clash[0];return {ok:false,error:def.id+' is already booked by '+c.name+' ('+lkFmt(c.start)+' to '+lkFmt(c.end)+')'};}
+  if(clash.length){var c=clash[0];return {ok:false,error:lkName(def.id)+' is already booked by '+c.name+' ('+lkFmt(c.start)+' to '+lkFmt(c.end)+')'};}
   var price=parseFloat(p.price);if(!isFinite(price)||price<0)price=0;
   var method=p.method||'cash';
   if(method!=='unpaid'&&price>0&&!p.cashier)return {ok:false,error:'Please choose the cashier'};
@@ -7158,7 +7189,7 @@ function renderLockerMap(){
   html+=LOCKER_DEFS.map(function(d){
     var st=lkMapState(d.id,lkViewDate),b=st.booking;
     var cls='lk-door'+(d.color?' '+d.color:'')+(st.state!=='free'?' '+st.state:'');
-    var inner='<div class="lk-name">'+d.id+'</div><div class="lk-sub">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div>';
+    var inner='<div class="lk-name">'+lkEsc(lkName(d.id))+'</div><div class="lk-sub">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div>';
     var title=lkLabel(d.id)+' · size '+d.size;
     if(b){
       inner+='<div class="lk-who">'+(st.state==='overdue'?'⚠ ':'🔒 ')+lkEsc(b.name)+(st.count>1?' +'+(st.count-1):'')+'</div>';
@@ -7202,7 +7233,7 @@ function renderLockerTable(){
     var st=lkStatus(b,now),d=lkDef(b.lockerId)||{size:'',color:null};
     var live=(st==='occupied'||st==='overdue'||st==='reserved');
     return '<tr>'
-      +'<td><strong>'+lkEsc(b.lockerId)+'</strong><div style="font-size:11px;color:var(--text3);">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div></td>'
+      +'<td><strong>'+lkEsc(lkName(b.lockerId))+'</strong><div style="font-size:11px;color:var(--text3);">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+'</div></td>'
       +'<td>'+(b.renterType==='academy'?'🎓 ':'👤 ')+lkEsc(b.name)+(b.phone?'<div style="font-size:11px;color:var(--text3);">'+lkEsc(b.phone)+'</div>':'')+'</td>'
       +'<td>'+lkFmt(b.start)+'</td><td>'+lkFmt(b.end)+(b.returnedAt?'<div style="font-size:11px;color:var(--text3);">returned '+lkFmt(b.returnedAt)+'</div>':'')+'</td>'
       +'<td>'+lkBadge(st)+'</td><td>'+lkMoneyCell(b)+'</td>'
@@ -7223,17 +7254,18 @@ function renderLockerPrices(){
   var inp=function(id,val,ph){return '<input type="number" min="0" step="1" class="lk-price-input" id="'+id+'" value="'+(val==null?'':val)+'" placeholder="'+ph+'">';};
   var h='<div class="table-wrap"><table><thead><tr><th>Size</th><th>Lockers</th><th>Per hour (LE)</th><th>Per day (LE)</th><th>Per week (LE)</th><th>Per month (LE)</th></tr></thead><tbody>';
   LOCKER_SIZES.forEach(function(sz){
-    var ids=LOCKER_DEFS.filter(function(d){return d.size===sz;}).map(function(d){return d.id;}).join(', ');
+    var ids=LOCKER_DEFS.filter(function(d){return d.size===sz;}).map(function(d){return lkEsc(lkName(d.id));}).join(', ');
     var p=lockerConfig.prices[sz]||{};
     h+='<tr><td><strong>'+sz+'</strong></td><td style="font-size:12px;color:var(--text3);">'+ids+'</td>'
       +LOCKER_UNITS.map(function(u){return '<td>'+inp('lkp-'+sz+'-'+u,lkNum(p[u]),'not set')+'</td>';}).join('')+'</tr>';
   });
   h+='</tbody></table></div>';
   h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin:18px 0 8px;">Single-locker prices &amp; who each locker is for</div>';
-  h+='<div class="table-wrap"><table><thead><tr><th>Locker</th><th>Who it\'s for</th><th>Hour</th><th>Day</th><th>Week</th><th>Month</th></tr></thead><tbody>';
+  h+='<div class="table-wrap"><table><thead><tr><th>Locker name</th><th>Who it\'s for</th><th>Hour</th><th>Day</th><th>Week</th><th>Month</th></tr></thead><tbody>';
   LOCKER_DEFS.forEach(function(d){
     var o=lockerConfig.overrides[d.id]||{},w=lkWho(d.id);
-    h+='<tr><td><strong>'+d.id+'</strong>'+(d.color?' <span style="font-size:11px;color:var(--text3);">'+LOCKER_COLORS[d.color]+'</span>':'')+'</td>'
+    h+='<tr><td style="white-space:nowrap;"><input type="text" id="lkn-'+d.id+'" class="lk-price-input" style="width:110px;font-weight:700;" maxlength="16" value="'+lkEsc(lkName(d.id))+'" title="Type a new name for this locker" onfocus="this.select()">'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(lkName(d.id)!==d.id?' · was '+d.id:'')+'</div></td>'
       +'<td><select id="lkw-'+d.id+'" style="padding:5px 8px;font-size:12px;">'
       +'<option value="any"'+(w==='any'?' selected':'')+'>Anyone</option>'
       +'<option value="client"'+(w==='client'?' selected':'')+'>Clients only</option>'
@@ -7252,7 +7284,7 @@ function renderLockerPrices(){
 }
 
 function lkSaveConfig(){
-  var cfg={saved:true,prices:{},overrides:{},who:{},discounts:{}},bad=false;
+  var cfg={saved:true,prices:{},overrides:{},who:{},discounts:{},names:{}},bad=false,nameErr='';
   var read=function(id){
     var e=lkEl(id);if(!e)return null;
     var v=e.value.trim();if(v==='')return null;
@@ -7266,6 +7298,22 @@ function lkSaveConfig(){
     if(any)cfg.overrides[d.id]=o;
     var w=lkEl('lkw-'+d.id);if(w&&w.value!=='any')cfg.who[d.id]=w.value;
   });
+  // names: checked against each other as typed, so swapping two names in one save is caught too
+  var seen={};
+  LOCKER_DEFS.forEach(function(d){
+    var e=lkEl('lkn-'+d.id);if(!e)return;
+    var n=e.value.trim().replace(/\s+/g,' ');
+    if(n===''||n===d.id)n='';
+    if(n.length>16)nameErr='Keep names to 16 characters or less';
+    cfg.names[d.id]=n;
+  });
+  LOCKER_DEFS.forEach(function(d){
+    var shown=(cfg.names[d.id]||d.id).toLowerCase();
+    if(seen[shown])nameErr='Two lockers cannot share the name "'+(cfg.names[d.id]||d.id)+'"';
+    seen[shown]=1;
+  });
+  if(nameErr){showToast(nameErr,true);return;}
+  Object.keys(cfg.names).forEach(function(k){if(!cfg.names[k])delete cfg.names[k];});
   [3,6,12].forEach(function(m){var e=lkEl('lkdisc-'+m);var v=e?parseFloat(e.value):NaN;if(e&&e.value.trim()!==''){if(!isFinite(v)||v<0||v>100)bad=true;else cfg.discounts[m]=v;}});
   if(bad){showToast('Prices must be numbers (0 or more) and discounts between 0 and 100',true);return;}
   lockerConfig=cfg;
@@ -7370,7 +7418,7 @@ function lkbRebuildLockers(){
     if(!lkAllowed(d.id,type,type==='academy'?lkEl('lkb-academy').value:''))return;
     var taken=haveWin&&lkConflicts(d.id,sMs,eMs).length>0;
     var p=lkUnitPrice(d.id,unit);
-    opts.push({id:d.id,taken:taken,label:d.id+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(p!==null?' · '+lkMoney(p)+'/'+unit:'')+(taken?' — booked then':'')});
+    opts.push({id:d.id,taken:taken,label:lkName(d.id)+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(p!==null?' · '+lkMoney(p)+'/'+unit:'')+(taken?' — booked then':'')});
     if(!taken&&!firstFree)firstFree=d.id;
   });
   sel.innerHTML=opts.map(function(o){return '<option value="'+o.id+'"'+(o.taken?' disabled':'')+'>'+lkEsc(o.label)+'</option>';}).join('')||'<option value="">No locker is set aside for this renter type</option>';
@@ -7379,9 +7427,9 @@ function lkbRebuildLockers(){
   sel.value=pick;_lkbPreLocker='';
   var warn=[];
   if(haveWin===false&&lkEl('lkb-start').value&&lkEl('lkb-end').value)warn.push('"Until" must be after "From".');
-  if(wantedOpt&&wantedOpt.taken&&pick)warn.push(wanted+' is already booked for part of that time, so '+pick+' is selected instead.');
-  if(wantedOpt&&wantedOpt.taken&&!pick)warn.push(wanted+' is already booked for part of that time, and no other locker is free then.');
-  if(!wantedOpt&&wanted&&opts.length)warn.push(wanted+' is set aside for: '+lkWhoText(wanted)+'.');
+  if(wantedOpt&&wantedOpt.taken&&pick)warn.push(lkName(wanted)+' is already booked for part of that time, so '+lkName(pick)+' is selected instead.');
+  if(wantedOpt&&wantedOpt.taken&&!pick)warn.push(lkName(wanted)+' is already booked for part of that time, and no other locker is free then.');
+  if(!wantedOpt&&wanted&&opts.length)warn.push(lkName(wanted)+' is set aside for: '+lkWhoText(wanted)+'.');
   if(!pick&&opts.length&&!warn.length)warn.push('Every locker is booked for that time.');
   var w=lkEl('lkb-warn');w.textContent=warn.join(' ');w.style.display=warn.length?'block':'none';
   var d=pick?lkDef(pick):null;
@@ -7462,7 +7510,8 @@ function renderLockerDetails(){
   var past=mine.filter(function(b){var s=lkStatus(b,now);return s==='returned'||s==='cancelled';}).sort(function(a,b2){return lkMs(b2.start)-lkMs(a.start);}).slice(0,10);
   var h='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
     +'<div style="font-size:12px;color:var(--text3);">For: <strong style="color:var(--text2);">'+who+'</strong><br>'+prices+'</div>'
-    +'<button class="btn btn-primary btn-sm" onclick="closeModal(\'locker-details-modal\');openLockerBooking(\''+id+'\')">+ Book this locker</button></div>';
+    +'<div style="display:flex;gap:8px;"><button class="btn btn-outline btn-sm" onclick="lkRenameLocker(\''+id+'\')">✏️ Rename</button>'
+    +'<button class="btn btn-primary btn-sm" onclick="closeModal(\'locker-details-modal\');openLockerBooking(\''+id+'\')">+ Book this locker</button></div></div>';
   h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px;">Current &amp; upcoming</div>';
   h+=live.length?live.map(function(b){return lkBookingCard(b,now);}).join(''):'<div style="font-size:13px;color:var(--text3);margin-bottom:12px;">Nobody has it booked right now.</div>';
   if(past.length){
@@ -7637,12 +7686,27 @@ function lkNotifications(){
 }
 
 // ── keep several screens in sync ──
+// The two XL lockers belong to DINA and IMA: put a real reservation for each on the wall (once). It runs
+// right after the latest bookings are read from the cloud, and only if the locker has never had a booking
+// at all — so cancelling or returning one later does not bring it back.
+function lkSeedAcademyLockers(){
+  var made=false,now=lkNowStr();
+  [['XL1','dina'],['XL2','ima']].forEach(function(r){
+    var a=academies[r[1]];
+    if(!a||lkWho(r[0])!=='academy:'+r[1])return;
+    if(lockerBookings.some(function(b){return b.lockerId===r[0];}))return;
+    var res=lkCreateBooking({type:'academy',academyKey:r[1],lockerId:r[0],start:now,end:lkAddUnits(now,'month',1),unit:'month',qty:1,price:0,method:'unpaid',notes:'Reserved for '+a.name});
+    if(res.ok)made=true;
+  });
+  return made;
+}
 async function lkRefreshFromCloud(){
   try{
     var b=await sbGet('lockerBookings',lockerBookings);
     var c=await sbGet('lockerConfig',lockerConfig);
     if(Array.isArray(b))lockerBookings=b;
     lockerConfig=lkNormalizeConfig(c);
+    lkSeedAcademyLockers();
     var pg=lkEl('page-lockers');
     if(pg&&pg.classList.contains('active'))renderLockers(false);
   }catch(e){console.warn('lockers cloud refresh failed',e);}
