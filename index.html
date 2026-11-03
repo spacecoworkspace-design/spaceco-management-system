@@ -6891,9 +6891,10 @@ function lkNormalizeConfig(c){
   // never saved by the owner yet -> start from the standard price list (keeping any names they gave lockers);
   // once they press Save Prices, what they saved wins
   if(!c.saved){
-    var names=(c.names&&typeof c.names==='object')?c.names:{};
+    var names=(c.names&&typeof c.names==='object')?c.names:{},who=(c.who&&typeof c.who==='object')?c.who:{};
     c=JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG));
     c.names=names;
+    Object.keys(who).forEach(function(k){c.who[k]=who[k];});
   }
   c.prices=(c.prices&&typeof c.prices==='object')?c.prices:{};
   c.overrides=(c.overrides&&typeof c.overrides==='object')?c.overrides:{};
@@ -6987,7 +6988,7 @@ function lkShortTime(s){
   if(e.getFullYear()===n.getFullYear()&&e.getMonth()===n.getMonth()&&e.getDate()===n.getDate()){
     var h=e.getHours(),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+lkPad(e.getMinutes())+' '+ap;
   }
-  return lkPad(e.getDate())+'/'+lkPad(e.getMonth()+1);
+  return lkPad(e.getDate())+'/'+lkPad(e.getMonth()+1)+(e.getFullYear()!==n.getFullYear()?'/'+String(e.getFullYear()).slice(2):'');
 }
 function lkUnitWord(unit,qty){var w={hour:'hour',day:'day',week:'week',month:'month'}[unit]||unit;return (parseFloat(qty)===1)?w:w+'s';}
 
@@ -7713,11 +7714,22 @@ function lkNotifications(){
 // They are given to these two academies free of charge and for the long term (5 years, then Extend), so they
 // don't nag every month. A first version made them 1-month reservations; those are stretched once.
 var LK_STANDING_MONTHS=60;
+// Which academy each XL locker is for, and how to recognise that academy by name if its key is not the built-in one
+// (e.g. DINA was re-created as "Dinalliza Art Academy" with a key of its own).
+var LK_XL_OWNERS=[['XL1','dina',/dina/i],['XL2','ima',/^ima\b/i]];
 function lkSeedAcademyLockers(){
-  var made=false,now=lkNowStr();
-  [['XL1','dina'],['XL2','ima']].forEach(function(r){
-    var a=academies[r[1]];
-    if(!a||lkWho(r[0])!=='academy:'+r[1])return;
+  var made=false,cfgFixed=false,now=lkNowStr();
+  LK_XL_OWNERS.forEach(function(r){
+    var w=lkWho(r[0]);
+    if(w.indexOf('academy:')!==0)return;          // the owner set it to something else on purpose
+    var key=w.slice(8);
+    if(!academies[key]){
+      var found=(academyOrder||[]).filter(function(k){return academies[k]&&r[2].test(academies[k].name||'');})[0];
+      if(!found)return;
+      key=found;lockerConfig.who[r[0]]='academy:'+key;cfgFixed=true;
+    }
+    var a=academies[key];
+    r=[r[0],key];
     var mine=lockerBookings.filter(function(b){return b.lockerId===r[0];});
     if(!mine.length){
       var res=lkCreateBooking({type:'academy',academyKey:r[1],lockerId:r[0],start:now,end:lkAddUnits(now,'month',LK_STANDING_MONTHS),unit:'month',qty:LK_STANDING_MONTHS,price:0,method:'unpaid',notes:'Free — reserved for '+a.name});
@@ -7733,7 +7745,8 @@ function lkSeedAcademyLockers(){
     });
   });
   if(made)saveData('lockerBookings',lockerBookings);
-  return made;
+  if(cfgFixed){saveData('lockerConfig',lockerConfig);if(lkEl('lk-prices')&&lkEl('page-lockers').classList.contains('active'))renderLockerPrices();}
+  return made||cfgFixed;
 }
 async function lkRefreshFromCloud(){
   try{
