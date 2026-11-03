@@ -1450,6 +1450,21 @@
       <div class="form-group"><label>Package Cost (LE)</label><input type="number" id="renew-cost" placeholder="e.g. 7700"></div>
     </div>
     <div class="form-group"><label>Academy Phone Number</label><input type="text" id="renew-phone" placeholder="01X-XXXXXXXX"></div>
+    <div id="renew-locker-box" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">🔐 Locker (optional)</div>
+      <div class="form-group" style="margin-bottom:8px;"><select id="rl-choice" onchange="rlChange(true)"><option value="">No locker</option></select></div>
+      <div id="rl-fields" style="display:none;">
+        <div class="form-row" style="grid-template-columns:0.6fr 1fr 1fr;">
+          <div class="form-group"><label>For</label><input type="number" id="rl-qty" min="1" step="1" value="1" oninput="rlChange(true)"></div>
+          <div class="form-group"><label>&nbsp;</label><select id="rl-unit" onchange="rlChange(true)"><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option></select></div>
+          <div class="form-group"><label>Locker price (LE)</label><input type="number" id="rl-price" min="0" step="1" oninput="_rlManual=true;rlChange(false)"></div>
+        </div>
+        <div id="rl-hint" style="font-size:11px;color:var(--text3);margin:-4px 0 8px;"></div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" id="rl-onpaper" checked style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;flex:none;accent-color:var(--accent);cursor:pointer;"> Put the locker on the renewal paper</label>
+        <div class="lk-warn" id="rl-warn" style="margin-top:8px;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);">Paid with the same method, cashier and date as the package payment below.</div>
+    </div>
     <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">💰 Payment Received</div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
@@ -6382,7 +6397,7 @@ function saveAndPrintPaper(){
     +'• All '+(daily?'days':'hours')+' must be used within the same month<br>'
     +'• Schedule and attendance days must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
-    +'• Private locker service available for 200 LE/month'
+    +lkTerm('en')
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-footer">Please confirm your subscription or contact us with any inquiries — SpaceCo Team</div>';
@@ -7522,6 +7537,7 @@ var _lkdLocker='';
 function lkAfterChange(){
   renderLockers();
   try{var cp=lkEl('page-checkin');if(cp&&cp.classList.contains('active'))renderActiveSessions();}catch(e){}
+  try{if(currentAcademy&&academies[currentAcademy]){var ac=lkEl('academy-content-'+currentAcademy);if(ac&&ac.offsetParent!==null)renderAcademy(currentAcademy);}}catch(e){}
   var m=lkEl('locker-details-modal');if(m&&m.classList.contains('open'))renderLockerDetails();
   if(typeof renderNotifPanel==='function')renderNotifPanel();
 }
@@ -7819,7 +7835,7 @@ function printAcademyRenewalPaper(key){
     +(printPhone?'<div class="print-row"><span>Phone</span><span>'+printPhone+'</span></div>':'')
     +'<div class="print-row"><span>Room</span><span>'+a.room+'</span></div>'
     +'<div class="print-row"><span>Package '+(daily?'Days':'Hours')+'</span><span>'+printHours+' '+unitEn+' / month</span></div>'
-    +'<div class="print-row bold"><span>Package Cost</span><span>'+printCost.toLocaleString()+' LE / month</span></div>'
+    +'<div class="print-row bold"><span>Package Cost</span><span>'+printCost.toLocaleString()+' LE / month</span></div>'+lkPaperRow('printEn')
     +'<hr class="print-divider">'
     +'<div class="print-section-title">Terms & Conditions</div>'
     +'<div style="font-size:13px;line-height:1.8;">'
@@ -7827,7 +7843,7 @@ function printAcademyRenewalPaper(key){
     +'• All '+unitEn+' must be used within the same month<br>'
     +'• Schedule must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
-    +'• Private locker service available for 200 LE/month'
+    +lkTerm('en')
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-footer">Please confirm your subscription or contact us for any inquiries — SpaceCo Team</div>'
@@ -7839,7 +7855,7 @@ function printAcademyRenewalPaper(key){
     +(printPhone?'<div class="print-row print-rtl"><span>رقم الهاتف</span><span>'+printPhone+'</span></div>':'')
     +'<div class="print-row print-rtl"><span>القاعة</span><span>'+a.room+'</span></div>'
     +'<div class="print-row print-rtl"><span>عدد '+unitArPlural+'</span><span>'+printHours+' '+unitAr+' / شهر</span></div>'
-    +'<div class="print-row bold print-rtl"><span>قيمة الاشتراك</span><span>'+printCost.toLocaleString()+' جنيه / شهر</span></div>'
+    +'<div class="print-row bold print-rtl"><span>قيمة الاشتراك</span><span>'+printCost.toLocaleString()+' جنيه / شهر</span></div>'+lkPaperRow('printAr')
     +'<hr class="print-divider">'
     +'<div class="print-section-title print-rtl">الشروط والأحكام</div>'
     +'<div class="print-rtl" style="font-size:13px;line-height:1.8;">'
@@ -7847,7 +7863,7 @@ function printAcademyRenewalPaper(key){
     +'• يجب استخدام جميع '+unitArPlural+' خلال نفس الشهر<br>'
     +'• يجب تأكيد الجدول الزمني قبل بدء الاشتراك<br>'
     +'• يجب إخطارنا مسبقًا بأي تغييرات في الجدول الزمني<br>'
-    +'• خدمة الخزانة الخاصة متاحة مقابل 200 جنيه / شهر'
+    +lkTerm('ar')
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-footer print-rtl">يرجى تأكيد اشتراكك أو التواصل معنا لأي استفسار — فريق سبيس كو</div>'
@@ -7899,14 +7915,14 @@ function exportAcademyRenewalWord(key){
     +(docPhone?'<p><b>Phone:</b> '+docPhone+'</p>':'')
     +'<p><b>Room:</b> '+a.room+'</p>'
     +'<p><b>Package '+(daily?'Days':'Hours')+':</b> '+docHours+' '+unitEn+' / month</p>'
-    +'<p><b>Package Cost:</b> '+docCost.toLocaleString()+' LE / month</p>'
+    +'<p><b>Package Cost:</b> '+docCost.toLocaleString()+' LE / month</p>'+lkPaperRow('wordEn')
     +'<hr><h3>Terms &amp; Conditions</h3>'
     +'<p>'
     +'• Subscription valid for one month from activation date<br>'
     +'• All '+unitEn+' must be used within the same month<br>'
     +'• Schedule must be confirmed before subscription start<br>'
     +'• Any schedule changes must be notified in advance<br>'
-    +'• Private locker service available for 200 LE/month'
+    +lkTerm('en')
     +'</p><hr>'
     +'<p>Please confirm your subscription or contact us for any inquiries — SpaceCo Team</p>'
     +sigBlockEn;
@@ -7918,14 +7934,14 @@ function exportAcademyRenewalWord(key){
     +(docPhone?'<p><b>رقم الهاتف:</b> '+docPhone+'</p>':'')
     +'<p><b>القاعة:</b> '+a.room+'</p>'
     +'<p><b>عدد '+unitArPlural+':</b> '+docHours+' '+unitAr+' / شهر</p>'
-    +'<p><b>قيمة الاشتراك:</b> '+docCost.toLocaleString()+' جنيه / شهر</p>'
+    +'<p><b>قيمة الاشتراك:</b> '+docCost.toLocaleString()+' جنيه / شهر</p>'+lkPaperRow('wordAr')
     +'<hr><h3>الشروط والأحكام</h3>'
     +'<p>'
     +'• الاشتراك ساري لمدة شهر واحد من تاريخ التفعيل<br>'
     +'• يجب استخدام جميع '+unitArPlural+' خلال نفس الشهر<br>'
     +'• يجب تأكيد الجدول الزمني قبل بدء الاشتراك<br>'
     +'• يجب إخطارنا مسبقًا بأي تغييرات في الجدول الزمني<br>'
-    +'• خدمة الخزانة الخاصة متاحة مقابل 200 جنيه / شهر'
+    +lkTerm('ar')
     +'</p><hr>'
     +'<p>يرجى تأكيد اشتراكك أو التواصل معنا لأي استفسار — فريق سبيس كو</p>'
     +'</div>'
@@ -11528,6 +11544,169 @@ function lkCancelForReservation(rid){
     if(b.reservationId===rid&&!b.cancelled&&lkStatus(b,Date.now())==='reserved'){b.cancelled=true;b.cancelledAt=new Date().toISOString();changed=true;}
   });
   if(changed){saveData('lockerBookings',lockerBookings);try{lkAfterChange();}catch(e){}}
+}
+
+
+// ============================================================
+// LOCKERS x ACADEMIES
+// An academy's locker is an ordinary locker booking made for the academy (renterType 'academy'),
+// shown on the academy's own page and offered inside the Renew Package window.
+// ============================================================
+function lkAcademyBookings(key,includeDone){
+  return lockerBookings.filter(function(b){
+    if(b.renterType!=='academy'||b.academyKey!==key||b.cancelled)return false;
+    return includeDone||!b.returnedAt;
+  }).sort(function(a,b2){return lkMs(a.start)-lkMs(b2.start);});
+}
+function lkAcademyCardHtml(key){
+  var now=Date.now(),list=lkAcademyBookings(key,false);
+  var btn=function(label,fn,cls){return '<button class="btn '+(cls||'btn-outline')+' btn-sm" onclick="'+fn+'">'+label+'</button>';};
+  var rows=list.length?list.map(function(b){
+    var st=lkStatus(b,now),due=lkDue(b);
+    var badge=st==='overdue'?'<span class="badge badge-red">Time is up</span>':st==='reserved'?'<span class="badge badge-blue">Reserved</span>':'<span class="badge badge-green">In use</span>';
+    return '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);">'
+      +'<div style="flex:1;min-width:200px;"><strong>'+lkEsc(lkLabel(b.lockerId))+'</strong> '+badge
+      +'<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+lkEsc(lkFmt(b.start))+' → '+lkEsc(lkFmt(b.end))+' · '+b.qty+' '+lkUnitWord(b.unit,b.qty)
+      +(lkCharged(b)>0?' · '+lkMoney(lkCharged(b)):' · free')+(due>0?' · <span style="color:var(--red);">'+lkMoney(due)+' to collect</span>':'')+'</div>'
+      +(b.notes?'<div style="font-size:11px;color:var(--text3);">'+lkEsc(b.notes)+'</div>':'')+'</div>'
+      +(due>0?btn('💰 Collect','lkOpenPay(\''+b.id+'\')','btn-success'):'')
+      +(st!=='reserved'?btn('🔄 Extend','lkOpenRenew(\''+b.id+'\')'):'')
+      +btn('Details','openLockerDetails(\''+b.lockerId+'\')')
+      +(st!=='reserved'?btn('↩ Return key','lkReturnKey(\''+b.id+'\')'):'')
+      +'</div>';
+  }).join(''):'<div style="font-size:13px;color:var(--text3);padding:6px 0;">No locker yet. Use "+ Book a locker", or add one when you renew the package.</div>';
+  return '<div class="card mb-16" id="academy-lockers-'+key+'"><div class="card-title flex-between"><span>🔐 Lockers</span>'
+    +'<button class="btn btn-outline btn-sm" onclick="openLockerBooking(null,{type:\'academy\',academyKey:\''+key+'\',unit:\'month\'})">+ Book a locker</button></div>'
+    +rows+'</div>';
+}
+var _lkPrevRenderAcademy=renderAcademy;
+renderAcademy=function(key){
+  _lkPrevRenderAcademy(key);
+  var el=document.getElementById('academy-content-'+key);if(!el)return;
+  var stats=el.querySelector('.grid-4');
+  if(stats)stats.insertAdjacentHTML('afterend',lkAcademyCardHtml(key));
+};
+
+// ── Renew Package window: locker section ──
+var _rlManual=false;
+function rlWindow(){
+  var unit=lkEl('rl-unit').value,qty=parseInt(lkEl('rl-qty').value,10);
+  if(!isFinite(qty)||qty<1)qty=1;
+  var now=lkNowStr();
+  return {unit:unit,qty:qty,start:now,end:lkAddUnits(now,unit,qty)};
+}
+function rlPopulate(key){
+  _rlManual=false;
+  lkEl('rl-qty').value=1;lkEl('rl-unit').value='month';lkEl('rl-onpaper').checked=true;
+  lkEl('rl-choice').innerHTML='<option value="">No locker</option>';
+  rlChange(true);
+}
+function rlChange(reset){
+  var key=currentAcademy,sel=lkEl('rl-choice');if(!key||!sel)return;
+  if(reset)_rlManual=false;
+  var keep=sel.value,w=rlWindow(),h='<option value="">No locker</option>';
+  lkAcademyBookings(key,false).filter(function(b){return lkStatus(b,Date.now())!=='reserved';}).forEach(function(b){
+    h+='<option value="renew:'+b.id+'">Renew '+lkEsc(lkLabel(b.lockerId))+' (now until '+lkEsc(lkFmt(b.end))+')</option>';
+  });
+  LOCKER_DEFS.forEach(function(d){
+    if(!lkAllowed(d.id,'academy',key)||lkConflicts(d.id,lkMs(w.start),lkMs(w.end)).length)return;
+    var pr=lkUnitPrice(d.id,w.unit);
+    h+='<option value="new:'+d.id+'">New: '+lkEsc(lkName(d.id))+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(pr!==null?' · '+lkMoney(pr)+'/'+w.unit:'')+'</option>';
+  });
+  sel.innerHTML=h;
+  if(keep&&Array.prototype.some.call(sel.options,function(o){return o.value===keep;}))sel.value=keep;
+  var choice=sel.value;
+  lkEl('rl-fields').style.display=choice?'':'none';
+  var warn=lkEl('rl-warn');warn.style.display='none';warn.textContent='';
+  if(!choice){return;}
+  var kind=choice.split(':')[0],id=choice.slice(kind.length+1);
+  var lockerId=kind==='renew'?(lkFind(id)||{}).lockerId:id;
+  var pr2=lockerId?lkUnitPrice(lockerId,w.unit):null,price=lkEl('rl-price'),hint=lkEl('rl-hint');
+  if(pr2!==null){
+    var q=lkQuote(pr2,w.unit,w.qty);
+    if(!_rlManual)price.value=q.total;
+    hint.textContent=lkQuoteText(pr2,w.unit,w.qty,q)+((_rlManual&&parseFloat(price.value)!==q.total)?'  (you changed it)':'');
+  }else{
+    if(!_rlManual)price.value='';
+    hint.textContent='No price in the list for this locker — type the price (leave empty for free).';
+  }
+  if(kind==='renew'){
+    var b=lkFind(id);
+    if(b){
+      var from=lkStatus(b,Date.now())==='overdue'?lkNowStr():b.end,newEnd=lkAddUnits(from,w.unit,w.qty);
+      hint.textContent+=' → new end '+lkFmt(newEnd);
+      var clash=lkConflicts(b.lockerId,lkMs(from),lkMs(newEnd),b.id);
+      if(clash.length){warn.textContent=lkLabel(b.lockerId)+' is already booked by '+clash[0].name+' ('+lkFmt(clash[0].start)+'), so it cannot be extended that far.';warn.style.display='block';}
+    }
+  }
+}
+function rlPlan(){
+  var choice=(lkEl('rl-choice')||{}).value;if(!choice)return null;
+  var kind=choice.split(':')[0],id=choice.slice(kind.length+1),w=rlWindow();
+  var price=parseFloat(lkEl('rl-price').value);if(!isFinite(price)||price<0)price=0;
+  return {kind:kind,id:id,unit:w.unit,qty:w.qty,price:price};
+}
+var _lkPrevOpenRenewModal=openRenewModal;
+openRenewModal=function(key){_lkPrevOpenRenewModal(key);rlPopulate(key);};
+var _lkPrevConfirmRenewAc=confirmRenew;
+confirmRenew=function(){
+  var key=currentAcademy,a=academies[key];
+  var plan=rlPlan(),method=lkEl('renew-payment').value,cashier=lkEl('renew-cashier').value,payDate=lkEl('renew-pay-date').value||today();
+  var before=(a.packages||[]).length;
+  _lkPrevConfirmRenewAc();
+  if((academies[key].packages||[]).length<=before||!plan)return;     // the package renewal was refused, or no locker was chosen
+  var done=false,msg='';
+  if(plan.kind==='new'){
+    var now=lkNowStr();
+    var res=lkCreateBooking({type:'academy',academyKey:key,lockerId:plan.id,start:now,end:lkAddUnits(now,plan.unit,plan.qty),unit:plan.unit,qty:plan.qty,price:plan.price,method:(plan.price>0?method:'unpaid'),cashier:cashier,payDate:payDate,notes:'Booked with the package renewal'});
+    done=res.ok;msg=res.ok?'Locker '+lkLabel(plan.id)+' booked':res.error;
+  }else{
+    var b=lkFind(plan.id);
+    if(!b){msg='That locker booking was not found';}
+    else{
+      var from=lkStatus(b,Date.now())==='overdue'?lkNowStr():b.end,newEnd=lkAddUnits(from,plan.unit,plan.qty);
+      if(lkConflicts(b.lockerId,lkMs(from),lkMs(newEnd),b.id).length){msg=lkLabel(b.lockerId)+' is booked by someone else after that, so it could not be extended';}
+      else{
+        var iso=new Date().toISOString();
+        b.renewals=(b.renewals||[]).concat([{at:iso,from:from,oldEnd:b.end,newEnd:newEnd,unit:plan.unit,qty:plan.qty,price:plan.price}]);
+        b.end=newEnd;
+        if(plan.price>0){
+          b.charges=b.charges||[];b.charges.push({id:'lc_'+Date.now(),amount:plan.price,label:'Extension',at:iso});
+          lkRecordPayment(b,plan.price,method,cashier,payDate);
+        }
+        saveData('lockerBookings',lockerBookings);
+        done=true;msg='Locker '+lkLabel(b.lockerId)+' extended until '+lkFmt(b.end);
+      }
+    }
+  }
+  if(done){lkAfterChange();lkRefreshMoneyViews();showToast(msg+' ✓');}
+  else showToast('Package renewed, but the locker was not added: '+msg,true);
+};
+
+// ── renewal paper: the locker line (only when ticked) and the locker term ──
+function lkPaperLocker(){
+  var onpaper=lkEl('rl-onpaper'),box=lkEl('renew-locker-box');
+  if(!onpaper||!onpaper.checked||!box)return null;
+  var plan=rlPlan();if(!plan)return null;
+  var lockerId=plan.kind==='renew'?(lkFind(plan.id)||{}).lockerId:plan.id;if(!lockerId)return null;
+  return {name:lkName(lockerId),qty:plan.qty,unit:plan.unit,price:plan.price};
+}
+function lkPaperRow(kind){
+  var L=lkPaperLocker();if(!L)return '';
+  var arUnit={day:['يوم','أيام'],week:['أسبوع','أسابيع'],month:['شهر','شهور']}[L.unit];
+  var en=L.name+' — '+L.qty+' '+lkUnitWord(L.unit,L.qty)+' — '+(L.price>0?L.price.toLocaleString()+' LE':'Free');
+  var ar=L.name+' — '+L.qty+' '+(L.qty===1?arUnit[0]:arUnit[1])+' — '+(L.price>0?L.price.toLocaleString()+' جنيه':'مجانًا');
+  if(kind==='printEn')return '<div class="print-row"><span>Locker</span><span>'+lkEsc(en)+'</span></div>';
+  if(kind==='printAr')return '<div class="print-row print-rtl"><span>الخزانة</span><span>'+lkEsc(ar)+'</span></div>';
+  if(kind==='wordEn')return '<p><b>Locker:</b> '+lkEsc(en)+'</p>';
+  return '<p><b>الخزانة:</b> '+lkEsc(ar)+'</p>';
+}
+// "available from X LE/month" — taken from the real price list so the paper never quotes an old price
+function lkTerm(lang){
+  var min=null;
+  LOCKER_SIZES.forEach(function(sz){var v=lkSizePrice(sz,'month');if(v!==null&&(min===null||v<min))min=v;});
+  if(lang==='ar')return '• خدمة الخزانة الخاصة متاحة'+(min!==null?' بدءًا من '+min+' جنيه / شهر':' — اسأل الاستقبال');
+  return '• Private locker service available'+(min!==null?' from '+min+' LE/month':' — ask the front desk');
 }
 
 </script>
