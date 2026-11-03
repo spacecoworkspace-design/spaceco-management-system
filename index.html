@@ -1724,9 +1724,10 @@
       <div class="form-group"><label>From *</label><input type="time" id="rv-from" onchange="checkResConflict();updateRvCostPreview();rvLockerRefresh()"></div>
       <div class="form-group"><label>To *</label><input type="time" id="rv-to" onchange="checkResConflict();updateRvCostPreview();rvLockerRefresh()"></div>
     </div>
-    <div class="form-row" style="grid-template-columns:2fr 1fr;">
+    <div class="form-row" style="grid-template-columns:2fr 0.7fr 1fr;">
       <div class="form-group"><label>🔐 Locker (optional)</label><select id="rv-locker" onchange="rvLockerPrice(true)"><option value="">No locker</option></select><div id="rv-locker-info" style="font-size:11px;color:var(--text3);margin-top:4px;"></div></div>
-      <div class="form-group" id="rv-locker-price-wrap" style="display:none;"><label>Locker price (LE)</label><input type="number" id="rv-locker-price" min="0" step="1" oninput="_rvLockerManual=true"><div style="font-size:11px;color:var(--text3);margin-top:4px;">Collected later</div></div>
+      <div class="form-group" id="rv-locker-days-wrap" style="display:none;"><label>Days</label><input type="number" id="rv-locker-days" min="1" step="1" value="1" oninput="rvLockerRefresh()"></div>
+      <div class="form-group" id="rv-locker-price-wrap" style="display:none;"><label>Price (LE)</label><input type="number" id="rv-locker-price" min="0" step="1" oninput="_rvLockerManual=true"><div style="font-size:11px;color:var(--text3);margin-top:4px;">Collected later</div></div>
     </div>
     <div class="form-group"><label>Notes</label><input type="text" id="rv-notes" placeholder="Optional notes"></div>
     <div id="rv-cost-preview" style="display:none;font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;"></div>
@@ -1888,9 +1889,9 @@
       <div class="form-group"><label>From *</label><input type="datetime-local" id="lkb-start" oninput="lkbRecalc('start')"></div>
       <div class="form-group"><label>For</label>
         <div style="display:flex;gap:6px;">
-          <input type="number" id="lkb-qty" min="0.5" step="0.5" value="1" style="width:64px;flex:none;" oninput="lkbRecalc('qty')">
+          <input type="number" id="lkb-qty" min="1" step="1" value="1" style="width:64px;flex:none;" oninput="lkbRecalc('qty')">
           <select id="lkb-unit" style="flex:1;min-width:92px;" onchange="lkbRecalc('unit')">
-            <option value="hour">Hours</option><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option>
+            <option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option>
           </select>
         </div>
       </div>
@@ -1936,8 +1937,8 @@
       </div>
       <div class="form-group"><label>By</label>
         <div style="display:flex;gap:6px;">
-          <input type="number" id="lkr-qty" min="0.5" step="0.5" value="1" style="width:64px;flex:none;" oninput="lkrRecalc()">
-          <select id="lkr-unit" style="flex:1;min-width:92px;" onchange="lkrRecalc(true)"><option value="hour">Hours</option><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option></select>
+          <input type="number" id="lkr-qty" min="1" step="1" value="1" style="width:64px;flex:none;" oninput="lkrRecalc()">
+          <select id="lkr-unit" style="flex:1;min-width:92px;" onchange="lkrRecalc(true)"><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option></select>
         </div>
       </div>
     </div>
@@ -6868,7 +6869,7 @@ var lockerConfig={prices:{},overrides:{},who:{}};
 var lkViewDate='';   // '' = today; otherwise YYYY-MM-DD shown on the map
 
 var LOCKER_SIZES=['XL','L','M','S'];
-var LOCKER_UNITS=['hour','day','week','month'];
+var LOCKER_UNITS=['day','week','month'];   // a locker is rented for 1 day at the least
 // What the price lists start as, until the owner saves their own: per-size prices, which academy owns each
 // XL locker, and the long-rental discount (percent off when renting this many months or more).
 var LOCKER_DEFAULT_CONFIG={
@@ -6914,6 +6915,9 @@ function lkNormalizeConfig(c){
   c.overrides=(c.overrides&&typeof c.overrides==='object')?c.overrides:{};
   c.who=(c.who&&typeof c.who==='object')?c.who:{};
   c.names=(c.names&&typeof c.names==='object')?c.names:{};
+  // hourly prices are gone — drop any that were saved before
+  Object.keys(c.prices).forEach(function(k){if(c.prices[k]&&typeof c.prices[k]==='object')delete c.prices[k].hour;});
+  Object.keys(c.overrides).forEach(function(k){if(c.overrides[k]&&typeof c.overrides[k]==='object')delete c.overrides[k].hour;});
   c.discounts=(c.discounts&&typeof c.discounts==='object')?c.discounts:JSON.parse(JSON.stringify(LOCKER_DEFAULT_CONFIG.discounts));
   return c;
 }
@@ -7166,7 +7170,7 @@ function lkCreateBooking(p){
   var b={
     id:'lb_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
     lockerId:def.id,renterType:type,profileId:profile?profile.id:null,academyKey:academyKey,
-    name:name,phone:(p.phone||'').trim(),start:p.start,end:p.end,unit:p.unit||'hour',qty:parseFloat(p.qty)||1,
+    name:name,phone:(p.phone||'').trim(),start:p.start,end:p.end,unit:p.unit||'day',qty:parseFloat(p.qty)||1,
     notes:(p.notes||'').trim(),charges:[],payments:[],returnedAt:null,cancelled:false,
     createdAt:iso,createdBy:currentStaffName||'',
     sessionId:p.sessionId||null,reservationId:p.reservationId||null
@@ -7287,7 +7291,7 @@ function lkWhoAcademyOptions(w){
 function renderLockerPrices(){
   var el=lkEl('lk-prices');if(!el)return;
   var inp=function(id,val,ph){return '<input type="number" min="0" step="1" class="lk-price-input" id="'+id+'" value="'+(val==null?'':val)+'" placeholder="'+ph+'">';};
-  var h='<div class="table-wrap"><table><thead><tr><th>Size</th><th>Lockers</th><th>Per hour (LE)</th><th>Per day (LE)</th><th>Per week (LE)</th><th>Per month (LE)</th></tr></thead><tbody>';
+  var h='<div class="table-wrap"><table><thead><tr><th>Size</th><th>Lockers</th><th>Per day (LE)</th><th>Per week (LE)</th><th>Per month (LE)</th></tr></thead><tbody>';
   LOCKER_SIZES.forEach(function(sz){
     var ids=LOCKER_DEFS.filter(function(d){return d.size===sz;}).map(function(d){return lkEsc(lkName(d.id));}).join(', ');
     var p=lockerConfig.prices[sz]||{};
@@ -7296,7 +7300,7 @@ function renderLockerPrices(){
   });
   h+='</tbody></table></div>';
   h+='<div style="font-size:12px;font-weight:600;color:var(--text2);margin:18px 0 8px;">Single-locker prices &amp; who each locker is for</div>';
-  h+='<div class="table-wrap"><table><thead><tr><th>Locker name</th><th>Who it\'s for</th><th>Hour</th><th>Day</th><th>Week</th><th>Month</th></tr></thead><tbody>';
+  h+='<div class="table-wrap"><table><thead><tr><th>Locker name</th><th>Who it\'s for</th><th>Day</th><th>Week</th><th>Month</th></tr></thead><tbody>';
   LOCKER_DEFS.forEach(function(d){
     var o=lockerConfig.overrides[d.id]||{},w=lkWho(d.id);
     h+='<tr><td style="white-space:nowrap;"><input type="text" id="lkn-'+d.id+'" class="lk-price-input" style="width:110px;font-weight:700;" maxlength="16" value="'+lkEsc(lkName(d.id))+'" title="Type a new name for this locker" onfocus="this.select()" oninput="lkNameTyped(\''+d.id+'\')" onkeydown="if(event.key===\'Enter\'){event.preventDefault();lkSaveRowName(\''+d.id+'\');}">'
@@ -7407,7 +7411,7 @@ function lkbSetType(t,init,opts){
   lkEl('lkb-name-wrap').style.display=isA?'none':'';
   lkEl('lkb-academy').style.display=isA?'':'none';
   lkEl('lkb-renter-label').textContent=isA?'Academy *':'Client name *';
-  lkEl('lkb-unit').value=(opts&&opts.unit)||(isA?'month':'hour');
+  lkEl('lkb-unit').value=(opts&&opts.unit)||(isA?'month':'day');
   if(!init||!(opts&&opts.qty))lkEl('lkb-qty').value=1;
   lkbRecalc('type');
 }
@@ -7489,6 +7493,11 @@ function lkbPriceTouched(){_lkbPriceManual=true;lkbUpdatePrice();}
 function lkbMethodChange(){lkEl('lkb-pay-row').style.display=lkEl('lkb-method').value==='unpaid'?'none':'';}
 
 function confirmLockerBooking(){
+  var shortMs=lkMs(lkEl('lkb-end').value)-lkMs(lkEl('lkb-start').value);
+  if(isFinite(shortMs)&&shortMs>0&&shortMs<86400000-60000){
+    var msg='A locker is rented for 1 day at the least — make "Until" at least a day after "From".';
+    var ww=lkEl('lkb-warn');ww.textContent=msg;ww.style.display='block';showToast(msg,true);return;
+  }
   var res=lkCreateBooking({
     type:_lkbType,name:lkEl('lkb-name').value,phone:lkEl('lkb-phone').value,academyKey:lkEl('lkb-academy').value,
     lockerId:lkEl('lkb-locker').value,start:lkEl('lkb-start').value,end:lkEl('lkb-end').value,
@@ -7593,7 +7602,7 @@ function lkOpenRenew(bid){
   var overdue=lkStatus(b,Date.now())==='overdue';
   lkEl('lkr-from').innerHTML=overdue?'<option value="now">Right now (it has expired)</option><option value="end">Previous end</option>':'<option value="end">Current end</option>';
   lkEl('lkr-from').value=overdue?'now':'end';
-  lkEl('lkr-unit').value=b.unit||'day';lkEl('lkr-qty').value=1;
+  lkEl('lkr-unit').value=(b.unit&&b.unit!=='hour')?b.unit:'day';lkEl('lkr-qty').value=1;
   lkEl('lkr-summary').innerHTML='<strong>'+lkEsc(lkLabel(b.lockerId))+'</strong> · '+lkEsc(b.name)+'<br><span style="color:var(--text3);">'+lkFmt(b.start)+' → '+lkFmt(b.end)+'</span>';
   lkEl('lkr-cashier').innerHTML=lkEl('lkb-cashier').innerHTML||staff.map(function(s){return '<option value="'+lkEsc(s.name)+'">'+lkEsc(s.name)+'</option>';}).join('');
   if(typeof currentStaffName!=='undefined'&&currentStaffName&&staff.some(function(s){return s.name===currentStaffName;}))lkEl('lkr-cashier').value=currentStaffName;
@@ -8053,6 +8062,7 @@ function openAddReservation(){
   document.getElementById('rv-notes').value='';
   document.getElementById('rv-conflict').style.display='none';
   document.getElementById('rv-cost-preview').style.display='none';
+  var rvd=document.getElementById('rv-locker-days');if(rvd)rvd.value=1;
   rvLockerRefresh();
   openModal('add-reservation-modal');
 }
@@ -11378,7 +11388,7 @@ function lkOpenForSession(sid){
   if(!s)return;
   var live=lkSessionLockers(sid).filter(lkIsLive);
   if(live.length){openLockerDetails(live[0].lockerId);return;}
-  openLockerBooking(null,{type:'client',name:s.name,phone:s.phone||'',unit:'hour',qty:2,sessionId:sid});
+  openLockerBooking(null,{type:'client',name:s.name,phone:s.phone||'',unit:'day',qty:1,sessionId:sid});
 }
 
 // ── checkout: what happens to the guest's locker ──
@@ -11467,48 +11477,48 @@ function lkInvoiceLockerPaid(visit){
 
 // ── reservations: optionally book a locker for the same date and times ──
 var _rvLockerManual=false;
+function rvLockerDays(){var n=parseInt((lkEl('rv-locker-days')||{}).value,10);return (isFinite(n)&&n>=1)?n:1;}
 function rvLockerRefresh(){
   var sel=lkEl('rv-locker');if(!sel)return;
   var keep=sel.value,date=lkEl('rv-date').value,from=lkEl('rv-from').value,to=lkEl('rv-to').value;
   var ok=!!(date&&from&&to&&timeToMin(to)>timeToMin(from));
   var h='<option value="">No locker</option>';
   if(ok){
-    var sMs=lkMs(date+'T'+from),eMs=lkMs(date+'T'+to);
+    var start=date+'T'+from,sMs=lkMs(start),eMs=lkMs(lkAddUnits(start,'day',rvLockerDays()));
     LOCKER_DEFS.forEach(function(d){
       if(!lkAllowed(d.id,'client')||lkConflicts(d.id,sMs,eMs).length)return;
-      var pr=lkUnitPrice(d.id,'hour');
-      h+='<option value="'+d.id+'">'+lkEsc(lkName(d.id))+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(pr!==null?' · '+lkMoney(pr)+'/hour':'')+'</option>';
+      var pr=lkUnitPrice(d.id,'day');
+      h+='<option value="'+d.id+'">'+lkEsc(lkName(d.id))+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(pr!==null?' · '+lkMoney(pr)+'/day':'')+'</option>';
     });
   }
   sel.innerHTML=h;
   if(keep&&Array.prototype.some.call(sel.options,function(o){return o.value===keep;}))sel.value=keep;
-  var info=lkEl('rv-locker-info');if(info)info.textContent=ok?'Only lockers that are free for those hours are listed.':'Choose the date and times first to see the free lockers.';
+  var info=lkEl('rv-locker-info');if(info)info.textContent=ok?'Rented per day (1 day at the least). Only lockers free for those days are listed.':'Choose the date and times first to see the free lockers.';
   rvLockerPrice(false);
 }
 function rvLockerPrice(reset){
-  var sel=lkEl('rv-locker'),wrap=lkEl('rv-locker-price-wrap'),box=lkEl('rv-locker-price');if(!sel||!wrap||!box)return;
-  wrap.style.display=sel.value?'':'none';
+  var sel=lkEl('rv-locker'),wrap=lkEl('rv-locker-price-wrap'),dw=lkEl('rv-locker-days-wrap'),box=lkEl('rv-locker-price');if(!sel||!wrap||!box)return;
+  wrap.style.display=sel.value?'':'none';if(dw)dw.style.display=sel.value?'':'none';
   if(reset)_rvLockerManual=false;
   if(!sel.value){box.value='';return;}
   if(_rvLockerManual)return;
-  var hrs=(timeToMin(lkEl('rv-to').value)-timeToMin(lkEl('rv-from').value))/60,pr=lkUnitPrice(sel.value,'hour');
-  box.value=(pr!==null&&hrs>0)?Math.round(pr*hrs*100)/100:'';
+  var pr=lkUnitPrice(sel.value,'day');
+  box.value=pr!==null?Math.round(pr*rvLockerDays()*100)/100:'';
 }
 var _lkPrevSaveReservation=saveReservation;
 saveReservation=function(){
-  var lockerId=(lkEl('rv-locker')||{}).value||'',price=parseFloat((lkEl('rv-locker-price')||{}).value)||0;
-  var date=lkEl('rv-date').value,from=lkEl('rv-from').value,to=lkEl('rv-to').value;
+  var lockerId=(lkEl('rv-locker')||{}).value||'',price=parseFloat((lkEl('rv-locker-price')||{}).value)||0,days=rvLockerDays();
+  var date=lkEl('rv-date').value,from=lkEl('rv-from').value;
   var client=lkEl('rv-client').value.trim(),phone=lkEl('rv-phone').value.trim(),room=lkEl('rv-room').value;
   var before=reservations.length;
   _lkPrevSaveReservation();
   if(!lockerId||reservations.length<=before)return;     // no locker asked for, or the reservation itself was refused
-  var r=reservations[reservations.length-1];
-  var hrs=(timeToMin(to)-timeToMin(from))/60;
-  var res=lkCreateBooking({type:'client',name:client,phone:phone,lockerId:lockerId,start:date+'T'+from,end:date+'T'+to,unit:'hour',qty:Math.round(hrs*2)/2||1,price:price,method:'unpaid',notes:'Booked with the room reservation ('+room+')',reservationId:r.id});
+  var r=reservations[reservations.length-1],start=date+'T'+from;
+  var res=lkCreateBooking({type:'client',name:client,phone:phone,lockerId:lockerId,start:start,end:lkAddUnits(start,'day',days),unit:'day',qty:days,price:price,method:'unpaid',notes:'Booked with the room reservation ('+room+')',reservationId:r.id});
   if(res.ok){
     r.lockerBookingId=res.booking.id;saveData('reservations',reservations);
     lkAfterChange();
-    showToast('Locker '+lkLabel(lockerId)+' reserved too'+(price>0?' — '+lkMoney(price)+' to collect':'')+' ✓');
+    showToast('Locker '+lkLabel(lockerId)+' reserved too ('+days+' day'+(days!==1?'s':'')+')'+(price>0?' — '+lkMoney(price)+' to collect':'')+' ✓');
   }else{showToast('Reservation saved, but the locker could not be booked: '+res.error,true);}
 };
 // deleting a reservation lets go of its locker if the guest has not started using it
