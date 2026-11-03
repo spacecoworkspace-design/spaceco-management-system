@@ -651,6 +651,7 @@
           <div class="form-group"><label>Cashier *</label><select id="ci-cashier"><option value="">Select cashier</option><option value="Aya">Aya (9:00 AM – 4:00 PM)</option><option value="Youssef">Youssef (4:00 PM – 11:00 PM)</option><option value="Nour">Nour (Fri &amp; Sat both shifts)</option></select></div>
         </div>
         <div class="form-group"><label>Notes / Special Requests</label><textarea id="ci-notes" rows="2" placeholder="Any special requests..."></textarea></div>
+        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;text-transform:none;letter-spacing:0;"><input type="checkbox" id="ci-locker" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;flex:none;accent-color:var(--accent);cursor:pointer;"> 🔐 Also book a locker for this guest</label></div>
       </div>
     </div>
     <div>
@@ -720,11 +721,14 @@
       </div>
     </div>
 
+    <div id="co-locker-box" style="display:none;"></div>
+
     <!-- Receipt preview -->
     <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;" id="co-receipt">
       <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">Receipt</div>
       <div class="cost-row"><span style="color:var(--text2);">Room Cost</span><span class="money" id="co-room-cost" style="color:var(--amber);">0 LE</span></div>
       <div class="cost-row" id="co-roomvisits-row" style="display:none;"><span style="color:var(--text2);">Room Visit(s)</span><span class="money" id="co-roomvisits-cost" style="color:var(--amber);">0 LE</span></div>
+      <div class="cost-row" id="co-locker-row" style="display:none;"><span style="color:var(--text2);">Locker balance</span><span class="money" id="co-locker-cost" style="color:var(--amber);">0 LE</span></div>
       <div class="cost-row"><span style="color:var(--text2);">Drinks &amp; Snacks</span><span class="money" id="co-drinks-cost" style="color:var(--teal);">0 LE</span></div>
       <div class="cost-row" id="co-discount-row" style="display:none;"><span style="color:var(--text2);">Discount</span><span class="money" id="co-discount-display" style="color:var(--red);">- 0 LE</span></div>
       <div class="cost-row total"><span>Grand Total</span><span class="money" id="co-grand-total" style="color:var(--green);font-size:18px;">0 LE</span></div>
@@ -1716,9 +1720,13 @@
       </select>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
-      <div class="form-group"><label>Date *</label><input type="date" id="rv-date"></div>
-      <div class="form-group"><label>From *</label><input type="time" id="rv-from" onchange="checkResConflict();updateRvCostPreview()"></div>
-      <div class="form-group"><label>To *</label><input type="time" id="rv-to" onchange="checkResConflict();updateRvCostPreview()"></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="rv-date" onchange="rvLockerRefresh()"></div>
+      <div class="form-group"><label>From *</label><input type="time" id="rv-from" onchange="checkResConflict();updateRvCostPreview();rvLockerRefresh()"></div>
+      <div class="form-group"><label>To *</label><input type="time" id="rv-to" onchange="checkResConflict();updateRvCostPreview();rvLockerRefresh()"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:2fr 1fr;">
+      <div class="form-group"><label>🔐 Locker (optional)</label><select id="rv-locker" onchange="rvLockerPrice(true)"><option value="">No locker</option></select><div id="rv-locker-info" style="font-size:11px;color:var(--text3);margin-top:4px;"></div></div>
+      <div class="form-group" id="rv-locker-price-wrap" style="display:none;"><label>Locker price (LE)</label><input type="number" id="rv-locker-price" min="0" step="1" oninput="_rvLockerManual=true"><div style="font-size:11px;color:var(--text3);margin-top:4px;">Collected later</div></div>
     </div>
     <div class="form-group"><label>Notes</label><input type="text" id="rv-notes" placeholder="Optional notes"></div>
     <div id="rv-cost-preview" style="display:none;font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;"></div>
@@ -2760,6 +2768,7 @@ function checkInGuest(){
   var email=document.getElementById('ci-email').value;
   var guests=document.getElementById('ci-guests').value||1;
   var notes=document.getElementById('ci-notes').value;
+  var wantLocker=!!(document.getElementById('ci-locker')&&document.getElementById('ci-locker').checked);
 
   var session={
     id:Date.now(),
@@ -2783,6 +2792,8 @@ function checkInGuest(){
   if(pkgStatusEl)pkgStatusEl.style.display='none';
 
   renderActiveSessions();
+  var lockerBox=document.getElementById('ci-locker');if(lockerBox)lockerBox.checked=false;
+  if(wantLocker)lkOpenForSession(session.id);
 }
 
 // ============================================================
@@ -3008,6 +3019,7 @@ function openCheckout(sessionId){
   renderCoCatTabs();
   renderCoProductGrid();
   renderCoTab(s);
+  lkRenderCheckoutBox(s);
   calcCheckoutTotal();
   openModal('checkout-modal');
 }
@@ -4382,7 +4394,7 @@ function printInvoice(visit){
   var pa=document.getElementById('print-area');
   var vDrinks=drinkOrders.filter(function(o){return o.client===visit.name&&o.date===visit.date;});
   var drinksTot=vDrinks.reduce(function(s,o){return s+o.total;},0);
-  var grandTotal=visit.cost+drinksTot;
+  var grandTotal=visit.cost+drinksTot+lkInvoiceLockerTotal(visit);
 
   // If this visit was covered by a Shared Space package, show the package
   // status (e.g. "2/20 check-ins used") and what was actually paid for it,
@@ -4426,12 +4438,14 @@ function printInvoice(visit){
         +vDrinks.map(function(o){return o.items.map(function(x){return '<div class="print-row"><span>'+(x.qty>1?x.qty+'x ':'')+x.name+'</span><span>'+x.total+' LE</span></div>';}).join('');}).join('')
         +'<div class="print-row"><span>Drinks & Snacks Total</span><span>'+drinksTot+' LE</span></div>'
         :''))
+    +lkInvoiceLockerHtml(visit)
     +'<div class="print-total-box">'
     +'<div class="print-row bold"><span>TOTAL</span><span>'+grandTotal+' LE</span></div>'
     +(pkg?'<div class="print-row"><span>Room Fee</span><span>FREE — covered by package</span></div>':'')
     +(visit.cash?'<div class="print-row"><span>Cash (rooms + drinks)</span><span>'+(visit.cash+drinksTot)+' LE</span></div>':'')
     +(visit.instapay?'<div class="print-row"><span>Instapay (rooms + drinks)</span><span>'+(visit.instapay+drinksTot)+' LE</span></div>':'')
     +(visit.visa?'<div class="print-row"><span>Visa (rooms + drinks)</span><span>'+(visit.visa+drinksTot)+' LE</span></div>':'')
+    +lkInvoiceLockerPaid(visit)
     +'</div>'
     +'<hr class="print-divider">'
     +'<div class="print-row"><span>Cashier</span><span>'+visit.cashier+'</span></div>'
@@ -7154,7 +7168,8 @@ function lkCreateBooking(p){
     lockerId:def.id,renterType:type,profileId:profile?profile.id:null,academyKey:academyKey,
     name:name,phone:(p.phone||'').trim(),start:p.start,end:p.end,unit:p.unit||'hour',qty:parseFloat(p.qty)||1,
     notes:(p.notes||'').trim(),charges:[],payments:[],returnedAt:null,cancelled:false,
-    createdAt:iso,createdBy:currentStaffName||''
+    createdAt:iso,createdBy:currentStaffName||'',
+    sessionId:p.sessionId||null,reservationId:p.reservationId||null
   };
   if(price>0)b.charges.push({id:'lc_'+Date.now(),amount:price,label:'Rental',at:iso});
   lockerBookings.push(b);
@@ -7358,11 +7373,11 @@ function lkDoorClick(id){
 // ============================================================
 // THE BOOKING FORM
 // ============================================================
-var _lkbType='client',_lkbPriceManual=false,_lkbPreLocker='',_lkbProfileId=null;
+var _lkbType='client',_lkbPriceManual=false,_lkbPreLocker='',_lkbProfileId=null,_lkbSessionId='';
 
 function openLockerBooking(lockerId,opts){
   opts=opts||{};
-  _lkbPriceManual=false;_lkbProfileId=opts.profileId||null;_lkbPreLocker=lockerId||'';
+  _lkbPriceManual=false;_lkbProfileId=opts.profileId||null;_lkbPreLocker=lockerId||'';_lkbSessionId=opts.sessionId||'';
   lkEl('lkb-locker').innerHTML='';   // forget the last selection so the clicked locker wins
   ['lkb-name','lkb-phone','lkb-notes','lkb-price'].forEach(function(id){lkEl(id).value='';});
   lkEl('lkb-sug').style.display='none';
@@ -7375,7 +7390,7 @@ function openLockerBooking(lockerId,opts){
   var vd=lkViewDate||today();
   lkEl('lkb-start').value=opts.start||(vd===today()?lkNowStr():vd+'T09:00');
   lkEl('lkb-qty').value=opts.qty||1;
-  lkEl('lkb-title').textContent=lockerId?'🔐 Book '+lkLabel(lockerId):'🔐 New Locker Booking';
+  lkEl('lkb-title').textContent=opts.sessionId?'🔐 Locker for '+(opts.name||'this guest'):(lockerId?'🔐 Book '+lkLabel(lockerId):'🔐 New Locker Booking');
   lkbSetType(opts.type||'client',true,opts);
   if(opts.name)lkEl('lkb-name').value=opts.name;
   if(opts.phone)lkEl('lkb-phone').value=opts.phone;
@@ -7478,13 +7493,15 @@ function confirmLockerBooking(){
     type:_lkbType,name:lkEl('lkb-name').value,phone:lkEl('lkb-phone').value,academyKey:lkEl('lkb-academy').value,
     lockerId:lkEl('lkb-locker').value,start:lkEl('lkb-start').value,end:lkEl('lkb-end').value,
     unit:lkEl('lkb-unit').value,qty:lkEl('lkb-qty').value,price:lkEl('lkb-price').value,notes:lkEl('lkb-notes').value,
-    method:lkEl('lkb-method').value,cashier:lkEl('lkb-cashier').value,payDate:lkEl('lkb-paydate').value
+    method:lkEl('lkb-method').value,cashier:lkEl('lkb-cashier').value,payDate:lkEl('lkb-paydate').value,
+    sessionId:_lkbSessionId||null
   });
   var w=lkEl('lkb-warn');
   if(!res.ok){w.textContent=res.error;w.style.display='block';showToast(res.error,true);return;}
   var b=res.booking;
   closeModal('locker-booking-modal');
   lkAfterChange();lkRefreshMoneyViews();
+  _lkbSessionId='';
   var st=lkStatus(b,Date.now());
   showToast(lkLabel(b.lockerId)+(st==='reserved'?' reserved for ':' booked for ')+b.name+(lkDue(b)>0?' — '+lkMoney(lkDue(b))+' still to collect':'')+' ✓');
 }
@@ -7495,6 +7512,7 @@ function confirmLockerBooking(){
 var _lkdLocker='';
 function lkAfterChange(){
   renderLockers();
+  try{var cp=lkEl('page-checkin');if(cp&&cp.classList.contains('active'))renderActiveSessions();}catch(e){}
   var m=lkEl('locker-details-modal');if(m&&m.classList.contains('open'))renderLockerDetails();
   if(typeof renderNotifPanel==='function')renderNotifPanel();
 }
@@ -8035,6 +8053,7 @@ function openAddReservation(){
   document.getElementById('rv-notes').value='';
   document.getElementById('rv-conflict').style.display='none';
   document.getElementById('rv-cost-preview').style.display='none';
+  rvLockerRefresh();
   openModal('add-reservation-modal');
 }
 
@@ -8207,6 +8226,7 @@ function deleteReservation(id){
     var res=reservations.find(function(r){return r.id===id;});
     if(res){recycleBin.push({binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),type:'reservation',deletedAt:new Date().toISOString(),data:res});}
     reservations=reservations.filter(function(r){return r.id!==id;});
+    lkCancelForReservation(id);
     saveData('reservations',reservations);
     saveData('recycleBin',recycleBin);
     updateBinBadge();
@@ -8231,6 +8251,7 @@ function deleteAllResSearchResults(){
       recycleBin.push({binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),type:'reservation',deletedAt:new Date().toISOString(),data:r});
     });
     reservations=reservations.filter(function(r){return idsToDelete.indexOf(r.id)===-1;});
+    idsToDelete.forEach(lkCancelForReservation);
     saveData('reservations',reservations);
     saveData('recycleBin',recycleBin);
     updateBinBadge();
@@ -10666,6 +10687,8 @@ renderActiveSessions=function(){
     var roomVisitBtn=openVisit
       ?'<button class="btn btn-outline btn-sm" onclick="openEndRoomVisitModal('+s.id+','+openVisit.id+')">↩ Back from '+openVisit.room+'</button>'
       :'<button class="btn btn-outline btn-sm" onclick="openRoomVisitModal('+s.id+')">🔀 Visit Another Area</button>';
+    var lkList=lkSessionLockers(s.id).filter(lkIsLive);
+    var lockerBtn='<button class="btn btn-outline btn-sm" style="margin-left:8px;" title="'+(lkList.length?'See / manage this guest\'s locker':'Book a locker for this guest')+'" onclick="lkOpenForSession('+s.id+')">'+(lkList.length?'🔐 '+lkEsc(lkName(lkList[0].lockerId)):'🔐 Locker')+'</button>';
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
       +'<div style="position:relative;flex-shrink:0;">'
       +'<div class="avatar-initials">'+getInitials(s.name)+'</div>'
@@ -10676,10 +10699,11 @@ renderActiveSessions=function(){
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
+      +(lkList.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">🔐 Locker '+lkEsc(lkLabel(lkList[0].lockerId))+' · until '+lkEsc(lkFmt(lkList[0].end))+(lkDue(lkList[0])>0?' · '+lkMoney(lkDue(lkList[0]))+' to collect':'')+'</div>':'')
       +(openVisit?'<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+openVisit.room+' since '+fmt12(openVisit.timeIn)+'</div>':'')
       +(closedVisits.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+closedVisits.length+' room visit(s) — '+closedVisits.reduce(function(a,v){return a+(v.cost||0);},0)+' LE</div>':'')
       +'</div>'
-      +roomVisitBtn
+      +roomVisitBtn+lockerBtn
       +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
       +'<button class="btn btn-danger btn-sm" style="margin-left:8px;" title="Void this check-in — no charge" onclick="openCancelCheckinModal('+s.id+')">✕ Cancel</button>'
       +'</div>';
@@ -11339,6 +11363,162 @@ refreshDashboard=function(){
     }).join('');
   }
 };
+
+
+// ============================================================
+// LOCKERS x GUEST CHECK-IN x RESERVATIONS
+// A guest's locker is an ordinary locker booking that remembers which check-in it belongs to.
+// ============================================================
+function lkIsLive(b){var st=lkStatus(b,Date.now());return st==='occupied'||st==='overdue'||st==='reserved';}
+function lkSessionLockers(sid){return lockerBookings.filter(function(b){return b.sessionId===sid&&!b.cancelled;});}
+
+// The "🔐 Locker" button on an active session: book one for them, or open the one they already have.
+function lkOpenForSession(sid){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===sid;});
+  if(!s)return;
+  var live=lkSessionLockers(sid).filter(lkIsLive);
+  if(live.length){openLockerDetails(live[0].lockerId);return;}
+  openLockerBooking(null,{type:'client',name:s.name,phone:s.phone||'',unit:'hour',qty:2,sessionId:sid});
+}
+
+// ── checkout: what happens to the guest's locker ──
+function lkRenderCheckoutBox(s){
+  var box=lkEl('co-locker-box');if(!box)return;
+  var now=Date.now(),list=lkSessionLockers(s.id).filter(lkIsLive);
+  if(!list.length){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;border:1px solid var(--hairline);">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;">🔐 Locker</div>'
+    +list.map(function(b){
+      var st=lkStatus(b,now),due=lkDue(b),started=st!=='reserved';
+      var freeDefault=started&&(b.unit==='hour'||b.unit==='day');
+      return '<div style="font-size:13px;margin-bottom:8px;"><strong>'+lkEsc(lkLabel(b.lockerId))+'</strong> · '+lkEsc(lkFmt(b.start))+' → '+lkEsc(lkFmt(b.end))
+        +(st==='overdue'?' <span style="color:var(--red);">(time is up)</span>':'')
+        +'<div style="font-size:12px;color:var(--text3);margin:2px 0 6px;">Charged '+lkMoney(lkCharged(b))+' · paid '+lkMoney(lkPaid(b))+'</div>'
+        +(due>0?'<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" class="co-lk-pay" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;flex:none;accent-color:var(--accent);cursor:pointer;" data-bid="'+lkEsc(b.id)+'" data-due="'+due+'" checked onchange="calcCheckoutTotal()"> Collect the '+lkMoney(due)+' still owed, with this payment</label>':'')
+        +(started?'<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" class="co-lk-free" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;flex:none;accent-color:var(--accent);cursor:pointer;" data-bid="'+lkEsc(b.id)+'"'+(freeDefault?' checked':'')+'> Guest emptied it — free the locker now <span style="color:var(--text3);">(untick if they are coming back for their things)</span></label>':'<div style="font-size:12px;color:var(--text3);">Starts later — stays booked.</div>')
+        +'</div>';
+    }).join('')
+    +'</div>';
+}
+function lkCheckoutPlan(){
+  var plan={pay:{},free:[]};
+  document.querySelectorAll('#co-locker-box .co-lk-pay').forEach(function(c){if(c.checked)plan.pay[c.dataset.bid]=parseFloat(c.dataset.due)||0;});
+  document.querySelectorAll('#co-locker-box .co-lk-free').forEach(function(c){if(c.checked)plan.free.push(c.dataset.bid);});
+  return plan;
+}
+var _lkPrevCalcCheckout=calcCheckoutTotal;
+calcCheckoutTotal=function(){
+  _lkPrevCalcCheckout();
+  var due=0;Object.keys(lkCheckoutPlan().pay).forEach(function(k){due+=lkCheckoutPlan().pay[k];});
+  var row=lkEl('co-locker-row');
+  if(row){row.style.display=due>0?'':'none';lkEl('co-locker-cost').textContent=due+' LE';}
+  if(due>0){var g=lkEl('co-grand-total');if(g)g.textContent=((parseFloat(g.textContent)||0)+due)+' LE';}
+};
+var _lkPrevSubmitCheckout=submitCheckout;
+submitCheckout=function(){
+  var sid=_checkoutSessionId,plan=lkCheckoutPlan();
+  var payment=(lkEl('co-payment')||{}).value||'cash',cashier=(lkEl('co-cashier')||{}).value||'';
+  var before=clients.length;
+  _lkPrevSubmitCheckout();
+  if(clients.length<=before)return;               // refused (e.g. no time out) — nothing happened
+  var visit=clients[clients.length-1],lines=[];
+  lkSessionLockers(sid).forEach(function(b){
+    var paidBefore=lkPaid(b),collected=0,freed=false;
+    var want=plan.pay[b.id]||0,owed=lkDue(b);
+    if(want>0&&owed>0){collected=Math.min(want,owed);lkRecordPayment(b,collected,payment,cashier,today());}
+    if(plan.free.indexOf(b.id)!==-1&&lkIsLive(b)&&lkStatus(b,Date.now())!=='reserved'){b.returnedAt=lkNowStr();freed=true;}
+    lines.push({locker:lkLabel(b.lockerId),unit:b.unit,qty:b.qty,charged:lkCharged(b),paidBefore:paidBefore,collected:collected,freed:freed});
+  });
+  if(lines.length){
+    visit.lockers=lines;
+    saveData('clients',clients);saveData('lockerBookings',lockerBookings);
+    lkAfterChange();lkRefreshMoneyViews();
+    var fr=lines.filter(function(x){return x.freed;}).length;
+    if(fr)showToast('Locker freed ✓');
+  }
+};
+// voiding a check-in frees what the guest had in a locker (anything paid stays on record; anything unpaid stays owed)
+var _lkPrevCancelCheckin=confirmCancelCheckin;
+confirmCancelCheckin=function(){
+  var sid=_cancelCheckinSessionId;
+  var linked=lkSessionLockers(sid).filter(lkIsLive);
+  _lkPrevCancelCheckin();
+  if(!linked.length||loadData('activeSessions',[]).some(function(x){return x.id===sid;}))return;
+  linked.forEach(function(b){
+    if(lkStatus(b,Date.now())==='reserved')b.cancelled=true;else b.returnedAt=lkNowStr();
+  });
+  saveData('lockerBookings',lockerBookings);lkAfterChange();
+};
+
+// ── printed receipt ──
+function lkInvoiceLockerTotal(visit){return (visit.lockers||[]).reduce(function(t,x){return t+(x.charged||0);},0);}
+function lkInvoiceLockerHtml(visit){
+  var L=visit.lockers||[];if(!L.length)return '';
+  return '<div class="print-section-title" style="margin-top:10px;">Locker</div>'
+    +L.map(function(x){return '<div class="print-row"><span>'+lkEsc(x.locker)+' ('+x.qty+' '+lkUnitWord(x.unit,x.qty)+')</span><span>'+(x.charged>0?x.charged+' LE':'Free')+'</span></div>';}).join('');
+}
+function lkInvoiceLockerPaid(visit){
+  var L=visit.lockers||[],early=0,now=0;
+  L.forEach(function(x){early+=x.paidBefore||0;now+=x.collected||0;});
+  if(!early&&!now)return '';
+  return '<div class="print-row"><span>Locker'+(early&&now?' (paid earlier + now)':early?' (paid earlier)':' (paid now)')+'</span><span>'+(early+now)+' LE</span></div>';
+}
+
+// ── reservations: optionally book a locker for the same date and times ──
+var _rvLockerManual=false;
+function rvLockerRefresh(){
+  var sel=lkEl('rv-locker');if(!sel)return;
+  var keep=sel.value,date=lkEl('rv-date').value,from=lkEl('rv-from').value,to=lkEl('rv-to').value;
+  var ok=!!(date&&from&&to&&timeToMin(to)>timeToMin(from));
+  var h='<option value="">No locker</option>';
+  if(ok){
+    var sMs=lkMs(date+'T'+from),eMs=lkMs(date+'T'+to);
+    LOCKER_DEFS.forEach(function(d){
+      if(!lkAllowed(d.id,'client')||lkConflicts(d.id,sMs,eMs).length)return;
+      var pr=lkUnitPrice(d.id,'hour');
+      h+='<option value="'+d.id+'">'+lkEsc(lkName(d.id))+' · '+d.size+(d.color?' · '+LOCKER_COLORS[d.color]:'')+(pr!==null?' · '+lkMoney(pr)+'/hour':'')+'</option>';
+    });
+  }
+  sel.innerHTML=h;
+  if(keep&&Array.prototype.some.call(sel.options,function(o){return o.value===keep;}))sel.value=keep;
+  var info=lkEl('rv-locker-info');if(info)info.textContent=ok?'Only lockers that are free for those hours are listed.':'Choose the date and times first to see the free lockers.';
+  rvLockerPrice(false);
+}
+function rvLockerPrice(reset){
+  var sel=lkEl('rv-locker'),wrap=lkEl('rv-locker-price-wrap'),box=lkEl('rv-locker-price');if(!sel||!wrap||!box)return;
+  wrap.style.display=sel.value?'':'none';
+  if(reset)_rvLockerManual=false;
+  if(!sel.value){box.value='';return;}
+  if(_rvLockerManual)return;
+  var hrs=(timeToMin(lkEl('rv-to').value)-timeToMin(lkEl('rv-from').value))/60,pr=lkUnitPrice(sel.value,'hour');
+  box.value=(pr!==null&&hrs>0)?Math.round(pr*hrs*100)/100:'';
+}
+var _lkPrevSaveReservation=saveReservation;
+saveReservation=function(){
+  var lockerId=(lkEl('rv-locker')||{}).value||'',price=parseFloat((lkEl('rv-locker-price')||{}).value)||0;
+  var date=lkEl('rv-date').value,from=lkEl('rv-from').value,to=lkEl('rv-to').value;
+  var client=lkEl('rv-client').value.trim(),phone=lkEl('rv-phone').value.trim(),room=lkEl('rv-room').value;
+  var before=reservations.length;
+  _lkPrevSaveReservation();
+  if(!lockerId||reservations.length<=before)return;     // no locker asked for, or the reservation itself was refused
+  var r=reservations[reservations.length-1];
+  var hrs=(timeToMin(to)-timeToMin(from))/60;
+  var res=lkCreateBooking({type:'client',name:client,phone:phone,lockerId:lockerId,start:date+'T'+from,end:date+'T'+to,unit:'hour',qty:Math.round(hrs*2)/2||1,price:price,method:'unpaid',notes:'Booked with the room reservation ('+room+')',reservationId:r.id});
+  if(res.ok){
+    r.lockerBookingId=res.booking.id;saveData('reservations',reservations);
+    lkAfterChange();
+    showToast('Locker '+lkLabel(lockerId)+' reserved too'+(price>0?' — '+lkMoney(price)+' to collect':'')+' ✓');
+  }else{showToast('Reservation saved, but the locker could not be booked: '+res.error,true);}
+};
+// deleting a reservation lets go of its locker if the guest has not started using it
+function lkCancelForReservation(rid){
+  var changed=false;
+  lockerBookings.forEach(function(b){
+    if(b.reservationId===rid&&!b.cancelled&&lkStatus(b,Date.now())==='reserved'){b.cancelled=true;b.cancelledAt=new Date().toISOString();changed=true;}
+  });
+  if(changed){saveData('lockerBookings',lockerBookings);try{lkAfterChange();}catch(e){}}
+}
 
 </script>
 
