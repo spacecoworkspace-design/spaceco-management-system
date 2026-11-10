@@ -161,6 +161,19 @@
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
   .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── RESERVATION TIMELINE: drag / resize ── */
+  .rv-block[data-movable="1"]{cursor:grab !important;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .rv-block.rv-dragging{cursor:grabbing !important;z-index:20;box-shadow:0 8px 22px rgba(0,0,0,.35);opacity:.92;}
+  .rv-block.rv-bad{outline:3px solid var(--red);outline-offset:1px;}
+  .rv-block.rv-ok{outline:3px solid var(--green);outline-offset:1px;}
+  .rv-handle{position:absolute;right:-4px;top:0;bottom:0;width:11px;cursor:ew-resize;z-index:3;}
+  .rv-handle::after{content:'';position:absolute;right:4px;top:30%;bottom:30%;width:3px;border-radius:2px;background:rgba(255,255,255,.75);}
+  .rv-lane{touch-action:pan-y;}
+  .rv-lane.rv-target{background:rgba(99,102,241,.12) !important;}
+  .rv-now{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:6;pointer-events:none;}
+  .rv-now::before{content:'';position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--red);}
+  .rv-undo{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:100000;background:#0f172a;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;display:flex;gap:14px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:90vw;}
+  .rv-undo button{background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;}
   /* ── REPORTS ── */
   .rp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
   .rp-delta{font-size:11px;margin-top:4px;color:var(--text3);}
@@ -549,6 +562,7 @@
     </div>
     <div class="nav-group" data-category="inventory">
       <div class="nav-section">Inventory &amp; Comms</div>
+      <button class="nav-item" data-page="wasend" id="nav-wasend" onclick="showPage('wasend',this)"><span class="nav-icon">📨</span> Messages to Send <span id="wasend-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="watemplates" id="nav-watemplates" onclick="showPage(&#39;watemplates&#39;,this);renderWaTemplates();"><span class="nav-icon">📱</span> WhatsApp Messages</button>
       <button class="nav-item" data-page="broadcast" id="nav-broadcast" onclick="showPage(&#39;broadcast&#39;,this);renderBroadcastRecipients();"><span class="nav-icon">📢</span> Broadcast</button>
       <button class="nav-item" data-page="sharedpkgs" onclick="showPage(&#39;sharedpkgs&#39;,this);renderSharedSpacePackages();"><span class="nav-icon">☕</span> Shared Space Packages</button>
@@ -561,6 +575,7 @@
     </div>
     <div class="nav-group" data-category="system">
       <div class="nav-section">System</div>
+      <button class="nav-item admin-only" data-page="auditlog" id="nav-auditlog" onclick="showPage('auditlog',this)"><span class="nav-icon">🧾</span> Activity Log</button>
       <button class="nav-item" data-page="recyclebin" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     </div>
   </div>
@@ -1268,6 +1283,72 @@
       <div style="font-size:13px;">Upload the rules paper, a contract template, or anything else you'll want to print later.</div>
     </div>
     <div id="doc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;"></div>
+  </div>
+</div>
+
+<!-- PRICING PLAN MODAL -->
+<div class="modal-overlay" id="plan-edit-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header"><div class="modal-title" id="pp-title">Pricing plan</div><button class="close-btn" onclick="closeModal('plan-edit-modal')">✕</button></div>
+    <div class="form-row" style="grid-template-columns:1.4fr 1fr;">
+      <div class="form-group"><label>Plan name *</label><input type="text" id="pp-name" placeholder="e.g. Small rooms"></div>
+      <div class="form-group"><label>How it charges</label>
+        <select id="pp-type" onchange="ppTypeChanged()">
+          <option value="steps">Steps (1 h, 2 h … then a day price)</option>
+          <option value="first_extra">First hour + extra hours</option>
+          <option value="hourly">Per hour</option>
+          <option value="day_pass">Fixed day price</option>
+        </select></div>
+    </div>
+    <div id="pp-fields"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.8px;">Extra rules (optional)</div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="form-group" id="pp-round-wrap"><label>Round time to</label><select id="pp-round"><option value="0.5">½ hour</option><option value="0.25">¼ hour</option><option value="1">1 hour</option></select></div>
+      <div class="form-group"><label>Grace (minutes)</label><input type="number" id="pp-grace" min="0" step="1" value="0"></div>
+      <div class="form-group" id="pp-min-wrap"><label>Minimum hours</label><input type="number" id="pp-min" min="0" step="0.5" value="0"></div>
+      <div class="form-group"><label>Daily cap (0 = none)</label><input type="number" id="pp-cap" min="0" step="1" value="0"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin:-4px 0 12px;">Grace: a few minutes over a billing step that are not charged. Daily cap: the most one visit can ever cost.</div>
+    <div class="lk-warn" id="pp-warn"></div>
+    <button class="btn btn-success btn-full" onclick="ppSavePlan()">✓ Save plan</button>
+  </div>
+</div>
+
+<!-- ACTIVITY LOG PAGE -->
+<div id="page-auditlog" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">🧾 Activity Log</div><div class="page-sub">Who did what, and when — payments, deletions, price changes, voided check-ins, sign-ins</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="date" id="al-from" onchange="renderAuditLog()" style="width:150px;"> to <input type="date" id="al-to" onchange="renderAuditLog()" style="width:150px;">
+      <select id="al-who" onchange="renderAuditLog()" style="width:150px;"><option value="">Everyone</option></select>
+      <select id="al-type" onchange="renderAuditLog()" style="width:170px;"><option value="">All actions</option></select>
+      <input type="text" id="al-q" placeholder="Search…" oninput="renderAuditLog()" style="width:170px;">
+    </div>
+  </div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th></tr></thead><tbody id="al-tbody"></tbody></table></div>
+  <div id="al-note" style="font-size:11px;color:var(--text3);margin-top:8px;"></div></div>
+</div>
+
+<!-- MESSAGES TO SEND PAGE -->
+<div id="page-wasend" class="page">
+  <div class="page-header flex-between">
+    <div>
+      <div class="page-title">📨 Messages to Send</div>
+      <div class="page-sub">Reminders that are due now. Press Send — WhatsApp opens with the text ready — then press Send in WhatsApp.</div>
+    </div>
+    <button class="btn btn-outline" onclick="showPage('watemplates',document.getElementById('nav-watemplates'));renderWaTemplates();">✏️ Edit the wording</button>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Which reminders should appear here?</div>
+    <div id="wasend-settings"></div>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title flex-between"><span>Due now</span><span id="wasend-count" style="font-size:12px;color:var(--text3);font-weight:400;"></span></div>
+    <div id="wasend-list"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Sent or skipped today</div>
+    <div id="wasend-done"></div>
   </div>
 </div>
 
@@ -2563,9 +2644,9 @@ var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
   checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
   shifts:'finance',reports:'finance',staffdebts:'finance',expenses:'finance',
-  watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
+  watemplates:'inventory',wasend:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
-  recyclebin:'system'
+  recyclebin:'system',auditlog:'system'
 };
 var NAV_CATEGORY_DEFAULT_PAGE={
   dashboard:'dashboard',operations:'checkin',finance:'shifts',inventory:'watemplates',system:'recyclebin'
@@ -2617,6 +2698,8 @@ function showPage(id,btn){
   if(id==='sharedpkgs')renderSharedSpacePackages();
   if(id==='lockers'){renderLockers(true);lkRefreshFromCloud();}
   if(id==='reports')renderReports();
+  if(id==='wasend')renderWaSend();
+  if(id==='auditlog')renderAuditLog();
   if(academies[id])renderAcademy(id);
   syncNavCategoryForPage(id);
 }
@@ -8819,7 +8902,7 @@ function renderReservations(){
     html+='<div style="width:160px;flex-shrink:0;padding:8px 14px;border-right:1px solid var(--border);display:flex;align-items:center;">'
       +'<div style="font-size:12px;font-weight:600;color:var(--text);">'+room+'</div></div>';
     // Timeline
-    html+='<div style="flex:1;position:relative;background:var(--bg3);">'+hourMarkers;
+    html+='<div class="rv-lane" data-room="'+room+'" data-date="'+dateStr+'" data-open="'+openStart+'" data-total="'+totalMins+'" style="flex:1;position:relative;background:var(--bg3);">'+hourMarkers;
     // Booked blocks
     roomRes.forEach(function(r){
       var rs=timeToMin(r.from),re=timeToMin(r.to);
@@ -8841,8 +8924,9 @@ function renderReservations(){
           +(blockExtLeft>0?'<button onclick="extendReservationGrace(\''+r.id+'\')" style="background:rgba(0,0,0,0.3);border:none;color:white;border-radius:50%;width:16px;height:16px;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Extend Grace +15min ('+blockExtLeft+' left)">+15</button>':''))
         :'';
       var noteFlag=r.notes?'<div style="position:absolute;left:-5px;top:-5px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--bg3);z-index:1;" title="Note: '+r.notes+'">📌</div>':'';
-      html+='<div style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':graceBorder)+'border-radius:6px;overflow:visible;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':graceState==='in-grace'?'⏳ GRACE PERIOD — '+graceMinsLeft(r)+' min left — ':graceState==='overdue'?'🚫 GRACE EXPIRED, AWAITING NO-SHOW — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
+      html+='<div class="rv-block" data-resid="'+r.id+'" data-movable="'+(((r.status||'upcoming')==='upcoming'||isPending)?'1':'0')+'" style="position:absolute;top:6px;bottom:6px;left:'+left+'%;width:'+width+'%;background:'+col+';'+(isPending?'opacity:0.75;border:2px dashed #fff;':graceBorder)+'border-radius:6px;overflow:visible;cursor:pointer;display:flex;align-items:center;padding:0 8px;min-width:10px;" title="'+(isPending?'⏳ PENDING APPROVAL — ':graceState==='in-grace'?'⏳ GRACE PERIOD — '+graceMinsLeft(r)+' min left — ':graceState==='overdue'?'🚫 GRACE EXPIRED, AWAITING NO-SHOW — ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to)+(r.notes?' ('+r.notes+')':'')+'">'
         +noteFlag
+        +(((r.status||'upcoming')==='upcoming'||isPending)?'<div class="rv-handle" title="Pull to change the end time"></div>':'')
         +'<div style="overflow:hidden;">'
         +'<div style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(isPending?'⏳ ':'')+r.client+'</div>'
         +'<div style="font-size:10px;color:rgba(255,255,255,0.8);white-space:nowrap;">'+fmt12(r.from)+'–'+fmt12(r.to)+'</div>'
@@ -12001,6 +12085,721 @@ function rpExport(){
   };
   document.head.appendChild(sc);
 }
+
+
+// ============================================================
+// WHATSAPP — more editable messages (4a) and the "Messages to Send" queue (4b)
+// ============================================================
+// Messages that used to be hard-wired are now ordinary templates: they appear on the WhatsApp Messages
+// page where the wording can be edited (in English or Arabic), and fall back to the text below if missing.
+var WA_EXTRA_TEMPLATES=[
+  {key:'booking_confirmed',name:'Booking Confirmed',category:'checkin',description:'Sent when a booking is confirmed for a client with a phone number',
+   body:'Hi {{client_name}}!\n\nYour SpaceCo booking is confirmed\n{{room}}\n{{date}}\n{{time_from}} - {{time_to}}\n\nPlease arrive on time - bookings are held for 20 minutes after the start time before being released.\n\nSee you then!\n- SpaceCo Workspace'},
+  {key:'booking_rejected',name:'Booking Not Available',category:'checkin',description:'Sent when an online booking request cannot be confirmed',
+   body:'Hi {{client_name}}, sorry - we are not able to confirm your booking request:\n{{room}}\n{{date}}\n{{time_from}} - {{time_to}}\n\nFeel free to reply here and we will help you find another time, or book a different slot online.\n- SpaceCo Workspace'},
+  {key:'reservation_reminder',name:'Reservation Reminder',category:'alert',description:'Reminder sent shortly before a reservation starts (from Messages to Send)',
+   body:'Hi {{client_name}}, a friendly reminder: your SpaceCo booking ({{room}}) starts at {{time_from}} today.\n\nBookings are held for 20 minutes after the start time. See you soon!\n- SpaceCo Workspace'},
+  {key:'locker_overdue',name:'Locker - Time Is Up',category:'alert',description:'Asks a client to empty a locker whose booking has ended',
+   body:'Hello {{client_name}}, this is Space-Co Workspace. Your booking for locker {{locker}} ended on {{end}}. Please empty the locker and return the key to the front desk as soon as you can. If you would like to keep it longer, just tell us and we will extend it for you. Thank you!'},
+  {key:'locker_ending_soon',name:'Locker - Ending Soon',category:'alert',description:'Tells a client their locker booking is about to end',
+   body:'Hello {{client_name}}, this is Space-Co Workspace. Your booking for locker {{locker}} ends on {{end}}. Please empty the locker and return the key to the front desk before then. If you would like to keep it longer, just tell us and we will extend it for you. Thank you!'}
+];
+WA_VARIABLES.push({token:'time_from',label:'Booking Start'},{token:'time_to',label:'Booking End'},{token:'locker',label:'Locker'},{token:'end',label:'Locker End Date'});
+var _waSampleVarsPrev=waSampleVars;
+waSampleVars=function(){var v=_waSampleVarsPrev();v.time_from='6:30 PM';v.time_to='8:30 PM';v.locker='S3';v.end='04/11 6:30 PM';return v;};
+
+function waDefaultBody(key){var t=WA_EXTRA_TEMPLATES.find(function(x){return x.key===key;});return t?t.body:'';}
+function waRender(key,vars){var t=getActiveTemplate(key);return renderTemplate(t?t.message_body:waDefaultBody(key),vars);}
+
+var _buildBookingConfirmPrev=buildBookingConfirmMessage;
+buildBookingConfirmMessage=function(r){
+  var t=getActiveTemplate('booking_confirmed');if(!t)return _buildBookingConfirmPrev(r);
+  return renderTemplate(t.message_body,{client_name:r.client,room:r.room,date:r.date,time_from:fmt12(r.from),time_to:fmt12(r.to)});
+};
+var _buildBookingRejectPrev=buildBookingRejectMessage;
+buildBookingRejectMessage=function(r){
+  var t=getActiveTemplate('booking_rejected');if(!t)return _buildBookingRejectPrev(r);
+  return renderTemplate(t.message_body,{client_name:r.client,room:r.room,date:r.date,time_from:fmt12(r.from),time_to:fmt12(r.to)});
+};
+function buildReservationReminderMessage(r){
+  return waRender('reservation_reminder',{client_name:r.client,room:r.room,date:r.date,time_from:fmt12(r.from),time_to:fmt12(r.to)});
+}
+var _lkBuildEmptyPrev=lkBuildEmptyMessage;
+lkBuildEmptyMessage=function(b){
+  var ended=lkMs(b.end)<Date.now(),key=ended?'locker_overdue':'locker_ending_soon';
+  if(!getActiveTemplate(key))return _lkBuildEmptyPrev(b);
+  return renderTemplate(getActiveTemplate(key).message_body,{client_name:b.name,locker:lkLabel(b.lockerId),end:lkFmt(b.end)});
+};
+
+// put the new messages into the templates table once, so they can be edited on the WhatsApp Messages page
+var _waEnsureTried=false;
+function waEnsureTemplates(){
+  if(_waEnsureTried||!isAdmin)return Promise.resolve(false);
+  _waEnsureTried=true;
+  return loadWaTemplates().then(function(){
+    var missing=WA_EXTRA_TEMPLATES.filter(function(x){return !waTemplates.some(function(t){return t.template_key===x.key;});});
+    if(!missing.length)return false;
+    return Promise.all(missing.map(function(x){
+      return fetch(SUPABASE_URL+'/rest/v1/whatsapp_templates',{method:'POST',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body:JSON.stringify({template_key:x.key,template_name:x.name,category:x.category,description:x.description,message_body:x.body,is_active:true,is_default:true})
+      }).then(function(r){return r.ok;}).catch(function(){return false;});
+    })).then(function(oks){return oks.some(Boolean);});
+  }).then(function(added){if(added&&typeof _renderWaTemplatesPrev==='function')_renderWaTemplatesPrev();return added;}).catch(function(){return false;});
+}
+var _renderWaTemplatesPrev=renderWaTemplates;
+renderWaTemplates=function(){_renderWaTemplatesPrev();waEnsureTemplates();};
+
+// ── the queue ──
+var WA_QUEUE_DEFAULTS={reservation_reminder:{on:true,minutes:60},locker_overdue:{on:true},locker_ending:{on:true},package_expiring:{on:true}};
+function waqConfig(){
+  var c=loadData('waQueueConfig',null)||{},d=JSON.parse(JSON.stringify(WA_QUEUE_DEFAULTS));
+  Object.keys(d).forEach(function(k){if(c[k]&&typeof c[k]==='object')Object.keys(c[k]).forEach(function(f){d[k][f]=c[k][f];});});
+  return d;
+}
+function waqSent(){var x=loadData('waQueueSent',{});return (x&&typeof x==='object'&&!Array.isArray(x))?x:{};}
+function waqMark(id,info){var m=waqSent();m[id]=Object.assign({at:new Date().toISOString(),by:currentStaffName||(isAdmin?'Admin':'-')},info||{});
+  Object.keys(m).forEach(function(k){if(Date.now()-new Date(m[k].at).getTime()>30*86400000)delete m[k];});
+  saveData('waQueueSent',m);}
+function waqNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
+
+function waQueueItems(){
+  var cfg=waqConfig(),sent=waqSent(),out=[],now=Date.now(),t=today();
+  var add=function(it){if(!sent[it.id]&&it.phone&&normalizePhoneDigits(it.phone).length>=8)out.push(it);};
+  if(cfg.reservation_reminder.on){
+    var lead=Math.max(5,parseInt(cfg.reservation_reminder.minutes,10)||60),nm=waqNowMin();
+    (reservations||[]).forEach(function(r){
+      if(r.status!=='upcoming'||r.date!==t||!r.phone)return;
+      var start=timeToMin(r.from);
+      if(!isFinite(start)||nm<start-lead||nm>start+10)return;
+      add({id:'rr:'+r.id,type:'reservation',icon:'📅',title:'Reminder — '+r.client,detail:r.room+' · '+fmt12(r.from)+(nm<start?' (in '+(start-nm)+' min)':' (just started)'),phone:r.phone,name:r.client,msg:buildReservationReminderMessage(r),sort:start});
+    });
+  }
+  (lockerBookings||[]).forEach(function(b){
+    if(b.cancelled||b.returnedAt||!b.phone)return;
+    var st=lkStatus(b,now);
+    if(st==='overdue'&&cfg.locker_overdue.on)add({id:'lo:'+b.id+':'+b.end,type:'locker',icon:'🔐',title:'Locker '+lkLabel(b.lockerId)+' — '+b.name,detail:'Time was up '+lkFmt(b.end)+' — ask them to empty it',phone:b.phone,name:b.name,msg:lkBuildEmptyMessage(b),sort:lkMs(b.end)});
+    else if(st==='occupied'&&cfg.locker_ending.on&&lkEndingSoon(b,now))add({id:'lx:'+b.id+':'+b.end,type:'locker',icon:'🔐',title:'Locker '+lkLabel(b.lockerId)+' — '+b.name,detail:'Ends '+lkFmt(b.end)+' — tell them to empty it or extend',phone:b.phone,name:b.name,msg:lkBuildEmptyMessage(b),sort:lkMs(b.end)});
+  });
+  if(cfg.package_expiring.on){
+    (clientProfiles||[]).forEach(function(p){
+      var pkg=getActivePackage(p.id);if(!pkg||!p.phone)return;
+      var left=Math.ceil((new Date(pkg.expiryDate)-new Date(t))/86400000);
+      if(left<0||left>5)return;
+      var tier=ssPkgTier(pkg.type)||{label:pkg.type,days:pkg.daysTotal};
+      add({id:'pe:'+p.id+':'+pkg.expiryDate,type:'package',icon:'☕',title:'Package expiring — '+p.name,detail:tier.label+' · expires in '+left+' day'+(left!==1?'s':''),phone:p.phone,name:p.name,msg:buildPackageExpiringMessage(pkg,tier,p,left),sort:new Date(pkg.expiryDate).getTime()});
+    });
+  }
+  return out.sort(function(a,b){return a.sort-b.sort;});
+}
+function waqUpdateBadge(){
+  var n=0;try{n=waQueueItems().length;}catch(e){}
+  var b=document.getElementById('wasend-badge');if(b){b.textContent=n;b.style.display=n?'inline':'none';}
+  return n;
+}
+function renderWaSend(){
+  var set=document.getElementById('wasend-settings');if(!set)return;
+  var cfg=waqConfig();
+  var row=function(key,label,extra){return '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" id="waq-'+key+'" '+(cfg[key].on?'checked':'')+' onchange="waqSaveSettings()" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;flex:none;accent-color:var(--accent);cursor:pointer;"> <span style="flex:1;">'+label+'</span>'+(extra||'')+'</label>';};
+  set.innerHTML=
+    row('reservation_reminder','Remind clients before their reservation starts','<span style="color:var(--text3);">how many minutes before: <input type="number" id="waq-minutes" min="5" step="5" value="'+cfg.reservation_reminder.minutes+'" onchange="waqSaveSettings()" style="width:80px;display:inline-block;"></span>')
+   +row('locker_overdue','Ask clients to empty a locker whose time is up')
+   +row('locker_ending','Tell clients their locker is about to end')
+   +row('package_expiring','Remind shared-space package holders their package is about to expire');
+  var items=waQueueItems(),list=document.getElementById('wasend-list');
+  document.getElementById('wasend-count').textContent=items.length?items.length+' waiting':'';
+  list.innerHTML=items.length?items.map(function(it){
+    return '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);">'
+      +'<div style="font-size:20px;">'+it.icon+'</div>'
+      +'<div style="flex:1;min-width:220px;"><div style="font-weight:600;font-size:14px;">'+rpEsc(it.title)+'</div><div style="font-size:12px;color:var(--text3);">'+rpEsc(it.detail)+' · '+rpEsc(it.phone)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-top:4px;white-space:pre-line;background:var(--bg3);border-radius:var(--radius-sm);padding:6px 10px;max-height:78px;overflow:auto;">'+rpEsc(it.msg)+'</div></div>'
+      +'<button class="btn btn-success btn-sm" onclick="waqSend(\''+it.id.replace(/'/g,"\\'")+'\')">📱 Send</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="waqSkip(\''+it.id.replace(/'/g,"\\'")+'\')">Skip</button></div>';
+  }).join(''):'<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nothing to send right now. Reminders show up here when they are due.</div>';
+  var sent=waqSent(),done=Object.keys(sent).map(function(k){return Object.assign({id:k},sent[k]);}).filter(function(x){return String(x.at).slice(0,10)===new Date().toISOString().slice(0,10)||new Date(x.at).toDateString()===new Date().toDateString();}).sort(function(a,b){return new Date(b.at)-new Date(a.at);});
+  document.getElementById('wasend-done').innerHTML=done.length?'<div class="table-wrap"><table><thead><tr><th>Time</th><th>Who</th><th>What</th><th>Result</th><th>By</th></tr></thead><tbody>'
+    +done.map(function(x){return '<tr><td>'+new Date(x.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'</td><td>'+rpEsc(x.name||'')+'</td><td>'+rpEsc(x.title||x.id)+'</td><td>'+(x.skipped?'<span class="badge badge-amber">Skipped</span>':'<span class="badge badge-green">Opened in WhatsApp</span>')+'</td><td>'+rpEsc(x.by||'')+'</td></tr>';}).join('')+'</tbody></table></div>'
+    :'<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nothing sent yet today.</div>';
+  waqUpdateBadge();
+}
+function waqSaveSettings(){
+  var c=waqConfig();
+  ['reservation_reminder','locker_overdue','locker_ending','package_expiring'].forEach(function(k){var e=document.getElementById('waq-'+k);if(e)c[k].on=e.checked;});
+  var m=parseInt((document.getElementById('waq-minutes')||{}).value,10);if(isFinite(m)&&m>=5)c.reservation_reminder.minutes=m;
+  saveData('waQueueConfig',c);renderWaSend();
+}
+function waqFind(id){return waQueueItems().find(function(x){return x.id===id;});}
+function waqSend(id){
+  var it=waqFind(id);if(!it){showToast('That reminder is no longer due',true);renderWaSend();return;}
+  openWhatsapp(normalizePhoneDigits(it.phone),it.msg);
+  waqMark(id,{title:it.title,name:it.name,type:it.type,msg:it.msg});
+  showToast('WhatsApp opened for '+it.name+' — press Send in the chat');
+  renderWaSend();
+}
+function waqSkip(id){
+  var it=waqFind(id);if(!it)return;
+  waqMark(id,{title:it.title,name:it.name,type:it.type,skipped:true});
+  renderWaSend();
+}
+// sending a locker message by hand (from the Lockers page) counts as done here too
+var _lkWhatsappPrev=lkWhatsapp;
+lkWhatsapp=function(bid){
+  var b=lkFind(bid);_lkWhatsappPrev(bid);
+  if(b&&normalizePhoneDigits(b.phone).length>=8){['lo:','lx:'].forEach(function(p){waqMark(p+b.id+':'+b.end,{title:'Locker '+lkLabel(b.lockerId)+' — '+b.name,name:b.name,type:'locker'});});}
+  waqUpdateBadge();
+};
+// Needs Attention shows one summary line, the badge shows the count
+var _buildNotificationsPrevWa=buildNotifications;
+buildNotifications=function(){
+  var items=_buildNotificationsPrevWa(),n=0;
+  try{n=waQueueItems().length;}catch(e){}
+  if(n)items.push({id:'wasend-'+n+'-'+today(),icon:'📨',text:n+' WhatsApp message'+(n!==1?'s are':' is')+' ready to send — open Messages to Send',color:'var(--amber)'});
+  return items;
+};
+setInterval(function(){try{waqUpdateBadge();var pg=document.getElementById('page-wasend');if(pg&&pg.classList.contains('active'))renderWaSend();}catch(e){}},60000);
+setTimeout(function(){try{waqUpdateBadge();}catch(e){}},4000);
+
+
+// ============================================================
+// THE ACTIVITY LOG
+// Everything that is "admin only" stays admin only; the log records who did what (the cashier's name, or "Admin").
+// ============================================================
+function can(perm){return !!isAdmin;}
+var _doLoginAud=doLogin;
+doLogin=function(){var was=currentRole;_doLoginAud();if(currentRole&&!was)auditLog('login','Signed in'+(isAdmin?' as Admin':''));};
+var _logoutAud=logoutToLogin;
+logoutToLogin=function(){if(currentRole)auditLog('logout','Signed out');_logoutAud();};
+
+// ── the activity log ──
+var AUDIT_RING='spaceco_auditRing';
+var AUDIT_LABELS={login:'Signed in',login_failed:'Wrong PIN',logout:'Signed out',checkout:'Checkout',checkin_void:'Voided check-in',visit_deleted:'Visit deleted',
+  shift_payment:'Payment entered',shift_deleted:'Payment deleted',payment_reversed:'Payment reversed',expense_added:'Expense added',expense_deleted:'Expense deleted',
+  reservation_deleted:'Reservation deleted',reservation_noshow:'Reservation no-show',package_renewed:'Academy package renewed',package_sold:'Shared-space package',
+  prices_changed:'Prices changed',academy_changed:'Academy settings changed',staff_changed:'Staff changed',password_changed:'Admin password changed',team_changed:'Team / roles changed',
+  locker_booked:'Locker booked',locker_payment:'Locker payment',locker_changed:'Locker action',locker_prices:'Locker prices changed',bin_emptied:'Recycle Bin emptied'};
+function auditLog(action,detail,meta,whoOverride){
+  var e={id:'a_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),at:new Date().toISOString(),by:whoOverride||currentStaffName||'-',rank:'',action:action,detail:detail||'',meta:meta||null};
+  try{var ring=JSON.parse(localStorage.getItem(AUDIT_RING)||'[]');ring.push(e);localStorage.setItem(AUDIT_RING,JSON.stringify(ring.slice(-400)));}catch(x){}
+  try{fetch(SUPABASE_URL+'/rest/v1/spaceco_kv',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({key:'audit:'+e.at+':'+e.id,value:JSON.stringify(e)})}).catch(function(){});}catch(x){}
+  return e;
+}
+// run a step now, and record it in the log only after the user confirms in the "are you sure" window
+function auditOnConfirm(action,detail){
+  var btn=document.getElementById('confirm-delete-btn'),h=btn.onclick;
+  btn.onclick=function(){var r=h.apply(this,arguments);auditLog(action,detail);return r;};
+}
+async function auditFetch(){
+  var rows=[];
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=like.audit%3A*&select=key,value&order=key.desc&limit=1000',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    var j=await r.json();
+    if(Array.isArray(j))j.forEach(function(x){try{rows.push(JSON.parse(x.value));}catch(e){}});
+  }catch(e){}
+  try{JSON.parse(localStorage.getItem(AUDIT_RING)||'[]').forEach(function(x){rows.push(x);});}catch(e){}
+  var seen={};return rows.filter(function(x){if(!x||!x.id||seen[x.id])return false;seen[x.id]=1;return true;}).sort(function(a,b){return a.at<b.at?1:-1;});
+}
+function alRows(all){
+  var from=document.getElementById('al-from').value,to=document.getElementById('al-to').value,who=document.getElementById('al-who').value,type=document.getElementById('al-type').value,q=(document.getElementById('al-q').value||'').toLowerCase().trim();
+  return all.filter(function(e){
+    var d=new Date(e.at),ds=rpStr(d);
+    if(from&&ds<from)return false;if(to&&ds>to)return false;if(who&&e.by!==who)return false;if(type&&e.action!==type)return false;
+    if(q&&(e.by+' '+(AUDIT_LABELS[e.action]||e.action)+' '+e.detail).toLowerCase().indexOf(q)===-1)return false;return true;
+  });
+}
+async function renderAuditLog(){
+  var tb=document.getElementById('al-tbody');if(!tb)return;
+  if(!can('view_audit')){tb.innerHTML='<tr><td colspan="4"><div class="alert alert-danger">You do not have access to the Activity Log.</div></td></tr>';return;}
+  if(!document.getElementById('al-from').value){document.getElementById('al-from').value=rpAddDays(today(),-6);document.getElementById('al-to').value=today();}
+  var all=await auditFetch();window._auditAll=all;
+  var whoSel=document.getElementById('al-who'),curW=whoSel.value,typeSel=document.getElementById('al-type'),curT=typeSel.value;
+  var people=[];all.forEach(function(e){if(people.indexOf(e.by)===-1)people.push(e.by);});
+  whoSel.innerHTML='<option value="">Everyone</option>'+people.map(function(x){return '<option'+(x===curW?' selected':'')+' value="'+rpEsc(x)+'">'+rpEsc(x)+'</option>';}).join('');
+  var types=[];all.forEach(function(e){if(types.indexOf(e.action)===-1)types.push(e.action);});
+  typeSel.innerHTML='<option value="">All actions</option>'+types.map(function(x){return '<option'+(x===curT?' selected':'')+' value="'+rpEsc(x)+'">'+rpEsc(AUDIT_LABELS[x]||x)+'</option>';}).join('');
+  var rows=alRows(all).slice(0,500);
+  tb.innerHTML=rows.length?rows.map(function(e){
+    var d=new Date(e.at);
+    return '<tr><td style="white-space:nowrap;">'+d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'</td>'
+      +'<td><strong>'+rpEsc(e.by)+'</strong>'+'</td>'
+      +'<td><span class="badge badge-blue">'+rpEsc(AUDIT_LABELS[e.action]||e.action)+'</span></td><td style="font-size:13px;">'+rpEsc(e.detail)+'</td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="4">Nothing recorded for these filters.</td></tr>';
+  document.getElementById('al-note').textContent=rows.length+' entr'+(rows.length===1?'y':'ies')+' shown'+(all.length>rows.length?' (of '+all.length+' loaded)':'')+'.';
+}
+
+// ── what gets recorded ──
+var _submitCheckoutAud=submitCheckout;
+submitCheckout=function(){
+  var n0=clients.length,pay=(document.getElementById('co-payment')||{}).value,disc=parseFloat((document.getElementById('co-discount')||{}).value)||0;
+  _submitCheckoutAud();
+  if(clients.length>n0){var v=clients[clients.length-1];auditLog('checkout','Checked out '+v.name+' ('+v.room+') — room '+(v.cost||0)+' LE, paid '+(pay||'')+(disc>0?', discount '+disc+' LE':''),{discount:disc});}
+};
+var _cancelCheckinAud=confirmCancelCheckin;
+confirmCancelCheckin=function(){
+  var sid=_cancelCheckinSessionId,s=(loadData('activeSessions',[])||[]).find(function(x){return x.id===sid;}),reason=(document.getElementById('cc-reason')||{}).value||'';
+  _cancelCheckinAud();
+  if(s)auditLog('checkin_void','Voided the check-in of '+s.name+' ('+s.room+')'+(reason?' — '+reason:''));
+};
+var _deleteVisitAud=deleteVisit;
+deleteVisit=function(id){var v=clients.find(function(c){return c.id===id;});_deleteVisitAud(id);if(v)auditOnConfirm('visit_deleted','Deleted the visit of '+v.name+' ('+v.date+', '+(v.cost||0)+' LE) — moved to the Recycle Bin');};
+var _deleteShiftAud=deleteShift;
+deleteShift=function(id){var s=shiftPayments.find(function(x){return x.id===id;});_deleteShiftAud(id);if(s)auditOnConfirm('shift_deleted','Deleted a payment line: '+s.cashier+', '+s.date+', '+(s.total||0)+' LE'+(s.note?' ('+s.note+')':'')+' — moved to the Recycle Bin');};
+var _deleteResAud=deleteReservation;
+deleteReservation=function(id){var r=reservations.find(function(x){return x.id===id;});_deleteResAud(id);if(r)auditOnConfirm('reservation_deleted','Deleted the reservation of '+r.client+' ('+r.room+', '+r.date+' '+r.from+') — moved to the Recycle Bin');};
+var _deleteExpAud=deleteExpense;
+deleteExpense=function(id){var e=loadData('expenses',[]).find(function(x){return x.id===id;});_deleteExpAud(id);if(e)auditOnConfirm('expense_deleted','Deleted the expense "'+(e.desc||'')+'" ('+e.amount+' LE, '+e.date+')');};
+var _removeStaffAud=removeStaffMember;
+removeStaffMember=function(i){var st=staff[i];_removeStaffAud(i);if(st)auditOnConfirm('staff_changed','Removed '+st.name+' from the cashier list');};
+var _saveExpenseAud=saveExpense;
+saveExpense=function(){var n0=loadData('expenses',[]).length,amount=document.getElementById('exp-amount').value,desc=document.getElementById('exp-desc').value;_saveExpenseAud();if(loadData('expenses',[]).length>n0)auditLog('expense_added','Expense "'+desc+'" — '+amount+' LE');};
+var _addShiftAud=addShiftPayment;
+addShiftPayment=function(){var n0=shiftPayments.length;_addShiftAud();if(shiftPayments.length>n0){var s=shiftPayments[shiftPayments.length-1];auditLog('shift_payment','Entered a payment line for '+s.cashier+' ('+s.date+'): rooms '+(s.rooms||0)+', instapay '+(s.instapay||0)+', visa '+(s.visa||0)+', other '+(s.other||0)+' = '+(s.total||0)+' LE');}};
+var _markNoShowAud=markReservationNoShow;
+markReservationNoShow=function(id){var r=reservations.find(function(x){return x.id===id;}),was=r&&r.status;_markNoShowAud(id);if(r&&was!=='no_show'&&r.status==='no_show')auditLog('reservation_noshow','Marked '+r.client+' as a no-show ('+r.room+', '+r.date+' '+r.from+')');};
+var _confirmRenewAud=confirmRenew;
+confirmRenew=function(){
+  var key=currentAcademy,a=academies[key],before=(a.packages||[]).length,cost=document.getElementById('renew-cost').value,pay=document.getElementById('renew-payment').value;
+  _confirmRenewAud();
+  if((academies[key].packages||[]).length>before)auditLog('package_renewed','Renewed '+academies[key].name+' — '+academies[key].pkgHours+' units for '+cost+' LE, paid '+pay);
+};
+var _confirmSellAud=confirmSellPackage;
+confirmSellPackage=function(){
+  var name=(document.getElementById('sp-client-name').value||'').trim(),pay=(document.getElementById('sp-payment')||{}).value,tier=_spSelectedTier;
+  _confirmSellAud();
+  var m=document.getElementById('sell-package-modal');
+  if(name&&tier&&m&&!m.classList.contains('open'))auditLog('package_sold','Sold / renewed a shared-space package ('+(ssPkgTier(tier)||{label:tier}).label+') for '+name+', paid '+pay);
+};
+var _changeAdminPassAud=changeAdminPass;
+changeAdminPass=function(){
+  if(!can('manage_staff')){showToast('Only the owner can change the admin password',true);return;}
+  var old=adminPass;_changeAdminPassAud();if(adminPass!==old)auditLog('password_changed','The shared admin password was changed');
+};
+var _savePricesAud=savePrices;
+savePrices=function(){
+  if(!can('edit_pricing')){showToast('You do not have permission to change prices',true);return;}
+  var before=JSON.stringify(pricing);_savePricesAud();
+  if(JSON.stringify(pricing)!==before)auditLog('prices_changed','Room prices were changed');
+};
+var _saveAcademyPkgAud=saveAcademyPackages;
+saveAcademyPackages=function(){
+  if(!can('edit_pricing')){showToast('You do not have permission to change prices',true);return;}
+  var before=JSON.stringify(academies);_saveAcademyPkgAud();if(JSON.stringify(academies)!==before)auditLog('academy_changed','Academy package settings were changed');
+};
+var _emptyBinAud=emptyRecycleBin;
+emptyRecycleBin=function(){var n=(recycleBin||[]).length;_emptyBinAud();if(n&&typeof document.getElementById('confirm-delete-btn').onclick==='function')auditOnConfirm('bin_emptied','Emptied the Recycle Bin ('+n+' items)');};
+// lockers
+var _lkCreateAud=lkCreateBooking;
+lkCreateBooking=function(p){var r=_lkCreateAud(p);if(r&&r.ok)auditLog('locker_booked','Locker '+lkLabel(r.booking.lockerId)+' for '+r.booking.name+' ('+r.booking.qty+' '+lkUnitWord(r.booking.unit,r.booking.qty)+(lkCharged(r.booking)?', '+lkMoney(lkCharged(r.booking)):', free')+')');return r;};
+var _lkRecordAud=lkRecordPayment;
+lkRecordPayment=function(b,amount,method,cashier,date){var r=_lkRecordAud(b,amount,method,cashier,date);auditLog('locker_payment','Locker '+lkLabel(b.lockerId)+' — '+b.name+': '+lkMoney(amount)+' by '+method+' (cashier '+cashier+')');return r;};
+var _lkConfirmAud=lkConfirm;
+lkConfirm=function(title,msg,label,fn){_lkConfirmAud(title,msg,label,function(){var r=fn.apply(this,arguments);auditLog('locker_changed',title+' — '+msg);return r;});};
+var _lkSaveCfgAud=lkSaveConfig;
+lkSaveConfig=function(){
+  if(!can('edit_pricing')){showToast('You do not have permission to change prices',true);return;}
+  var before=JSON.stringify(lockerConfig);_lkSaveCfgAud();if(JSON.stringify(lockerConfig)!==before)auditLog('locker_prices','Locker prices, owners or names were changed');
+};
+
+// ── reverse a payment line (keeps the history, takes the money out of every total) ──
+function reverseShiftPayment(id){
+  if(!can('reverse_payments')){showToast('You do not have permission to reverse payments',true);return;}
+  var s=shiftPayments.find(function(x){return x.id===id;});if(!s||s.reversed)return;
+  var paid=(s.cash||0)+(s.instapay||0)+(s.visa||0)+(s.other||0);
+  if(s.academyPayments>0&&Math.abs(paid-s.academyPayments)>0.001){
+    showToast('This line has several payments added together, so it cannot be reversed as one. Edit or delete it instead.',true);return;
+  }
+  var reason=window.prompt('Why is this payment being reversed? (required)\n'+s.cashier+' · '+s.date+' · '+(s.total||0)+' LE'+(s.note?' · '+s.note:''));
+  if(reason===null)return;reason=reason.trim();
+  if(!reason){showToast('A reason is required to reverse a payment',true);return;}
+  var was={rooms:s.rooms||0,cash:s.cash||0,instapay:s.instapay||0,visa:s.visa||0,other:s.other||0,total:s.total||0,academyPayments:s.academyPayments||0};
+  s.reversal={at:new Date().toISOString(),by:currentStaffName||'-',reason:reason,was:was};
+  s.reversed=true;s.rooms=0;s.cash=0;s.instapay=0;s.visa=0;s.other=0;s.total=0;s.academyPayments=0;
+  // a locker payment also goes back to "still owed" on its booking
+  var lb=false;(lockerBookings||[]).forEach(function(b){var n=(b.payments||[]).length;b.payments=(b.payments||[]).filter(function(p){return p.shiftId!==s.id;});if(b.payments.length!==n)lb=true;});
+  saveData('shiftPayments',shiftPayments);if(lb){saveData('lockerBookings',lockerBookings);try{lkAfterChange();}catch(e){}}
+  renderShifts();renderShiftCards();calcSettlement();refreshDashboard();
+  auditLog('payment_reversed','Reversed '+was.total+' LE ('+s.cashier+', '+s.date+(s.note?', '+s.note:'')+') — reason: '+reason,{was:was});
+  showToast('Payment reversed — it no longer counts in any total');
+}
+var _renderShiftsRev=renderShifts;
+renderShifts=function(){
+  _renderShiftsRev();
+  var tb=document.getElementById('shifts-tbody');if(!tb)return;
+  tb.querySelectorAll('tr').forEach(function(tr){
+    var del=tr.querySelector('button.btn-danger');if(!del)return;
+    var m=/deleteShift\((\d+)\)/.exec(del.getAttribute('onclick')||'');if(!m)return;
+    var id=parseInt(m[1],10),s=shiftPayments.find(function(x){return x.id===id;});if(!s)return;
+    if(s.reversed){tr.style.opacity='.55';var cell=tr.cells[tr.cells.length-2];if(cell)cell.insertAdjacentHTML('beforeend','<span class="badge badge-red" title="'+rpEsc((s.reversal&&s.reversal.reason)||'')+'">↩ Reversed '+(s.reversal?s.reversal.was.total+' LE':'')+'</span>');}
+    else if(can('reverse_payments')&&(s.total||0)>0){del.insertAdjacentHTML('beforebegin','<button class="btn btn-outline btn-sm" style="margin-right:4px;" title="Reverse this payment" onclick="reverseShiftPayment('+id+')">↩</button>');}
+  });
+};
+var _renderReportsGate=renderReports;
+renderReports=function(){
+  if(!can('view_reports')){var k=document.getElementById('rp-kpis');if(k){k.innerHTML='<div class="alert alert-danger" style="grid-column:1/-1;">You do not have access to Reports.</div>';['rp-days','rp-methods','rp-spaces','rp-heat'].forEach(function(i){var e=document.getElementById(i);if(e)e.innerHTML='';});}return;}
+  _renderReportsGate();
+};
+
+
+
+// ============================================================
+// PRICING PLANS — a plan describes how a space charges; each space uses one plan; a simulator explains the price.
+// Until the first plan is saved, prices behave exactly as before (they are worked out from the old price table).
+// ============================================================
+var PP_ROOMS=[{key:'room1',name:'Room 1'},{key:'room2',name:'Room 2'},{key:'room3',name:'Room 3'},{key:'room4',name:'Room 4'},{key:'drawingRoom',name:'Drawing Room'},{key:'classRoom',name:'Class Room'},{key:'sharedSpace',name:'Shared Space'}];
+var PP_TYPE_LABELS={steps:'Steps',first_extra:'First hour + extra hours',hourly:'Per hour',day_pass:'Fixed day price'};
+function ppSeed(){
+  var p=pricing,plans=[],assign={};
+  var add=function(id,o){o.id=id;o.archived=false;o.graceMin=0;o.minHours=0;o.dailyCap=0;o.roundStep=0.5;plans.push(o);};
+  add('plan_shared',{name:'Shared Space (steps)',type:'steps',steps:[{upTo:1,price:p.sharedSpace.tier1},{upTo:2,price:p.sharedSpace.tier2}],maxPrice:p.sharedSpace.tierMax});assign.sharedSpace='plan_shared';
+  add('plan_drawing',{name:'Drawing Room (steps)',type:'steps',steps:[{upTo:1,price:p.drawingRoom.tier1},{upTo:2,price:p.drawingRoom.tier2}],maxPrice:p.drawingRoom.tierMax});assign.drawingRoom='plan_drawing';
+  add('plan_class',{name:'Class Room (per hour)',type:'hourly',perHour:p.classRoom.perHour});assign.classRoom='plan_class';
+  [['room1','Room 1'],['room2','Room 2'],['room3','Room 3'],['room4','Room 4']].forEach(function(r){add('plan_'+r[0],{name:r[1]+' (first hour + extra)',type:'first_extra',first:p[r[0]].first,extra:p[r[0]].extra});assign[r[0]]='plan_'+r[0];});
+  return {plans:plans,assign:assign,saved:false};
+}
+function ppConfig(){var c=loadData('pricingPlans',null);return (c&&Array.isArray(c.plans)&&c.plans.length)?c:ppSeed();}
+function ppPlanFor(cfg,roomKey){var id=cfg.assign&&cfg.assign[roomKey];return id?cfg.plans.find(function(x){return x.id===id;}):null;}
+function ppFmtDur(h){var m=Math.round(h*60);return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';}
+function ppRound(h,step){return step>0?Math.round(h/step)*step:h;}
+// returns the price and the reasoning behind it, line by line
+function ppCost(plan,hrs){
+  var L=[];
+  if(!(hrs>0))return {total:0,lines:['Nothing to charge for 0 minutes.']};
+  var h=hrs,grace=+plan.graceMin||0;
+  L.push('Time in the space: '+ppFmtDur(hrs)+'.');
+  if(grace>0&&hrs*60>grace){h=hrs-grace/60;L.push('Grace of '+grace+' min is not charged, so '+ppFmtDur(h)+' is billed.');}
+  var total=0;
+  if(plan.type==='steps'){
+    var hit=(plan.steps||[]).find(function(x){return h<=x.upTo;});
+    if(hit){total=hit.price;L.push('Up to '+hit.upTo+' h: '+hit.price+' LE.');}
+    else{total=+plan.maxPrice||0;L.push('Longer than '+((plan.steps||[]).length?plan.steps[plan.steps.length-1].upTo+' h':'the first step')+': '+total+' LE (the day price).');}
+  }else if(plan.type==='first_extra'||plan.type==='hourly'){
+    var step=plan.roundStep>0?plan.roundStep:0.5,r=ppRound(h,step);
+    if(r<=0)r=step;
+    L.push('Rounded to the nearest '+step+' h: '+r+' h.');
+    if(plan.minHours>0&&r<plan.minHours){r=plan.minHours;L.push('Minimum '+r+' h is billed.');}
+    if(plan.type==='first_extra'){
+      var extraH=Math.max(0,r-1);total=Math.round((+plan.first||0)+extraH*(+plan.extra||0));
+      L.push('First hour: '+plan.first+' LE.');if(extraH>0)L.push('Extra '+extraH+' h × '+plan.extra+' LE = '+Math.round(extraH*plan.extra)+' LE.');
+    }else{total=Math.round(r*(+plan.perHour||0));L.push(r+' h × '+plan.perHour+' LE = '+total+' LE.');}
+  }else{total=+plan.price||0;L.push('Fixed day price: '+total+' LE.');}
+  if(plan.dailyCap>0&&total>plan.dailyCap){total=plan.dailyCap;L.push('Daily cap: no more than '+plan.dailyCap+' LE.');}
+  L.push('Total: '+total+' LE.');
+  return {total:total,lines:L};
+}
+var _calcCostLegacyPP=calcCost;
+calcCost=function(roomKey,hrs){
+  var plan=ppPlanFor(ppConfig(),roomKey);
+  if(!plan)return _calcCostLegacyPP(roomKey,hrs);
+  return ppCost(plan,hrs).total;
+};
+function ppLabel(plan){
+  if(plan.type==='steps'){var st=plan.steps||[];return st.map(function(x){return x.price+'LE/'+x.upTo+'hr';}).join(' | ')+(st.length?' | ':'')+plan.maxPrice+'LE day';}
+  if(plan.type==='first_extra')return plan.first+' LE 1st hr, +'+plan.extra+' LE/hr';
+  if(plan.type==='hourly')return plan.perHour+' LE per hour';
+  return plan.price+' LE per day';
+}
+function ppBlockLabel(plan){
+  if(plan.type==='steps'){var st=plan.steps||[];return st.map(function(x){return x.price;}).concat([plan.maxPrice]).join('/')+' LE';}
+  if(plan.type==='first_extra')return plan.first+' LE 1st hr, +'+plan.extra+' LE/hr';
+  if(plan.type==='hourly')return plan.perHour+' LE/hr';
+  return plan.price+' LE per day';
+}
+var _getPriceLabelPP=getPriceLabel;
+getPriceLabel=function(roomKey){var plan=ppPlanFor(ppConfig(),roomKey);return plan?ppLabel(plan):_getPriceLabelPP(roomKey);};
+var _buildRoomPricingBlockPP=buildRoomPricingBlock;
+buildRoomPricingBlock=function(){
+  var cfg=ppConfig();
+  var pl=function(k){var plan=ppPlanFor(cfg,k);return plan?ppBlockLabel(plan):null;};
+  if(!PP_ROOMS.every(function(r){return pl(r.key);}))return _buildRoomPricingBlockPP();
+  return 'Rooms:\n'
+    +'• Room 1 (4 persons): '+pl('room1')+'\n'+'• Room 2 (4 persons): '+pl('room2')+'\n'+'• Room 3 (6 persons): '+pl('room3')+'\n'+'• Room 4 (8 persons): '+pl('room4')+'\n'
+    +'• Drawing Room: '+pl('drawingRoom')+'\n'+'• Classroom: '+pl('classRoom')+'\n'+'• Shared Space: '+pl('sharedSpace');
+};
+function ppSave(cfg){
+  cfg.saved=true;saveData('pricingPlans',cfg);
+  // keep the old price table in step where the shapes match (other screens and the public page read it)
+  PP_ROOMS.forEach(function(r){
+    var plan=ppPlanFor(cfg,r.key);if(!plan||!pricing[r.key])return;
+    if(plan.type==='steps'&&pricing[r.key].tier1!==undefined&&(plan.steps||[]).length>=2){pricing[r.key].tier1=plan.steps[0].price;pricing[r.key].tier2=plan.steps[1].price;pricing[r.key].tierMax=plan.maxPrice;}
+    else if(plan.type==='first_extra'&&pricing[r.key].first!==undefined){pricing[r.key].first=plan.first;pricing[r.key].extra=plan.extra;}
+    else if(plan.type==='hourly'&&pricing[r.key].perHour!==undefined){pricing[r.key].perHour=plan.perHour;}
+  });
+  saveData('pricing',pricing);
+  try{renderRoomCards();}catch(e){}
+  try{if(typeof updateCostCalc==='function')updateCostCalc();}catch(e){}
+}
+function ppGuard(){if(!can('edit_pricing')){showToast('You do not have permission to change prices',true);return false;}return true;}
+
+// ── the screen (Admin Panel → Room Prices) ──
+var _ppEditId=null,_ppSimPlan='';
+function renderPriceEditor(){
+  var el=document.getElementById('price-editor');if(!el)return;
+  var cfg=ppConfig(),active=cfg.plans.filter(function(x){return !x.archived;});
+  var h='<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">A plan says how a space charges. Several spaces can share one plan, and changing a plan changes every space that uses it. Guests already inside are charged the new price at checkout.</div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;">Plans</div><button class="btn btn-primary btn-sm" onclick="ppOpenPlan(null)">+ New plan</button></div>';
+  h+=cfg.plans.map(function(pl){
+    var rooms=PP_ROOMS.filter(function(r){return cfg.assign[r.key]===pl.id;}).map(function(r){return '<span class="badge badge-blue" style="margin-right:4px;">'+r.name+'</span>';}).join('')||'<span style="font-size:11px;color:var(--text3);">not used by any space</span>';
+    return '<div class="card" style="margin-bottom:10px;padding:12px 14px;'+(pl.archived?'opacity:.55;':'')+'"><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">'
+      +'<div style="flex:1;min-width:200px;"><div style="font-weight:600;">'+rpEsc(pl.name)+(pl.archived?' <span class="badge badge-amber">Archived</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin:2px 0 6px;">'+PP_TYPE_LABELS[pl.type]+' — '+rpEsc(ppLabel(pl))+(pl.graceMin>0?' · grace '+pl.graceMin+' min':'')+(pl.minHours>0?' · min '+pl.minHours+' h':'')+(pl.dailyCap>0?' · cap '+pl.dailyCap+' LE':'')+'</div><div>'+rooms+'</div></div>'
+      +'<button class="btn btn-outline btn-sm" onclick="ppOpenPlan(\''+pl.id+'\')">Edit</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="ppDuplicate(\''+pl.id+'\')">Duplicate</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="ppArchive(\''+pl.id+'\')">'+(pl.archived?'Restore':'Archive')+'</button></div></div>';
+  }).join('');
+  h+='<div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px;">Which plan does each space use?</div><div class="card" style="padding:10px 14px;margin-bottom:14px;">'
+    +PP_ROOMS.map(function(r){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;"><div style="width:130px;font-size:13px;">'+r.name+'</div><select id="pp-as-'+r.key+'" onchange="ppAssign(\''+r.key+'\')" style="flex:1;">'
+        +active.map(function(pl){return '<option value="'+pl.id+'"'+(cfg.assign[r.key]===pl.id?' selected':'')+'>'+rpEsc(pl.name)+'</option>';}).join('')+'</select></div>';
+    }).join('')+'</div>';
+  h+='<div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 8px;">Price simulator</div><div class="card" style="padding:12px 14px;">'
+    +'<div class="form-row" style="grid-template-columns:2fr 1fr 1fr;"><div class="form-group"><label>Plan</label><select id="ppsim-plan" onchange="ppSimulate()">'+cfg.plans.map(function(pl){return '<option value="'+pl.id+'"'+(_ppSimPlan===pl.id?' selected':'')+'>'+rpEsc(pl.name)+'</option>';}).join('')+'</select></div>'
+    +'<div class="form-group"><label>Hours</label><input type="number" id="ppsim-h" min="0" step="1" value="2" oninput="ppSimulate()"></div><div class="form-group"><label>Minutes</label><input type="number" id="ppsim-m" min="0" max="59" step="5" value="15" oninput="ppSimulate()"></div></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:10px;">'+[[1,0],[2,0],[3,15],[8,0]].map(function(x){return '<button class="btn btn-outline btn-sm" onclick="ppSimSet('+x[0]+','+x[1]+')">'+x[0]+'h'+(x[1]?' '+x[1]+'m':'')+'</button>';}).join('')+'</div>'
+    +'<div id="ppsim-out"></div></div>';
+  el.innerHTML=h;
+  var b=document.querySelector('#tab-prices > button');if(b)b.style.display='none';
+  ppSimulate();
+}
+function ppSimSet(h,m){document.getElementById('ppsim-h').value=h;document.getElementById('ppsim-m').value=m;ppSimulate();}
+function ppSimulate(){
+  var out=document.getElementById('ppsim-out');if(!out)return;
+  var cfg=ppConfig(),sel=document.getElementById('ppsim-plan');_ppSimPlan=sel.value;
+  var plan=cfg.plans.find(function(x){return x.id===sel.value;});if(!plan){out.innerHTML='';return;}
+  var hrs=(parseFloat(document.getElementById('ppsim-h').value)||0)+(parseFloat(document.getElementById('ppsim-m').value)||0)/60,r=ppCost(plan,hrs);
+  out.innerHTML='<div style="font-size:22px;font-weight:700;margin-bottom:6px;">'+r.total+' LE</div><div style="font-size:12px;color:var(--text2);line-height:1.7;">'+r.lines.map(function(x,i){return (i+1)+'. '+rpEsc(x);}).join('<br>')+'</div>';
+}
+function ppAssign(roomKey){
+  if(!ppGuard()){renderPriceEditor();return;}
+  var cfg=ppConfig(),id=document.getElementById('pp-as-'+roomKey).value,r=PP_ROOMS.find(function(x){return x.key===roomKey;}),pl=cfg.plans.find(function(x){return x.id===id;});
+  if(!pl||cfg.assign[roomKey]===id)return;
+  var old=cfg.plans.find(function(x){return x.id===cfg.assign[roomKey];});
+  cfg.assign[roomKey]=id;ppSave(cfg);auditLog('prices_changed',r.name+' now uses the plan "'+pl.name+'"'+(old?' (was "'+old.name+'")':''));renderPriceEditor();showToast(r.name+' now uses "'+pl.name+'"');
+}
+function ppDuplicate(id){
+  if(!ppGuard())return;
+  var cfg=ppConfig(),pl=cfg.plans.find(function(x){return x.id===id;});if(!pl)return;
+  var c=JSON.parse(JSON.stringify(pl));c.id='plan_'+Date.now();c.name=pl.name+' (copy)';c.archived=false;cfg.plans.push(c);ppSave(cfg);auditLog('prices_changed','Duplicated the plan "'+pl.name+'"');renderPriceEditor();
+}
+function ppArchive(id){
+  if(!ppGuard())return;
+  var cfg=ppConfig(),pl=cfg.plans.find(function(x){return x.id===id;});if(!pl)return;
+  if(!pl.archived){
+    var used=PP_ROOMS.filter(function(r){return cfg.assign[r.key]===id;});
+    if(used.length){showToast('"'+pl.name+'" is used by '+used.map(function(r){return r.name;}).join(', ')+' — give them another plan first',true);return;}
+  }
+  pl.archived=!pl.archived;ppSave(cfg);auditLog('prices_changed',(pl.archived?'Archived':'Restored')+' the plan "'+pl.name+'"');renderPriceEditor();
+}
+function ppTypeChanged(newPlan){
+  var t=document.getElementById('pp-type').value,pl=_ppDraft||{},el=document.getElementById('pp-fields');
+  var inp=function(id,label,val,step){return '<div class="form-group"><label>'+label+'</label><input type="number" id="'+id+'" min="0" step="'+(step||1)+'" value="'+(val===undefined?'':val)+'"></div>';};
+  var h='';
+  if(t==='steps'){
+    var st=(pl.steps&&pl.steps.length)?pl.steps:[{upTo:1,price:50},{upTo:2,price:100}];
+    h='<div style="font-size:12px;color:var(--text3);margin-bottom:6px;">Each step is the price for staying up to that many hours. Anything longer pays the day price.</div>';
+    for(var i=0;i<3;i++){var x=st[i]||{};h+='<div class="form-row" style="grid-template-columns:1fr 1fr;">'+inp('pp-s'+i+'-h','Step '+(i+1)+': up to (hours)',x.upTo,0.5)+inp('pp-s'+i+'-p','price (LE)',x.price)+'</div>';}
+    h+=inp('pp-max','Price for anything longer — the day price (LE)',pl.maxPrice!==undefined?pl.maxPrice:150);
+  }else if(t==='first_extra'){
+    h='<div class="form-row" style="grid-template-columns:1fr 1fr;">'+inp('pp-first','First hour (LE)',pl.first!==undefined?pl.first:250)+inp('pp-extra','Each extra hour (LE)',pl.extra!==undefined?pl.extra:80)+'</div>';
+  }else if(t==='hourly'){
+    h=inp('pp-perhour','Price per hour (LE)',pl.perHour!==undefined?pl.perHour:100);
+  }else{
+    h=inp('pp-price','Day price (LE)',pl.price!==undefined?pl.price:150);
+  }
+  el.innerHTML=h;
+  document.getElementById('pp-round-wrap').style.display=(t==='first_extra'||t==='hourly')?'':'none';
+  document.getElementById('pp-min-wrap').style.display=(t==='first_extra'||t==='hourly')?'':'none';
+}
+var _ppDraft=null;
+function ppOpenPlan(id){
+  if(!ppGuard())return;
+  var cfg=ppConfig(),pl=id?cfg.plans.find(function(x){return x.id===id;}):null;
+  _ppEditId=id;_ppDraft=pl?JSON.parse(JSON.stringify(pl)):{};
+  document.getElementById('pp-title').textContent=pl?'Edit plan — '+pl.name:'New pricing plan';
+  document.getElementById('pp-name').value=pl?pl.name:'';
+  document.getElementById('pp-type').value=pl?pl.type:'first_extra';
+  document.getElementById('pp-round').value=String(pl&&pl.roundStep>0?pl.roundStep:0.5);
+  document.getElementById('pp-grace').value=pl?pl.graceMin||0:0;document.getElementById('pp-min').value=pl?pl.minHours||0:0;document.getElementById('pp-cap').value=pl?pl.dailyCap||0:0;
+  document.getElementById('pp-warn').style.display='none';
+  ppTypeChanged();openModal('plan-edit-modal');
+}
+function ppSavePlan(){
+  if(!ppGuard())return;
+  var g=function(i){return document.getElementById(i);},warn=g('pp-warn'),bad=function(m){warn.textContent=m;warn.style.display='block';return false;};
+  var name=g('pp-name').value.trim(),type=g('pp-type').value;
+  if(!name)return bad('Give the plan a name.');
+  var num=function(i){var v=parseFloat(g(i).value);return isFinite(v)&&v>=0?v:null;};
+  var pl={id:_ppEditId||('plan_'+Date.now()),name:name,type:type,archived:false,graceMin:num('pp-grace')||0,minHours:num('pp-min')||0,dailyCap:num('pp-cap')||0,roundStep:parseFloat(g('pp-round').value)||0.5};
+  if(type==='steps'){
+    pl.steps=[];var last=0;
+    for(var i=0;i<3;i++){var hh=g('pp-s'+i+'-h').value.trim(),pp=g('pp-s'+i+'-p').value.trim();if(hh===''&&pp==='')continue;
+      var h=num('pp-s'+i+'-h'),pr=num('pp-s'+i+'-p');if(h===null||h<=0||pr===null)return bad('Step '+(i+1)+': enter the hours and the price.');
+      if(h<=last)return bad('Steps must go up: step '+(i+1)+' must be longer than the one before.');last=h;pl.steps.push({upTo:h,price:pr});}
+    var mx=num('pp-max');if(!pl.steps.length)return bad('Add at least one step.');if(mx===null)return bad('Enter the price for anything longer.');pl.maxPrice=mx;
+  }else if(type==='first_extra'){var f=num('pp-first'),e=num('pp-extra');if(f===null||e===null)return bad('Enter the first-hour and extra-hour prices.');pl.first=f;pl.extra=e;}
+  else if(type==='hourly'){var ph=num('pp-perhour');if(ph===null)return bad('Enter the price per hour.');pl.perHour=ph;}
+  else{var dp=num('pp-price');if(dp===null)return bad('Enter the day price.');pl.price=dp;}
+  var cfg=ppConfig(),i0=cfg.plans.findIndex(function(x){return x.id===pl.id;});
+  if(i0>=0){pl.archived=cfg.plans[i0].archived;cfg.plans[i0]=pl;}else cfg.plans.push(pl);
+  ppSave(cfg);closeModal('plan-edit-modal');
+  auditLog('prices_changed',(i0>=0?'Changed':'Created')+' the plan "'+pl.name+'": '+ppLabel(pl));
+  renderPriceEditor();showToast('Plan saved ✓');
+}
+// the old "Save all prices" button no longer exists — plans save as you change them
+savePrices=function(){if(!ppGuard())return;showToast('Plans are saved as you change them');};
+
+
+// ============================================================
+// RESERVATION TIMELINE — drag a booking to move it (to another time or another room), pull its right edge to
+// change the end, click an empty slot to add one, and see "now". Every change is checked like the Edit window is.
+// ============================================================
+AUDIT_LABELS.reservation_moved='Reservation moved';
+var RV_SNAP=15;               // minutes
+var _rvDrag=null,_rvUndoTimer=null,_rvBound=false;
+function rvLaneData(lane){return {room:lane.dataset.room,date:lane.dataset.date,open:parseInt(lane.dataset.open,10),total:parseInt(lane.dataset.total,10)};}
+function rvFmtRange(a,b){return fmt12(minToTime(a))+'–'+fmt12(minToTime(b));}
+function rvCheck(id,room,date,from,to){
+  var fs=minToTime(from),fe=minToTime(to);
+  if(to<=from)return 'End must be after the start';
+  var oh=getOpenHours(date);
+  if(from<timeToMin(oh.start)||to>timeToMin(oh.end))return 'Outside opening hours';
+  var c=getConflictDetail(date,room,fs,fe,id);
+  return c?formatConflictDetail(c):'';
+}
+function rvPlace(block,lane,from,to){
+  var d=rvLaneData(lane);
+  if(block.parentNode!==lane)lane.appendChild(block);
+  block.style.left=((from-d.open)/d.total*100)+'%';block.style.width=((to-from)/d.total*100)+'%';
+  var inner=block.querySelector(':scope > div[style="overflow:hidden;"]'),t=inner&&inner.children[1];if(t)t.textContent=rvFmtRange(from,to);
+}
+function rvPointerDown(e){
+  var block=e.target.closest&&e.target.closest('.rv-block');
+  window._rvClickBlocked=!!(block||(e.target.closest&&e.target.closest('button')));   // a press that began on a booking is never a "click on an empty slot"
+  if(!block||e.target.closest('button'))return;
+  if(block.dataset.movable!=='1'||(e.button!==undefined&&e.button!==0))return;
+  var lane=block.closest('.rv-lane'),r=reservations.find(function(x){return x.id===block.dataset.resid;});
+  if(!lane||!r)return;
+  var d=rvLaneData(lane),rect=lane.getBoundingClientRect();
+  _rvDrag={block:block,r:r,mode:e.target.classList.contains('rv-handle')?'resize':'move',startX:e.clientX,startY:e.clientY,moved:false,
+    pxPerMin:rect.width/d.total,origFrom:timeToMin(r.from),origTo:timeToMin(r.to),origRoom:r.room,origLane:lane,date:d.date,open:d.open,total:d.total,
+    cur:{room:r.room,from:timeToMin(r.from),to:timeToMin(r.to)},err:''};
+  e.preventDefault();
+}
+function rvPointerMove(e){
+  var g=_rvDrag;if(!g)return;
+  var dx=e.clientX-g.startX,dy=e.clientY-g.startY;
+  if(!g.moved&&Math.abs(dx)<4&&Math.abs(dy)<4)return;
+  if(!g.moved){g.moved=true;g.block.classList.add('rv-dragging');}
+  var delta=Math.round(dx/g.pxPerMin/RV_SNAP)*RV_SNAP,dur=g.origTo-g.origFrom,room=g.origRoom,from=g.origFrom,to=g.origTo,lane=g.origLane;
+  var endMax=g.open+g.total;
+  if(g.mode==='resize'){to=Math.min(endMax,Math.max(g.origFrom+RV_SNAP,g.origTo+delta));}
+  else{
+    from=Math.min(endMax-dur,Math.max(g.open,g.origFrom+delta));to=from+dur;
+    var under=document.elementsFromPoint(e.clientX,e.clientY).find(function(x){return x.classList&&x.classList.contains('rv-lane');});
+    if(under&&under.dataset.date===g.date){lane=under;room=under.dataset.room;}
+  }
+  document.querySelectorAll('.rv-lane.rv-target').forEach(function(l){l.classList.remove('rv-target');});
+  if(lane!==g.origLane)lane.classList.add('rv-target');
+  g.cur={room:room,from:from,to:to};g.err=rvCheck(g.r.id,room,g.date,from,to);
+  rvPlace(g.block,lane,from,to);
+  g.block.classList.toggle('rv-bad',!!g.err);g.block.classList.toggle('rv-ok',!g.err);
+  g.block.title=g.err?('Cannot drop here: '+g.err):(room+' · '+rvFmtRange(from,to));
+  e.preventDefault();
+}
+function rvPointerUp(e){
+  var g=_rvDrag;if(!g)return;_rvDrag=null;
+  g.block.classList.remove('rv-dragging','rv-bad','rv-ok');document.querySelectorAll('.rv-lane.rv-target').forEach(function(l){l.classList.remove('rv-target');});
+  if(!g.moved)return;
+  window._rvSuppressClick=true;setTimeout(function(){window._rvSuppressClick=false;},60);
+  var c=g.cur;
+  if(c.room===g.origRoom&&c.from===g.origFrom&&c.to===g.origTo){renderReservations();return;}
+  if(g.err){showToast('Not moved — '+g.err,true);renderReservations();return;}
+  rvApplyMove(g.r,c.room,g.date,minToTime(c.from),minToTime(c.to),true);
+}
+// the same checks and updates as the Edit window
+function rvApplyMove(r,room,date,from,to,withUndo){
+  var err=rvCheck(r.id,room,date,timeToMin(from),timeToMin(to));
+  if(err){showToast('Not moved — '+err,true);renderReservations();return false;}
+  var prev={room:r.room,from:r.from,to:r.to,est:r.estimated_cost,grace:r.no_show_grace_deadline,graceUsed:r.grace_extensions_used,lockerStart:null,lockerEnd:null};
+  var changedStart=(r.from!==from||r.room!==room);
+  r.room=room;r.from=from;r.to=to;
+  r.estimated_cost=r.academyKey?undefined:calcReservationCost(room,from,to);
+  if((r.status||'upcoming')==='upcoming'&&changedStart){r.no_show_grace_deadline=new Date(computeGraceDeadline(r.date,r.from)).toISOString();r.grace_extensions_used=0;}
+  saveData('reservations',reservations);
+  // a locker booked with the reservation follows its start time (if it is still free then)
+  var note='';
+  if(r.lockerBookingId&&prev.from!==from){
+    var lb=lkFind(r.lockerBookingId);
+    if(lb&&lkStatus(lb,Date.now())==='reserved'){
+      var ns=r.date+'T'+from,ne=lkAddUnits(ns,lb.unit,lb.qty);
+      if(lkConflicts(lb.lockerId,lkMs(ns),lkMs(ne),lb.id).length)note=' — the locker could not move (it is booked then)';
+      else{prev.lockerStart=lb.start;prev.lockerEnd=lb.end;lb.start=ns;lb.end=ne;saveData('lockerBookings',lockerBookings);try{lkAfterChange();}catch(e){}note=' — its locker moved too';}
+    }
+  }
+  auditLog('reservation_moved','Moved '+r.client+': '+prev.room+' '+rvFmtRange(timeToMin(prev.from),timeToMin(prev.to))+' → '+room+' '+rvFmtRange(timeToMin(from),timeToMin(to))+' ('+date+')');
+  renderReservations();
+  var msg='Moved '+r.client+' to '+room+', '+rvFmtRange(timeToMin(from),timeToMin(to))+note;
+  if(withUndo)rvShowUndo(msg,r.id,prev);else showToast(msg+' ✓');
+  return true;
+}
+function rvShowUndo(msg,id,prev){
+  rvHideUndo();
+  var bar=document.createElement('div');bar.className='rv-undo';bar.id='rv-undo';
+  bar.innerHTML='<span>'+rpEsc(msg)+'</span><button type="button">Undo</button>';
+  bar.querySelector('button').onclick=function(){rvUndo(id,prev);};
+  document.body.appendChild(bar);_rvUndoTimer=setTimeout(rvHideUndo,10000);
+}
+function rvHideUndo(){var b=document.getElementById('rv-undo');if(b)b.remove();if(_rvUndoTimer){clearTimeout(_rvUndoTimer);_rvUndoTimer=null;}}
+function rvUndo(id,prev){
+  rvHideUndo();
+  var r=reservations.find(function(x){return x.id===id;});if(!r)return;
+  var err=rvCheck(id,prev.room,r.date,timeToMin(prev.from),timeToMin(prev.to));
+  if(err){showToast('Cannot undo — '+err,true);return;}
+  r.room=prev.room;r.from=prev.from;r.to=prev.to;r.estimated_cost=prev.est;r.no_show_grace_deadline=prev.grace;r.grace_extensions_used=prev.graceUsed;
+  saveData('reservations',reservations);
+  if(prev.lockerStart&&r.lockerBookingId){var lb=lkFind(r.lockerBookingId);if(lb){lb.start=prev.lockerStart;lb.end=prev.lockerEnd;saveData('lockerBookings',lockerBookings);try{lkAfterChange();}catch(e){}}}
+  auditLog('reservation_moved','Undid the move of '+r.client+' — back to '+prev.room+' '+rvFmtRange(timeToMin(prev.from),timeToMin(prev.to)));
+  renderReservations();showToast('Move undone');
+}
+// click an empty slot → new reservation there
+function rvLaneClick(e){
+  if(window._rvClickBlocked){window._rvClickBlocked=false;return;}
+  if(window._rvSuppressClick||(_rvDrag&&_rvDrag.moved))return;
+  var lane=e.target.closest&&e.target.closest('.rv-lane');
+  if(!lane||e.target.closest('.rv-block')||e.target.closest('button'))return;
+  var d=rvLaneData(lane),rect=lane.getBoundingClientRect(),min=d.open+(e.clientX-rect.left)/rect.width*d.total;
+  var from=Math.min(d.open+d.total-30,Math.max(d.open,Math.floor(min/30)*30)),to=Math.min(d.open+d.total,from+60);
+  openAddReservation();
+  document.getElementById('rv-date').value=d.date;document.getElementById('rv-room').value=d.room;
+  document.getElementById('rv-from').value=minToTime(from);document.getElementById('rv-to').value=minToTime(to);
+  try{checkResConflict();updateRvCostPreview();rvLockerRefresh();}catch(x){}
+}
+function rvNowLine(){
+  var now=new Date(),min=now.getHours()*60+now.getMinutes();
+  document.querySelectorAll('.rv-lane').forEach(function(lane){
+    var old=lane.querySelector('.rv-now');if(old)old.remove();
+    var d=rvLaneData(lane);if(d.date!==today()||min<d.open||min>d.open+d.total)return;
+    var el=document.createElement('div');el.className='rv-now';el.style.left=((min-d.open)/d.total*100)+'%';el.title='Now';lane.appendChild(el);
+  });
+}
+var _renderReservationsTL=renderReservations;
+renderReservations=function(){
+  _renderReservationsTL();
+  var board=document.getElementById('reservations-board');if(!board)return;
+  if(!_rvBound){
+    board.addEventListener('pointerdown',rvPointerDown);
+    document.addEventListener('pointermove',rvPointerMove,{passive:false});document.addEventListener('pointerup',rvPointerUp);document.addEventListener('pointercancel',rvPointerUp);
+    board.addEventListener('click',rvLaneClick);_rvBound=true;
+  }
+  if(!board.querySelector('.rv-hint'))board.insertAdjacentHTML('afterbegin','<div class="rv-hint" style="font-size:12px;color:var(--text3);margin:0 2px 8px;">Drag a booking to move it (to another time or another room) · pull its right edge to change the end time · click an empty slot to add a booking.</div>');
+  rvNowLine();
+  // how many people are in the shared space right now
+  var ss=document.querySelector('.rv-lane[data-room="Shared Space"]');
+  if(ss&&ss.dataset.date===today()){
+    var n=(loadData('activeSessions',[])||[]).filter(function(x){return x.roomKey==='sharedSpace';}).length,lab=ss.previousElementSibling;
+    if(lab&&!lab.querySelector('.rv-seats'))lab.firstElementChild.insertAdjacentHTML('afterend','<div class="rv-seats" style="font-size:10px;color:var(--teal);margin-left:6px;">👥 '+n+' inside now</div>');
+  }
+};
+setInterval(function(){try{var pg=document.getElementById('page-reservations');if(pg&&pg.classList.contains('active')&&!_rvDrag)rvNowLine();}catch(e){}},60000);
 
 </script>
 
