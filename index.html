@@ -161,6 +161,26 @@
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
   .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── REPORTS ── */
+  .rp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
+  .rp-delta{font-size:11px;margin-top:4px;color:var(--text3);}
+  .rp-delta.up{color:var(--green);} .rp-delta.down{color:var(--red);}
+  .rp-bars{display:flex;align-items:flex-end;gap:3px;height:170px;padding:8px 0 0;}
+  .rp-bar{flex:1;min-width:3px;background:var(--accent);border-radius:3px 3px 0 0;opacity:.85;position:relative;}
+  .rp-bar:hover{opacity:1;}
+  .rp-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:6px;}
+  .rp-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px;}
+  .rp-row .rp-name{width:210px;flex:none;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rp-row .rp-track{flex:1;background:var(--bg3);border-radius:6px;height:14px;overflow:hidden;}
+  .rp-row .rp-fill{height:100%;background:var(--accent);border-radius:6px;}
+  .rp-row .rp-val{width:150px;flex:none;text-align:right;font-variant-numeric:tabular-nums;}
+  .rp-heat{border-collapse:separate;border-spacing:3px;width:100%;font-size:11px;}
+  .rp-heat th{font-weight:500;color:var(--text3);padding:2px 0;text-align:center;}
+  .rp-heat th.rp-day{text-align:left;width:38px;padding-right:6px;}
+  .rp-heat td{height:26px;border-radius:5px;background:var(--bg3);text-align:center;color:var(--text);font-size:10px;}
+  .rp-legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-top:8px;}
+  .rp-legend i{display:inline-block;width:90px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--bg3),var(--accent));}
+  .rp-insight{margin-top:12px;padding:10px 14px;border-radius:var(--radius-sm);background:var(--green-bg);color:var(--green);font-size:13px;}
   /* ── LOCKERS ── */
   .lk-map{position:relative;width:100%;aspect-ratio:1520/1170;background:#dcdde0;border-radius:12px;container-type:inline-size;overflow:hidden;user-select:none;}
   .lk-door{position:absolute;box-sizing:border-box;border:3px solid #dcdde0;border-radius:10px;background:#f6f7f8;color:#1f2933;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2px;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease;}
@@ -523,6 +543,7 @@
     <div class="nav-group" data-category="finance">
       <div class="nav-section">Finance</div>
       <button class="nav-item active" data-page="shifts" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
+      <button class="nav-item admin-only" data-page="reports" onclick="showPage(&#39;reports&#39;,this)"><span class="nav-icon">📊</span> Reports</button>
       <button class="nav-item" data-page="staffdebts" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="expenses" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
     </div>
@@ -1248,6 +1269,43 @@
     </div>
     <div id="doc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;"></div>
   </div>
+</div>
+
+<!-- REPORTS PAGE -->
+<div id="page-reports" class="page">
+  <div class="page-header flex-between">
+    <div>
+      <div class="page-title">📊 Reports</div>
+      <div class="page-sub">Revenue, busy hours and clients — each compared with the period before</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <select id="rp-period" onchange="rpPeriodChanged()" style="width:170px;">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="month">This month</option>
+        <option value="lastmonth">Last month</option>
+        <option value="custom">Custom range…</option>
+      </select>
+      <span id="rp-custom" style="display:none;gap:6px;align-items:center;"><input type="date" id="rp-from" onchange="renderReports()" style="width:150px;"> to <input type="date" id="rp-to" onchange="renderReports()" style="width:150px;"></span>
+      <button class="btn btn-outline" onclick="rpExport()">⬇ Export to Excel</button>
+    </div>
+  </div>
+  <div id="rp-range-label" style="font-size:12px;color:var(--text3);margin:-6px 0 14px;"></div>
+  <div class="rp-kpis" id="rp-kpis"></div>
+  <div class="card mb-16"><div class="card-title">📈 Revenue by day</div><div id="rp-days"></div></div>
+  <div class="grid-2 mb-16" style="gap:16px;">
+    <div class="card"><div class="card-title">💳 Revenue by payment method</div><div id="rp-methods"></div></div>
+    <div class="card"><div class="card-title">🏠 Revenue by space &amp; source</div><div id="rp-spaces"></div></div>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">🔥 Busy hours</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Average number of guests in the space, by weekday and hour (from check-in and checkout times).</div>
+    <div id="rp-heat"></div>
+    <div class="rp-legend"><span>Quiet</span><i></i><span>Busy</span></div>
+    <div class="rp-insight" id="rp-insight"></div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);line-height:1.6;">Revenue = rooms + drinks &amp; snacks + academy, package and locker payments, the same as the Monthly Report. Returning clients = people who came in this period and had visited before it started. No-show rate counts reservations marked no-show or checked in.</div>
 </div>
 
 <!-- LOCKERS PAGE — the wall, bookings, price lists -->
@@ -2504,7 +2562,7 @@ function renderRoomCards(){
 var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
   checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
-  shifts:'finance',staffdebts:'finance',expenses:'finance',
+  shifts:'finance',reports:'finance',staffdebts:'finance',expenses:'finance',
   watemplates:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
   recyclebin:'system'
@@ -2558,6 +2616,7 @@ function showPage(id,btn){
   if(id==='expenses'){if(document.getElementById('exp-filter-month')&&!document.getElementById('exp-filter-month').value)document.getElementById('exp-filter-month').value=today().substring(0,7);renderExpenses();}
   if(id==='sharedpkgs')renderSharedSpacePackages();
   if(id==='lockers'){renderLockers(true);lkRefreshFromCloud();}
+  if(id==='reports')renderReports();
   if(academies[id])renderAcademy(id);
   syncNavCategoryForPage(id);
 }
@@ -11707,6 +11766,240 @@ function lkTerm(lang){
   LOCKER_SIZES.forEach(function(sz){var v=lkSizePrice(sz,'month');if(v!==null&&(min===null||v<min))min=v;});
   if(lang==='ar')return '• خدمة الخزانة الخاصة متاحة'+(min!==null?' بدءًا من '+min+' جنيه / شهر':' — اسأل الاستقبال');
   return '• Private locker service available'+(min!==null?' from '+min+' LE/month':' — ask the front desk');
+}
+
+
+// ============================================================
+// REPORTS — revenue, busy hours and clients, compared with the period before
+// ============================================================
+var RP_DAYS=['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];          // the week starts on Saturday
+var RP_DAYS_LONG=['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+function rpStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function rpDate(str){var p=str.split('-');return new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10));}
+function rpAddDays(str,n){var d=rpDate(str);d.setDate(d.getDate()+n);return rpStr(d);}
+function rpDayIdx(str){return (rpDate(str).getDay()+1)%7;}                 // Saturday = 0 … Friday = 6
+function rpDaysBetween(a,b){return Math.round((rpDate(b)-rpDate(a))/86400000)+1;}
+function rpMoney(n){return Math.round(n).toLocaleString()+' LE';}
+function rpEsc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+function rpRange(){
+  var v=(document.getElementById('rp-period')||{}).value||'30',t=today(),from,to;
+  if(v==='7'||v==='30'||v==='90'){to=t;from=rpAddDays(t,-(parseInt(v,10)-1));}
+  else if(v==='month'){from=t.slice(0,8)+'01';to=t;}
+  else if(v==='lastmonth'){var d=rpDate(t.slice(0,8)+'01');d.setDate(0);to=rpStr(d);from=to.slice(0,8)+'01';}
+  else{from=document.getElementById('rp-from').value||rpAddDays(t,-29);to=document.getElementById('rp-to').value||t;if(from>to){var x=from;from=to;to=x;}}
+  var len=rpDaysBetween(from,to),prevTo,prevFrom;
+  if(v==='month'){var pm=rpDate(from);pm.setDate(0);prevTo=rpStr(pm);prevFrom=prevTo.slice(0,8)+'01';}
+  else if(v==='lastmonth'){var pm2=rpDate(from);pm2.setDate(0);prevTo=rpStr(pm2);prevFrom=prevTo.slice(0,8)+'01';}
+  else{prevTo=rpAddDays(from,-1);prevFrom=rpAddDays(prevTo,-(len-1));}
+  return {from:from,to:to,prevFrom:prevFrom,prevTo:prevTo,len:len,key:v};
+}
+function rpPeriodChanged(){
+  var custom=document.getElementById('rp-period').value==='custom';
+  document.getElementById('rp-custom').style.display=custom?'inline-flex':'none';
+  if(custom){var t=today();if(!document.getElementById('rp-from').value)document.getElementById('rp-from').value=rpAddDays(t,-29);if(!document.getElementById('rp-to').value)document.getElementById('rp-to').value=t;}
+  renderReports();
+}
+function rpIn(ds,from,to){return !!ds&&ds>=from&&ds<=to;}
+function rpMinutes(t){var m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?parseInt(m[1],10)*60+parseInt(m[2],10):null;}
+
+// Everything the page shows for one date range.
+function rpMetrics(from,to){
+  var vis=(clients||[]).filter(function(c){return rpIn(c.date,from,to);});
+  var drk=loadData('drinkOrders',[]).filter(function(o){return rpIn(o.date,from,to);});
+  var acc=loadData('shiftPayments',[]).filter(function(x){return (x.academyPayments||0)>0&&rpIn(x.date,from,to);});
+  var exp=loadData('expenses',[]).filter(function(e){return rpIn(e.date,from,to);});
+  var m={from:from,to:to,visits:vis,days:{},methods:{cash:0,instapay:0,visa:0,other:0},spaces:{},rooms:0,drinks:0,academy:0,expenses:0};
+  var day=function(ds){return m.days[ds]||(m.days[ds]={rooms:0,drinks:0,academy:0,total:0});};
+  vis.forEach(function(c){
+    var v=c.cost||0;day(c.date).rooms+=v;m.rooms+=v;m.spaces[c.room||'Other']=(m.spaces[c.room||'Other']||0)+v;
+    m.methods.cash+=c.cash||0;m.methods.instapay+=c.instapay||0;m.methods.visa+=c.visa||0;m.methods.other+=c.other||0;
+  });
+  drk.forEach(function(o){
+    var v=o.total||0;day(o.date).drinks+=v;m.drinks+=v;
+    if(m.methods[o.payment]!==undefined)m.methods[o.payment]+=v;else m.methods.other+=v;
+  });
+  acc.forEach(function(x){
+    var v=x.academyPayments||0;day(x.date).academy+=v;m.academy+=v;
+    m.methods.cash+=x.cash||0;m.methods.instapay+=x.instapay||0;m.methods.visa+=x.visa||0;m.methods.other+=x.other||0;
+  });
+  exp.forEach(function(e){m.expenses+=e.amount||0;});
+  Object.keys(m.days).forEach(function(k){var d=m.days[k];d.total=d.rooms+d.drinks+d.academy;});
+  m.revenue=m.rooms+m.drinks+m.academy;
+  m.net=m.revenue-m.expenses;
+  // average session length (visits with a recorded duration)
+  var hrs=vis.map(function(c){return parseFloat(c.hours);}).filter(function(h){return isFinite(h)&&h>0;});
+  m.avgHours=hrs.length?hrs.reduce(function(a,b){return a+b;},0)/hrs.length:0;
+  // returning clients: came in this period and had visited before it started
+  var key=function(c){return c.profileId||String(c.name||'').trim().toLowerCase();};
+  var before={};(clients||[]).forEach(function(c){if(c.date&&c.date<from)before[key(c)]=true;});
+  var seen={},ret=0,uniq=0;
+  vis.forEach(function(c){var k=key(c);if(!k||seen[k])return;seen[k]=true;uniq++;if(before[k])ret++;});
+  m.uniqueClients=uniq;m.returning=ret;m.returningPct=uniq?Math.round(ret/uniq*100):null;
+  // no-shows
+  var rs=(reservations||[]).filter(function(r){return rpIn(r.date,from,to)&&(r.status==='no_show'||r.status==='checked_in'||r.status==='completed');});
+  m.resDecided=rs.length;m.noShows=rs.filter(function(r){return r.status==='no_show';}).length;
+  m.noShowPct=rs.length?Math.round(m.noShows/rs.length*1000)/10:null;
+  rpHeat(m);
+  return m;
+}
+
+// Average guests in the space for every weekday x hour.
+function rpHeat(m){
+  var sum=[],occ=[0,0,0,0,0,0,0],d;
+  for(d=0;d<7;d++){sum.push(new Array(24).fill(0));}
+  var last=m.to<today()?m.to:today();
+  for(var ds=m.from;ds<=last;ds=rpAddDays(ds,1))occ[rpDayIdx(ds)]++;
+  var minH=8,maxH=23;
+  m.visits.forEach(function(c){
+    var s=rpMinutes(c.timeIn),e=rpMinutes(c.timeOut);if(s===null||e===null||!c.date)return;
+    if(e<=s)e+=1440;
+    var people=parseInt(c.guests,10)||1,base=rpDayIdx(c.date);
+    for(var h=Math.floor(s/60);h<=Math.floor((e-1)/60);h++){
+      var ov=Math.min(e,(h+1)*60)-Math.max(s,h*60);if(ov<=0)continue;
+      var wd=(base+Math.floor(h/24))%7,hh=h%24;
+      sum[wd][hh]+=people*ov/60;
+      if(hh<minH)minH=hh;if(hh>maxH)maxH=hh;
+    }
+  });
+  m.heat=sum.map(function(row,wd){return row.map(function(v){return occ[wd]?v/occ[wd]:0;});});
+  m.heatMin=minH;m.heatMax=maxH;
+  // busiest 3-hour window of any weekday
+  var best=null;
+  for(var w=0;w<7;w++)for(var h0=0;h0<=21;h0++){
+    var avg=(m.heat[w][h0]+m.heat[w][h0+1]+m.heat[w][h0+2])/3;
+    if(!best||avg>best.avg)best={wd:w,h:h0,avg:avg};
+  }
+  m.peak=best&&best.avg>=0.05?best:null;
+}
+
+function rpHour(h){var ap=h>=12&&h<24?'PM':'AM',x=h%12||12;return x+' '+ap;}
+function rpDelta(cur,prev,higherBetter,asPoints){
+  if(cur===null||prev===null||cur===undefined||prev===undefined)return {txt:'no comparison yet',cls:''};
+  if(asPoints){var dp=Math.round((cur-prev)*10)/10;if(dp===0)return {txt:'same as before',cls:''};return {txt:(dp>0?'▲ +':'▼ ')+dp+' pts vs previous',cls:((dp>0)===higherBetter)?'up':'down'};}
+  if(!prev){return cur>0?{txt:'▲ new (nothing before)',cls:higherBetter===false?'down':'up'}:{txt:'no change',cls:''};}
+  var pct=Math.round((cur-prev)/prev*100);
+  if(pct===0)return {txt:'same as before',cls:''};
+  return {txt:(pct>0?'▲ +':'▼ ')+pct+'% vs previous',cls:((pct>0)===higherBetter)?'up':'down'};
+}
+function rpHM(h){if(!h)return '—';var m=Math.round(h*60);return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';}
+
+function renderReports(){
+  var el=document.getElementById('rp-kpis');if(!el)return;
+  var r=rpRange(),cur=rpMetrics(r.from,r.to),prev=rpMetrics(r.prevFrom,r.prevTo);
+  window._rpLast={range:r,cur:cur,prev:prev};
+  document.getElementById('rp-range-label').textContent=rpFmtD(r.from)+' – '+rpFmtD(r.to)+'  ·  compared with '+rpFmtD(r.prevFrom)+' – '+rpFmtD(r.prevTo);
+  var card=function(label,val,dl,sub){return '<div class="stat"><div class="stat-label">'+label+'</div><div class="stat-value">'+val+'</div><div class="rp-delta '+dl.cls+'">'+dl.txt+'</div>'+(sub?'<div class="stat-sub">'+sub+'</div>':'')+'</div>';};
+  el.innerHTML=
+    card('Total revenue',rpMoney(cur.revenue),rpDelta(cur.revenue,prev.revenue,true),'Net after expenses: '+rpMoney(cur.net))
+   +card('Visits',cur.visits.length,rpDelta(cur.visits.length,prev.visits.length,true),cur.uniqueClients+' different clients')
+   +card('Average session',rpHM(cur.avgHours),rpDelta(cur.avgHours,prev.avgHours,true),'per visit')
+   +card('Returning clients',cur.returningPct===null?'—':cur.returningPct+'%',rpDelta(cur.returningPct,prev.returningPct,true,true),cur.returning+' of '+cur.uniqueClients+' had been before')
+   +card('No-show rate',cur.noShowPct===null?'—':cur.noShowPct+'%',rpDelta(cur.noShowPct,prev.noShowPct,false,true),cur.noShows+' of '+cur.resDecided+' reservations');
+  rpRenderDays(r,cur);rpRenderMethods(cur);rpRenderSpaces(cur);rpRenderHeat(cur);
+}
+function rpFmtD(ds){var d=rpDate(ds);return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():'');}
+
+function rpDaySeries(r,cur){
+  var step=r.len>93?7:1,out=[];
+  for(var ds=r.from;ds<=r.to;ds=rpAddDays(ds,step)){
+    var tot=0;for(var i=0;i<step;i++){var d=cur.days[rpAddDays(ds,i)];if(d&&rpAddDays(ds,i)<=r.to)tot+=d.total;}
+    out.push({label:step===1?rpFmtD(ds):('week of '+rpFmtD(ds)),total:tot,from:ds});
+  }
+  return out;
+}
+function rpRenderDays(r,cur){
+  var series=rpDaySeries(r,cur),max=Math.max.apply(null,series.map(function(x){return x.total;}).concat([1]));
+  document.getElementById('rp-days').innerHTML=
+    '<div class="rp-bars">'+series.map(function(x){return '<div class="rp-bar" style="height:'+Math.max(1,Math.round(x.total/max*100))+'%;'+(x.total?'':'opacity:.2;')+'" title="'+rpEsc(x.label+': '+rpMoney(x.total))+'"></div>';}).join('')+'</div>'
+   +'<div class="rp-axis"><span>'+rpFmtD(r.from)+'</span><span>highest '+rpMoney(max===1&&!cur.revenue?0:max)+(r.len>93?' a week':' a day')+'</span><span>'+rpFmtD(r.to)+'</span></div>';
+}
+function rpBars(rows,total){
+  if(!rows.length||!total)return '<div style="font-size:13px;color:var(--text3);">Nothing recorded in this period.</div>';
+  var max=Math.max.apply(null,rows.map(function(x){return x[1];}));
+  return rows.map(function(x){return '<div class="rp-row"><div class="rp-name" title="'+rpEsc(x[0])+'">'+rpEsc(x[0])+'</div><div class="rp-track"><div class="rp-fill" style="width:'+Math.max(2,Math.round(x[1]/max*100))+'%;"></div></div><div class="rp-val"><strong>'+rpMoney(x[1])+'</strong> <span style="color:var(--text3);">· '+Math.round(x[1]/total*100)+'%</span></div></div>';}).join('');
+}
+function rpRenderMethods(cur){
+  var names={cash:'Cash',instapay:'Instapay',visa:'Visa',other:'Other / bank'};
+  var rows=Object.keys(cur.methods).map(function(k){return [names[k],cur.methods[k]];}).filter(function(x){return x[1]>0;}).sort(function(a,b){return b[1]-a[1];});
+  document.getElementById('rp-methods').innerHTML=rpBars(rows,rows.reduce(function(s,x){return s+x[1];},0));
+}
+function rpSpaceRows(cur){
+  var rows=Object.keys(cur.spaces).map(function(k){return [k,cur.spaces[k]];});
+  if(cur.drinks>0)rows.push(['Drinks & snacks',cur.drinks]);
+  if(cur.academy>0)rows.push(['Academies, packages & lockers',cur.academy]);
+  return rows.filter(function(x){return x[1]>0;}).sort(function(a,b){return b[1]-a[1];});
+}
+function rpRenderSpaces(cur){var rows=rpSpaceRows(cur);document.getElementById('rp-spaces').innerHTML=rpBars(rows,rows.reduce(function(s,x){return s+x[1];},0));}
+function rpRenderHeat(cur){
+  var h0=cur.heatMin,h1=cur.heatMax,max=0,w,h;
+  for(w=0;w<7;w++)for(h=h0;h<=h1;h++)if(cur.heat[w][h]>max)max=cur.heat[w][h];
+  var head='<tr><th class="rp-day"></th>';for(h=h0;h<=h1;h++)head+='<th>'+(h%2===0?rpHour(h).replace(' ',''):'')+'</th>';head+='</tr>';
+  var body='';
+  for(w=0;w<7;w++){
+    body+='<tr><th class="rp-day">'+RP_DAYS[w]+'</th>';
+    for(h=h0;h<=h1;h++){
+      var v=cur.heat[w][h],a=max?Math.min(1,v/max):0;
+      body+='<td title="'+RP_DAYS_LONG[w]+' '+rpHour(h)+': about '+(Math.round(v*10)/10)+' guests on average" style="'+(v>0?'background:rgba(99,102,241,'+(0.12+a*0.78).toFixed(2)+');':'')+(a>0.6?'color:#fff;':'')+'">'+(v>=0.5?Math.round(v):'')+'</td>';
+    }
+    body+='</tr>';
+  }
+  document.getElementById('rp-heat').innerHTML='<table class="rp-heat">'+head+body+'</table>';
+  var ins=document.getElementById('rp-insight');
+  if(cur.peak){
+    ins.style.display='';
+    ins.textContent='Your space is busiest on '+RP_DAYS_LONG[cur.peak.wd]+'s from '+rpHour(cur.peak.h)+' to '+rpHour(cur.peak.h+3)+' — about '+Math.max(1,Math.round(cur.peak.avg))+(Math.max(1,Math.round(cur.peak.avg))===1?' guest':' guests')+' on average. Consider extra staff or peak pricing then.';
+  }else{ins.style.display='';ins.textContent='Not enough check-ins with times in this period to find the busy hours yet.';}
+}
+
+// ── Excel export ──
+function rpSheets(){
+  var L=window._rpLast||(renderReports(),window._rpLast),cur=L.cur,prev=L.prev,r=L.range;
+  var pct=function(a,b){return b?Math.round((a-b)/b*100)+'%':'';};
+  var sheets={};
+  sheets['Summary']=[['Period',r.from+' to '+r.to],['Compared with',r.prevFrom+' to '+r.prevTo],[],
+    ['Measure','This period','Previous period','Change'],
+    ['Total revenue (LE)',cur.revenue,prev.revenue,pct(cur.revenue,prev.revenue)],
+    ['  Rooms (LE)',cur.rooms,prev.rooms,pct(cur.rooms,prev.rooms)],
+    ['  Drinks & snacks (LE)',cur.drinks,prev.drinks,pct(cur.drinks,prev.drinks)],
+    ['  Academies, packages & lockers (LE)',cur.academy,prev.academy,pct(cur.academy,prev.academy)],
+    ['Expenses (LE)',cur.expenses,prev.expenses,pct(cur.expenses,prev.expenses)],
+    ['Net (LE)',cur.net,prev.net,pct(cur.net,prev.net)],
+    ['Visits',cur.visits.length,prev.visits.length,pct(cur.visits.length,prev.visits.length)],
+    ['Different clients',cur.uniqueClients,prev.uniqueClients,pct(cur.uniqueClients,prev.uniqueClients)],
+    ['Average session (hours)',Math.round(cur.avgHours*100)/100,Math.round(prev.avgHours*100)/100,pct(cur.avgHours,prev.avgHours)],
+    ['Returning clients (%)',cur.returningPct,prev.returningPct,''],
+    ['No-show rate (%)',cur.noShowPct,prev.noShowPct,'']];
+  var days=[['Date','Rooms','Drinks & snacks','Academies, packages & lockers','Total']];
+  for(var ds=r.from;ds<=r.to;ds=rpAddDays(ds,1)){var d=cur.days[ds]||{rooms:0,drinks:0,academy:0,total:0};days.push([ds,d.rooms,d.drinks,d.academy,d.total]);}
+  sheets['Revenue by day']=days;
+  sheets['By payment method']=[['Method','Amount (LE)']].concat([['Cash',cur.methods.cash],['Instapay',cur.methods.instapay],['Visa',cur.methods.visa],['Other / bank',cur.methods.other]]);
+  sheets['By space']=[['Space / source','Revenue (LE)']].concat(rpSpaceRows(cur));
+  var hh=['Day'];for(var h=cur.heatMin;h<=cur.heatMax;h++)hh.push(rpHour(h));
+  var heat=[hh];for(var w=0;w<7;w++){var row=[RP_DAYS_LONG[w]];for(var h2=cur.heatMin;h2<=cur.heatMax;h2++)row.push(Math.round(cur.heat[w][h2]*10)/10);heat.push(row);}
+  sheets['Busy hours (avg guests)']=heat;
+  sheets['Visits']=[['Date','Client','Space','Time in','Time out','Hours','Guests','Cost (LE)','Cash','Instapay','Visa','Cashier']].concat(cur.visits.map(function(c){return [c.date,c.name,c.room,c.timeIn,c.timeOut,parseFloat(c.hours)||0,c.guests||1,c.cost||0,c.cash||0,c.instapay||0,c.visa||0,c.cashier||''];}));
+  return sheets;
+}
+function rpSaveWorkbook(){
+  var sheets=rpSheets(),r=window._rpLast.range,wb=XLSX.utils.book_new();
+  Object.keys(sheets).forEach(function(name){XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sheets[name]),name.slice(0,31));});
+  XLSX.writeFile(wb,'spaceco_report_'+r.from+'_to_'+r.to+'.xlsx');
+  showToast('Excel file saved ✓');
+}
+function rpExport(){
+  renderReports();
+  if(typeof XLSX!=='undefined'){rpSaveWorkbook();return;}
+  var sc=document.createElement('script');
+  sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.onload=function(){rpSaveWorkbook();};
+  sc.onerror=function(){   // offline: fall back to a CSV the same Excel can open
+    var s=rpSheets(),rows=[];
+    Object.keys(s).filter(function(n){return n!=='Visits';}).forEach(function(n){rows.push([n]);s[n].forEach(function(x){rows.push(x);});rows.push([]);});
+    downloadCSV(rows,'spaceco_report_'+window._rpLast.range.from+'_to_'+window._rpLast.range.to+'.csv');
+    showToast('Excel tool could not load — saved as CSV instead',true);
+  };
+  document.head.appendChild(sc);
 }
 
 </script>
