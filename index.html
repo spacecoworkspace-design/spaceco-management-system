@@ -161,6 +161,33 @@
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
   .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── SPACECO VAULT ── */
+  .vault-hero{background:linear-gradient(135deg,#0b1220 0%,#16213a 60%,#1c2c4d 100%);color:#fff;border-radius:var(--radius);padding:22px 26px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;border:1px solid rgba(212,168,67,.4);}
+  .vault-brand{font-size:11px;letter-spacing:3px;color:#d4a843;font-weight:700;margin-bottom:4px;}
+  .vault-title{font-size:28px;font-weight:800;letter-spacing:.6px;line-height:1.1;}
+  .vault-tag{font-size:13px;color:rgba(255,255,255,.7);margin-top:4px;}
+  .vault-balance{text-align:right;min-width:220px;}
+  .vault-balance .lbl{font-size:11px;letter-spacing:1.6px;color:rgba(255,255,255,.65);}
+  .vault-balance .num{font-size:36px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;}
+  .vault-balance .num.pos{color:#34d88b;} .vault-balance .num.neg{color:#ff6b6b;} .vault-balance .num.unset{color:#d4a843;font-size:22px;}
+  .vault-balance .sub{font-size:12px;color:rgba(255,255,255,.65);margin-top:2px;}
+  .vault-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  .vault-tabs button{background:none;border:none;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;}
+  .vault-tabs button.active{color:var(--text);border-bottom-color:#d4a843;}
+  .vault-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;}
+  .vault-grid .stat .stat-value{font-size:22px;}
+  .vault-warn{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(212,168,67,.4);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;font-size:13px;}
+  .vault-neg{background:rgba(224,85,85,.12);color:var(--red);border:1px solid rgba(224,85,85,.4);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:600;}
+  .vwf{display:grid;grid-template-columns:150px 1fr 150px;gap:10px;align-items:center;padding:7px 0;font-size:13px;}
+  .vwf .vtrack{background:var(--bg3);border-radius:6px;height:14px;overflow:hidden;} .vwf .vfill{height:100%;border-radius:6px;}
+  .vwf .vval{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+  .vwf.total{border-top:2px solid var(--border);margin-top:4px;padding-top:12px;font-size:15px;font-weight:700;}
+  .vault-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .vault-filters input,.vault-filters select{width:auto;min-width:140px;}
+  .vault-chip{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;}
+  .vault-chip.inv{background:rgba(139,92,246,.15);color:#8b5cf6;} .vault-chip.norm{background:var(--amber-bg);color:var(--amber);}
+  .vault-rep td,.vault-rep th{padding:7px 10px;} .vault-rep tr.sep td{border-top:2px solid var(--border);font-weight:700;}
+  @media(max-width:700px){.vwf{grid-template-columns:100px 1fr 110px;} .vault-balance{text-align:left;}}
   /* ── RESERVATION TIMELINE: drag / resize ── */
   .rv-block[data-movable="1"]{cursor:grab !important;touch-action:none;user-select:none;-webkit-user-select:none;}
   .rv-block.rv-dragging{cursor:grabbing !important;z-index:20;box-shadow:0 8px 22px rgba(0,0,0,.35);opacity:.92;}
@@ -557,6 +584,7 @@
       <div class="nav-section">Finance</div>
       <button class="nav-item active" data-page="shifts" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
       <button class="nav-item admin-only" data-page="reports" onclick="showPage(&#39;reports&#39;,this)"><span class="nav-icon">📊</span> Reports</button>
+      <button class="nav-item admin-only" data-page="vault" onclick="showPage(&#39;vault&#39;,this)"><span class="nav-icon">🏦</span> SPACECO VAULT</button>
       <button class="nav-item" data-page="staffdebts" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="expenses" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
     </div>
@@ -1187,7 +1215,8 @@
     </div>
   </div>
   <div class="grid-4 mb-16" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
-    <div class="stat"><div class="stat-label">Total Expenses</div><div class="stat-value money" id="exp-total" style="color:var(--red);">0 LE</div><div class="stat-sub">this month</div></div>
+    <div class="stat"><div class="stat-label">Total Expenses</div><div class="stat-value money" id="exp-total" style="color:var(--red);">0 LE</div><div class="stat-sub">normal expenses, this month</div></div>
+    <div class="stat admin-only" id="exp-invest-card"><div class="stat-label">Investments</div><div class="stat-value money" id="exp-invest" style="color:#8b5cf6;">0 LE</div><div class="stat-sub">paid from the total balance — not in the month's net</div></div>
     <div class="stat"><div class="stat-label">Paid Cash</div><div class="stat-value money" id="exp-cash" style="color:var(--amber);">0 LE</div><div class="stat-sub">cash outflow</div></div>
     <div class="stat"><div class="stat-label">Paid Instapay</div><div class="stat-value money" id="exp-instapay" style="color:var(--blue);">0 LE</div><div class="stat-sub">instapay outflow</div></div>
     <div class="stat"><div class="stat-label">Paid Visa</div><div class="stat-value money" id="exp-visa" style="color:var(--accent);">0 LE</div><div class="stat-sub">visa outflow</div></div>
@@ -1197,6 +1226,7 @@
   <div class="card">
     <div class="card-title flex-between">
       <span>All Expenses</span>
+      <select id="exp-filter-type" class="admin-only" onchange="renderExpenses()" style="width:170px;margin-right:8px;"><option value="">All types</option><option value="normal">Normal expenses</option><option value="investment">Investments only</option></select>
       <select id="exp-filter-cat" onchange="renderExpenses()" style="width:160px;">
         <option value="">All Categories</option>
         <option>Rent</option><option>Utilities</option><option>Supplies</option>
@@ -1311,6 +1341,54 @@
     <div style="font-size:11px;color:var(--text3);margin:-4px 0 12px;">Grace: a few minutes over a billing step that are not charged. Daily cap: the most one visit can ever cost.</div>
     <div class="lk-warn" id="pp-warn"></div>
     <button class="btn btn-success btn-full" onclick="ppSavePlan()">✓ Save plan</button>
+  </div>
+</div>
+
+<!-- SPACECO VAULT: investment edit window -->
+<div class="modal-overlay" id="vault-inv-modal">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><div class="modal-title">✏️ Edit investment</div><button class="close-btn" onclick="closeModal('vault-inv-modal')">✕</button></div>
+    <div class="form-group"><label>Description *</label><input type="text" id="vi-desc"></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Amount (LE) *</label><input type="number" id="vi-amount" min="0" step="1"></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="vi-date"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Category</label><select id="vi-cat"></select></div>
+      <div class="form-group"><label>Payment method</label><select id="vi-pay"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="bank">Bank / savings</option><option value="other">Other</option></select></div>
+    </div>
+    <div class="form-group"><label>Notes</label><input type="text" id="vi-note"></div>
+    <div class="lk-warn" id="vi-warn"></div>
+    <button class="btn btn-success btn-full" onclick="vaultSaveInvEdit()">✓ Save changes</button>
+  </div>
+</div>
+
+<!-- SPACECO VAULT page -->
+<div id="page-vault" class="page">
+  <div class="vault-hero">
+    <div>
+      <div class="vault-brand">FINANCIAL COMMAND CENTER</div>
+      <div class="vault-title">🏦 SPACECO VAULT</div>
+      <div class="vault-tag">Every pound accounted for. Every decision informed.</div>
+    </div>
+    <div class="vault-balance" id="vault-hero-balance"></div>
+  </div>
+  <div id="vault-denied" class="alert alert-danger" style="display:none;">SPACECO VAULT is for administrators only.</div>
+  <div id="vault-body">
+    <div class="vault-tabs" id="vault-tabs">
+      <button data-vtab="overview" class="active" onclick="vaultTab('overview')">Overview</button>
+      <button data-vtab="income" onclick="vaultTab('income')">Income</button>
+      <button data-vtab="expenses" onclick="vaultTab('expenses')">Expenses</button>
+      <button data-vtab="investments" onclick="vaultTab('investments')">Investments</button>
+      <button data-vtab="reports" onclick="vaultTab('reports')">Reports</button>
+      <button data-vtab="audit" onclick="vaultTab('audit')">Audit trail</button>
+    </div>
+    <div class="vtab" id="vtab-overview"></div>
+    <div class="vtab" id="vtab-income" style="display:none;"></div>
+    <div class="vtab" id="vtab-expenses" style="display:none;"></div>
+    <div class="vtab" id="vtab-investments" style="display:none;"></div>
+    <div class="vtab" id="vtab-reports" style="display:none;"></div>
+    <div class="vtab" id="vtab-audit" style="display:none;"></div>
   </div>
 </div>
 
@@ -1739,6 +1817,7 @@
       <button class="tab-btn" onclick="switchAdminTab(&#39;tab-staff&#39;,this)">Staff</button>
       <button class="tab-btn" onclick="switchAdminTab(&#39;tab-drinks&#39;,this)">Drinks Menu</button>
       <button class="tab-btn" onclick="switchAdminTab(&#39;tab-snacks&#39;,this)">Snacks Menu</button>
+      <button class="tab-btn" onclick="switchAdminTab(&#39;tab-vault&#39;,this)">SPACECO VAULT</button>
       <button class="tab-btn" onclick="switchAdminTab(&#39;tab-security&#39;,this)">Security</button>
     </div>
     <!-- Tab: Prices -->
@@ -1775,6 +1854,12 @@
         </div>
         <button class="btn btn-primary mt-12" onclick="addStaffMember()">+ Add Staff Member</button>
       </div>
+    </div>
+    <!-- Tab: SPACECO VAULT -->
+    <div class="tab-content" id="tab-vault">
+      <div style="font-size:12px;letter-spacing:2px;color:#d4a843;font-weight:700;">SPACECO VAULT</div>
+      <div style="font-size:13px;color:var(--text2);margin:6px 0 14px;">The financial command center: total balance, income, expenses, investments, reports and the audit trail. Every pound accounted for. Every decision informed.</div>
+      <button class="btn btn-primary" onclick="vaultOpenFromAdmin()">Open SPACECO VAULT</button>
     </div>
     <!-- Tab: Drinks -->
     <div class="tab-content" id="tab-drinks">
@@ -2643,7 +2728,7 @@ function renderRoomCards(){
 var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
   checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
-  shifts:'finance',reports:'finance',staffdebts:'finance',expenses:'finance',
+  shifts:'finance',reports:'finance',vault:'finance',staffdebts:'finance',expenses:'finance',
   watemplates:'inventory',wasend:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
   recyclebin:'system',auditlog:'system'
@@ -2700,6 +2785,7 @@ function showPage(id,btn){
   if(id==='reports')renderReports();
   if(id==='wasend')renderWaSend();
   if(id==='auditlog')renderAuditLog();
+  if(id==='vault')renderVault();
   if(academies[id])renderAcademy(id);
   syncNavCategoryForPage(id);
 }
@@ -5123,7 +5209,7 @@ function refreshDashboard(){
   var _sp=loadData('shiftPayments',[]);
   var _acToday=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;}).reduce(function(s,x){return s+(x.academyPayments||0);},0);
   var _acMonth=_sp.filter(function(s){return s.date&&s.date.startsWith(ms)&&s.academyPayments>0;}).reduce(function(s,x){return s+(x.academyPayments||0);},0);
-  var _expMonth=loadData('expenses',[]).filter(function(e){return e.date&&e.date.startsWith(ms);}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var _expMonth=loadData('expenses',[]).filter(function(e){return e.date&&e.date.startsWith(ms)&&e.type!=='investment';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var _monthClients=clients.filter(function(c){return c.date&&c.date.startsWith(ms);});
   var _cashMonth=_monthClients.reduce(function(s,c){return s+(c.cash||0);},0)
     +_allDrk.filter(function(o){return o.date&&o.date.startsWith(ms)&&o.payment==='cash';}).reduce(function(s,o){return s+(o.total||0);},0)
@@ -5268,9 +5354,15 @@ function renderExpenses(){
   var month=mf.value,catF=document.getElementById('exp-filter-cat').value;
   var filtered=expenses.filter(function(e){
     if(month&&!e.date.startsWith(month))return false;
-    if(catF&&e.category!==catF)return false;return true;
+    if(catF&&e.category!==catF)return false;
+    var typeF=(document.getElementById('exp-filter-type')||{}).value;
+    if(e.type==='investment'&&!isAdmin)return false;                    // investments are for administrators only
+    if(typeF==='investment'&&e.type!=='investment')return false;
+    if(typeF==='normal'&&e.type==='investment')return false;
+    return true;
   }).sort(function(a,b){return b.date.localeCompare(a.date);});
-  var total=filtered.reduce(function(s,e){return s+(e.amount||0);},0);
+  var invTotal=filtered.filter(function(e){return e.type==='investment';}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var total=filtered.filter(function(e){return e.type!=='investment';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var cash=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='cash';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var ip=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='instapay';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var visaPaid=filtered.filter(function(e){return (e.paidFrom||e.paid_from||e.payment)==='visa';}).reduce(function(s,e){return s+(e.amount||0);},0);
@@ -5282,13 +5374,14 @@ function renderExpenses(){
          +_acRev;
   var net=rev-total;
   document.getElementById('exp-total').textContent=total+' LE';
+  var _ie=document.getElementById('exp-invest');if(_ie)_ie.textContent=invTotal+' LE';
   document.getElementById('exp-cash').textContent=cash+' LE';
   document.getElementById('exp-instapay').textContent=ip+' LE';
   document.getElementById('exp-visa').textContent=visaPaid+' LE';
   document.getElementById('exp-net').textContent=net+' LE';
   document.getElementById('exp-net').style.color=net>=0?'var(--green)':'var(--red)';
   var cats={};
-  filtered.forEach(function(e){cats[e.category]=(cats[e.category]||0)+e.amount;});
+  filtered.forEach(function(e){if(e.type==='investment')return;cats[e.category]=(cats[e.category]||0)+e.amount;});
   document.getElementById('exp-by-cat').innerHTML=Object.keys(cats).map(function(c){
     return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;">'
       +'<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">'+c+'</div>'
@@ -5299,8 +5392,8 @@ function renderExpenses(){
   tbody.innerHTML=filtered.map(function(e,i){
     var eDesc=e.desc||e.description||'-';var ePaid=e.paidFrom||e.paid_from||e.payment||'-';var eNote=e.note||e.notes||'-';
     return '<tr><td>'+(i+1)+'</td><td>'+formatDate(e.date)+'</td><td><strong>'+eDesc+'</strong></td>'
-      +'<td><span class="badge badge-amber">'+(e.category||'-')+'</span></td>'
-      +'<td class="money" style="color:var(--red);">'+e.amount+' LE</td>'
+      +'<td>'+(e.type==='investment'?'<span class="badge" style="background:rgba(139,92,246,.15);color:#8b5cf6;margin-right:4px;">Investment</span>':'')+'<span class="badge badge-amber">'+(e.category||'-')+'</span></td>'
+      +'<td class="money" style="color:'+(e.type==='investment'?'#8b5cf6':'var(--red)')+';">'+e.amount+' LE</td>'
       +'<td><span class="badge '+(ePaid==='cash'?'badge-green':'badge-blue')+'">'+ePaid+'</span></td>'
       +'<td style="font-size:12px;color:var(--text3);">'+eNote+'</td>'
       +'<td><button class="btn btn-danger btn-sm" onclick="deleteExpense('+e.id+')">Del</button></td></tr>';
@@ -5711,6 +5804,7 @@ function printMonthlyReport(){
   var mc=clients.filter(function(c){return c.date&&c.date.startsWith(month);});
   var md=loadData('drinkOrders',[]).filter(function(o){return o.date&&o.date.startsWith(month);});
   var me=loadData('expenses',[]).filter(function(e){return e.date&&e.date.startsWith(month);});
+  var meInv=me.filter(function(e){return e.type==='investment';});me=me.filter(function(e){return e.type!=='investment';});
   var msp=loadData('shiftPayments',[]).filter(function(s){return s.date&&s.date.startsWith(month)&&s.academyPayments>0;});
   var roomRev=mc.reduce(function(s,c){return s+(c.cost||0);},0);
   var drkRev=md.reduce(function(s,o){return s+(o.total||0);},0);
@@ -5744,6 +5838,7 @@ function printMonthlyReport(){
     +'<div class="print-row"><span>Visa Collected</span><span>'+totalVisa+' LE</span></div>'
     +(totalExp>0?'<div class="print-row" style="color:#c0392b;"><span>Total Expenses</span><span>- '+totalExp+' LE</span></div>':'')
     +'<div class="print-row bold" style="font-size:16px;border-top:2px solid #333;padding-top:8px;margin-top:4px;"><span>NET REVENUE</span><span>'+(roomRev+drkRev+acRev-totalExp)+' LE</span></div>'
+    +vaultReportLines(month,meInv)
     +'<hr class="print-divider">'
     +'<div class="print-section-title">Clients by Room</div>'
     +'<table class="print-table"><thead><tr><th>Room</th><th>Clients</th><th>Revenue</th></tr></thead><tbody>'
@@ -5760,6 +5855,7 @@ function printMonthlyReport(){
       +'<table class="print-table"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Paid From</th></tr></thead><tbody>'
       +me.map(function(e){var d=e.desc||e.description||'-';var p=e.paidFrom||e.paid_from||e.payment||'-';return '<tr><td>'+formatDate(e.date)+'</td><td>'+d+'</td><td>'+(e.category||'-')+'</td><td>'+e.amount+' LE</td><td>'+p+'</td></tr>';}).join('')
       +'</tbody></table>':'')
+    +vaultReportInvTable(meInv)
     +'<div class="print-footer">Space-Co Management System — Monthly Report</div>';
   window.print();
 }
@@ -9338,7 +9434,7 @@ function updateBinBadge(){
   purgeExpiredBinItems();
   var badge=document.getElementById('bin-badge');
   if(!badge)return;
-  var count=recycleBin.length;
+  var count=recycleBin.filter(function(i){return isAdmin||i.type!=='investment';}).length;
   if(count>0){badge.style.display='inline';badge.textContent=count>99?'99+':count;}
   else{badge.style.display='none';}
 }
@@ -9430,13 +9526,14 @@ function renderRecycleBin(){
   updateBinBadge();
 
   var filterType=document.getElementById('bin-filter-type')?document.getElementById('bin-filter-type').value:'all';
-  var filtered=filterType==='all'?recycleBin:recycleBin.filter(function(i){return i.type===filterType;});
+  var _binVis=function(i){return isAdmin||i.type!=='investment';};
+  var filtered=(filterType==='all'?recycleBin:recycleBin.filter(function(i){return i.type===filterType;})).filter(_binVis);
 
   // Stats
   var statClients=recycleBin.filter(function(i){return i.type==='client';}).length;
   var statVisits=recycleBin.filter(function(i){return i.type==='visit'||i.type==='drink_order';}).length;
-  var statOther=recycleBin.filter(function(i){return i.type!=='client'&&i.type!=='visit'&&i.type!=='drink_order';}).length;
-  var statEl=document.getElementById('bin-stat-total');if(statEl)statEl.textContent=recycleBin.length;
+  var statOther=recycleBin.filter(function(i){return i.type!=='client'&&i.type!=='visit'&&i.type!=='drink_order'&&_binVis(i);}).length;
+  var statEl=document.getElementById('bin-stat-total');if(statEl)statEl.textContent=recycleBin.filter(_binVis).length;
   var scEl=document.getElementById('bin-stat-clients');if(scEl)scEl.textContent=statClients;
   var svEl=document.getElementById('bin-stat-visits');if(svEl)svEl.textContent=statVisits;
   var soEl=document.getElementById('bin-stat-other');if(soEl)soEl.textContent=statOther;
@@ -11488,7 +11585,7 @@ refreshDashboard=function(){
   var _visaMonth=_monthClients.reduce(function(s,c){return s+(c.visa||0);},0)
     +_monthDrinks.filter(function(o){return o.payment==='visa';}).reduce(function(s,o){return s+(o.total||0);},0)
     +_acVisaMonth;
-  var _expMonth=loadData('expenses',[]).filter(function(e){return (e.date||'').startsWith(ms);}).reduce(function(s,e){return s+(e.amount||0);},0);
+  var _expMonth=loadData('expenses',[]).filter(function(e){return (e.date||'').startsWith(ms)&&e.type!=='investment';}).reduce(function(s,e){return s+(e.amount||0);},0);
   var _netMonth=(_roomRevMonth+_drkRevMonth+_acRevMonth)-_expMonth;
   var _mEl=document.getElementById('dash-month-rev');
   if(_mEl){
@@ -11893,7 +11990,7 @@ function rpMetrics(from,to){
   var drk=loadData('drinkOrders',[]).filter(function(o){return rpIn(o.date,from,to);});
   var acc=loadData('shiftPayments',[]).filter(function(x){return (x.academyPayments||0)>0&&rpIn(x.date,from,to);});
   var exp=loadData('expenses',[]).filter(function(e){return rpIn(e.date,from,to);});
-  var m={from:from,to:to,visits:vis,days:{},methods:{cash:0,instapay:0,visa:0,other:0},spaces:{},rooms:0,drinks:0,academy:0,expenses:0};
+  var m={from:from,to:to,visits:vis,days:{},methods:{cash:0,instapay:0,visa:0,other:0},spaces:{},rooms:0,drinks:0,academy:0,expenses:0,investments:0};
   var day=function(ds){return m.days[ds]||(m.days[ds]={rooms:0,drinks:0,academy:0,total:0});};
   vis.forEach(function(c){
     var v=c.cost||0;day(c.date).rooms+=v;m.rooms+=v;m.spaces[c.room||'Other']=(m.spaces[c.room||'Other']||0)+v;
@@ -11907,7 +12004,7 @@ function rpMetrics(from,to){
     var v=x.academyPayments||0;day(x.date).academy+=v;m.academy+=v;
     m.methods.cash+=x.cash||0;m.methods.instapay+=x.instapay||0;m.methods.visa+=x.visa||0;m.methods.other+=x.other||0;
   });
-  exp.forEach(function(e){m.expenses+=e.amount||0;});
+  exp.forEach(function(e){if(e.type==='investment')m.investments+=e.amount||0;else m.expenses+=e.amount||0;});
   Object.keys(m.days).forEach(function(k){var d=m.days[k];d.total=d.rooms+d.drinks+d.academy;});
   m.revenue=m.rooms+m.drinks+m.academy;
   m.net=m.revenue-m.expenses;
@@ -11975,7 +12072,7 @@ function renderReports(){
   document.getElementById('rp-range-label').textContent=rpFmtD(r.from)+' – '+rpFmtD(r.to)+'  ·  compared with '+rpFmtD(r.prevFrom)+' – '+rpFmtD(r.prevTo);
   var card=function(label,val,dl,sub){return '<div class="stat"><div class="stat-label">'+label+'</div><div class="stat-value">'+val+'</div><div class="rp-delta '+dl.cls+'">'+dl.txt+'</div>'+(sub?'<div class="stat-sub">'+sub+'</div>':'')+'</div>';};
   el.innerHTML=
-    card('Total revenue',rpMoney(cur.revenue),rpDelta(cur.revenue,prev.revenue,true),'Net after expenses: '+rpMoney(cur.net))
+    card('Total revenue',rpMoney(cur.revenue),rpDelta(cur.revenue,prev.revenue,true),'Net after expenses: '+rpMoney(cur.net)+(cur.investments?' · Investments (not in the net): '+rpMoney(cur.investments):''))
    +card('Visits',cur.visits.length,rpDelta(cur.visits.length,prev.visits.length,true),cur.uniqueClients+' different clients')
    +card('Average session',rpHM(cur.avgHours),rpDelta(cur.avgHours,prev.avgHours,true),'per visit')
    +card('Returning clients',cur.returningPct===null?'—':cur.returningPct+'%',rpDelta(cur.returningPct,prev.returningPct,true,true),cur.returning+' of '+cur.uniqueClients+' had been before')
@@ -12047,8 +12144,10 @@ function rpSheets(){
     ['  Rooms (LE)',cur.rooms,prev.rooms,pct(cur.rooms,prev.rooms)],
     ['  Drinks & snacks (LE)',cur.drinks,prev.drinks,pct(cur.drinks,prev.drinks)],
     ['  Academies, packages & lockers (LE)',cur.academy,prev.academy,pct(cur.academy,prev.academy)],
-    ['Expenses (LE)',cur.expenses,prev.expenses,pct(cur.expenses,prev.expenses)],
-    ['Net (LE)',cur.net,prev.net,pct(cur.net,prev.net)],
+    ['Normal expenses (LE)',cur.expenses,prev.expenses,pct(cur.expenses,prev.expenses)],
+    ['Investments (LE, not in the net)',cur.investments,prev.investments,pct(cur.investments,prev.investments)],
+    ['Net profit = revenue - normal expenses (LE)',cur.net,prev.net,pct(cur.net,prev.net)],
+    ['Total balance at the end of the period (LE)',vaultBalanceText(r.to),'',''],
     ['Visits',cur.visits.length,prev.visits.length,pct(cur.visits.length,prev.visits.length)],
     ['Different clients',cur.uniqueClients,prev.uniqueClients,pct(cur.uniqueClients,prev.uniqueClients)],
     ['Average session (hours)',Math.round(cur.avgHours*100)/100,Math.round(prev.avgHours*100)/100,pct(cur.avgHours,prev.avgHours)],
@@ -12351,7 +12450,7 @@ deleteExpense=function(id){var e=loadData('expenses',[]).find(function(x){return
 var _removeStaffAud=removeStaffMember;
 removeStaffMember=function(i){var st=staff[i];_removeStaffAud(i);if(st)auditOnConfirm('staff_changed','Removed '+st.name+' from the cashier list');};
 var _saveExpenseAud=saveExpense;
-saveExpense=function(){var n0=loadData('expenses',[]).length,amount=document.getElementById('exp-amount').value,desc=document.getElementById('exp-desc').value;_saveExpenseAud();if(loadData('expenses',[]).length>n0)auditLog('expense_added','Expense "'+desc+'" — '+amount+' LE');};
+saveExpense=function(){var n0=loadData('expenses',[]).length,amount=document.getElementById('exp-amount').value,desc=document.getElementById('exp-desc').value;_saveExpenseAud();if(loadData('expenses',[]).length>n0&&!window._vaultInv)auditLog('expense_added','Expense "'+desc+'" — '+amount+' LE');};
 var _addShiftAud=addShiftPayment;
 addShiftPayment=function(){var n0=shiftPayments.length;_addShiftAud();if(shiftPayments.length>n0){var s=shiftPayments[shiftPayments.length-1];auditLog('shift_payment','Entered a payment line for '+s.cashier+' ('+s.date+'): rooms '+(s.rooms||0)+', instapay '+(s.instapay||0)+', visa '+(s.visa||0)+', other '+(s.other||0)+' = '+(s.total||0)+' LE');}};
 var _markNoShowAud=markReservationNoShow;
@@ -12801,6 +12900,450 @@ renderReservations=function(){
 };
 setInterval(function(){try{var pg=document.getElementById('page-reservations');if(pg&&pg.classList.contains('active')&&!_rvDrag)rvNowLine();}catch(e){}},60000);
 
+
+// ============================================================
+// SPACECO VAULT — the financial command center (administrators only)
+//   Accounting period starts 01/12/2026. Total Balance = Opening balance + revenue since the start
+//   - normal expenses since the start - investments since the start.
+//   Revenue is exactly the Monthly Report's Total Revenue: rooms + drinks & snacks + academy/package/locker payments.
+//   One engine (vaultIncome / vaultExpenses / vaultSummary / vaultBalance) feeds every screen, report and export.
+// ============================================================
+var VAULT_START='2026-12-01';
+var VAULT_INV_CATS=['Furniture','Equipment','Renovations','Technology','Infrastructure','Other'];
+var VAULT_NORMAL_CATS=['Rent','Utilities','Supplies','Maintenance','Salaries','Marketing','Food & Drinks Stock','Other'];
+var VAULT_METHODS={cash:'Cash',instapay:'Instapay',visa:'Visa',other:'Other',bank:'Bank / savings'};
+var _vaultTab='overview';
+
+function vaultGuard(quiet){
+  if(isAdmin)return true;
+  if(!quiet)showToast('SPACECO VAULT is for administrators only',true);
+  return false;
+}
+function vaultIsInv(e){return !!e&&e.type==='investment';}
+function vaultMoney(n){var v=Math.round((+n||0)*100)/100;return v.toLocaleString(undefined,{maximumFractionDigits:2})+' LE';}
+function vaultFmtDate(ds){return ds?formatDate(ds):'-';}
+function vaultWho(){return currentStaffName||(isAdmin?'Admin':'-');}
+
+// ── configuration (opening balance) ──
+function vaultCfg(){
+  var c=loadData('vaultConfig',null);c=(c&&typeof c==='object')?c:{};
+  return {opening:(typeof c.opening==='number'&&isFinite(c.opening))?c.opening:null,effective:c.effective||VAULT_START,setBy:c.setBy||'',setAt:c.setAt||'',history:Array.isArray(c.history)?c.history:[]};
+}
+
+// ── the engine ──
+function vaultMethodOf(o){
+  var ks=['cash','instapay','visa','other'].filter(function(k){return (o[k]||0)>0;});
+  return ks.length===1?VAULT_METHODS[ks[0]]:(ks.length>1?'Mixed':'');
+}
+function vaultIncome(from,to){
+  var out=[];
+  loadData('clients',[]).forEach(function(c){
+    if(!rpIn(c.date,from,to)||!(c.cost>0))return;
+    out.push({date:c.date,desc:(c.name||'Client')+' — '+(c.room||'room'),category:'Rooms',amount:c.cost,method:vaultMethodOf(c),ref:'visit #'+c.id,source:'visit'});
+  });
+  loadData('drinkOrders',[]).forEach(function(o){
+    if(!rpIn(o.date,from,to)||!(o.total>0))return;
+    out.push({date:o.date,desc:(o.client||'Walk-in')+' — drinks & snacks',category:'Drinks & snacks',amount:o.total,method:VAULT_METHODS[o.payment]||'',ref:'drinks #'+o.id,source:'drinks'});
+  });
+  loadData('shiftPayments',[]).forEach(function(x){
+    if(!rpIn(x.date,from,to)||!((x.academyPayments||0)>0))return;
+    var note=x.note||'',cat=/^Locker /i.test(note)?'Lockers':(/Shared Space/i.test(note)?'Shared-space packages':(/package payment/i.test(note)?'Academy packages':'Academy & package payments'));
+    out.push({date:x.date,desc:note||'Academy / package payment',category:cat,amount:x.academyPayments,method:vaultMethodOf(x),ref:'payment #'+x.id,source:'shift'});
+  });
+  return out.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+}
+function vaultExpenses(from,to){
+  return loadData('expenses',[]).filter(function(e){return rpIn(e.date,from,to);}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+}
+function vaultSummary(from,to){
+  var inc=vaultIncome(from,to),ex=vaultExpenses(from,to),r={from:from,to:to,income:inc,revenue:0,normal:0,investments:0,revByCat:{},normalByCat:{},invByCat:{},normalList:[],invList:[]};
+  inc.forEach(function(i){r.revenue+=i.amount;r.revByCat[i.category]=(r.revByCat[i.category]||0)+i.amount;});
+  ex.forEach(function(e){
+    var a=e.amount||0,cat=e.category||'Other';
+    if(vaultIsInv(e)){r.investments+=a;r.invByCat[cat]=(r.invByCat[cat]||0)+a;r.invList.push(e);}
+    else{r.normal+=a;r.normalByCat[cat]=(r.normalByCat[cat]||0)+a;r.normalList.push(e);}
+  });
+  r.net=r.revenue-r.normal;
+  return r;
+}
+// balance at the end of `asOf` (default today); null when the opening balance has not been set
+function vaultBalance(asOf){
+  var cfg=vaultCfg();asOf=asOf||today();
+  if(cfg.opening===null)return null;
+  var started=asOf>=cfg.effective,s=started?vaultSummary(cfg.effective,asOf):{revenue:0,normal:0,investments:0};
+  return {opening:cfg.opening,effective:cfg.effective,asOf:asOf,started:started,revenue:s.revenue,normal:s.normal,investments:s.investments,balance:cfg.opening+s.revenue-s.normal-s.investments};
+}
+function vaultBalanceText(asOf){var b=vaultBalance(asOf);return b===null?'Opening balance not set':(b.started?b.balance:'Accounting starts '+vaultFmtDate(vaultCfg().effective));}
+
+// ── audit (uses the Activity Log store) ──
+function vaultAudit(action,detail,meta){return auditLog(action,detail,meta);}
+AUDIT_LABELS.vault_opening_set='Vault: opening balance';AUDIT_LABELS.vault_investment_added='Vault: investment added';AUDIT_LABELS.vault_investment_edited='Vault: investment edited';
+AUDIT_LABELS.vault_investment_deleted='Vault: investment deleted';AUDIT_LABELS.vault_investment_restored='Vault: investment restored';
+
+// ── expense type in the Add Expense window ──
+function expTypeChanged(){
+  var t=(document.getElementById('exp-type')||{}).value,sel=document.getElementById('exp-cat');if(!sel)return;
+  var list=t==='investment'?VAULT_INV_CATS:VAULT_NORMAL_CATS;
+  sel.innerHTML=list.map(function(c){return '<option>'+rpEsc(c)+'</option>';}).join('');
+}
+var _openModalVault=openModal;
+openModal=function(id){
+  _openModalVault(id);
+  if(id==='add-expense-modal'&&!window._vaultOpeningInv){var t=document.getElementById('exp-type');if(t){t.value='normal';expTypeChanged();}}
+};
+function openAddInvestment(){
+  if(!vaultGuard())return;
+  window._vaultOpeningInv=true;openModal('add-expense-modal');window._vaultOpeningInv=false;
+  document.getElementById('exp-type').value='investment';expTypeChanged();
+}
+var _saveExpenseVault=saveExpense;
+saveExpense=function(){
+  var te=document.getElementById('exp-type'),type=(te&&isAdmin)?te.value:'normal';
+  if(type==='investment'&&!vaultGuard())return;
+  var n0=loadData('expenses',[]).length;
+  window._vaultInv=(type==='investment');
+  try{_saveExpenseVault();}finally{window._vaultInv=false;}
+  var list=loadData('expenses',[]);
+  if(list.length>n0){
+    var e=list[list.length-1];e.type=type==='investment'?'investment':'normal';e.createdBy=vaultWho();e.createdAt=new Date().toISOString();
+    saveData('expenses',list);expenses=list;
+    if(e.type==='investment')vaultAudit('vault_investment_added','Investment "'+e.desc+'" — '+vaultMoney(e.amount)+' ('+e.category+') on '+e.date,{record:e.id,amount:e.amount,date:e.date,next:{desc:e.desc,category:e.category,paidFrom:e.paidFrom}});
+    try{renderExpenses();}catch(x){}
+    if(isAdmin&&document.getElementById('page-vault').classList.contains('active'))renderVault();
+  }
+};
+var _deleteExpenseVault=deleteExpense;
+deleteExpense=function(id){
+  var e=loadData('expenses',[]).find(function(x){return x.id===id;});
+  if(e&&vaultIsInv(e)){vaultDeleteInvestment(id);return;}
+  _deleteExpenseVault(id);
+};
+
+// ── investments: edit, delete (to the Recycle Bin), restore ──
+var _viEditId=null;
+function vaultOpenInvEdit(id){
+  if(!vaultGuard())return;
+  var e=loadData('expenses',[]).find(function(x){return x.id===id&&vaultIsInv(x);});if(!e)return;
+  _viEditId=id;
+  document.getElementById('vi-cat').innerHTML=VAULT_INV_CATS.map(function(c){return '<option'+(c===e.category?' selected':'')+'>'+rpEsc(c)+'</option>';}).join('');
+  document.getElementById('vi-desc').value=e.desc||'';document.getElementById('vi-amount').value=e.amount;document.getElementById('vi-date').value=e.date;
+  document.getElementById('vi-pay').value=e.paidFrom||'bank';document.getElementById('vi-note').value=e.note||'';document.getElementById('vi-warn').style.display='none';
+  openModal('vault-inv-modal');
+}
+function vaultSaveInvEdit(){
+  if(!vaultGuard())return;
+  var list=loadData('expenses',[]),e=list.find(function(x){return x.id===_viEditId&&vaultIsInv(x);}),w=document.getElementById('vi-warn');if(!e)return;
+  var bad=function(m){w.textContent=m;w.style.display='block';};
+  var desc=document.getElementById('vi-desc').value.trim(),amt=parseFloat(document.getElementById('vi-amount').value),date=document.getElementById('vi-date').value;
+  if(!desc)return bad('Please type a description.');if(!isFinite(amt)||amt<=0)return bad('Please type an amount above 0.');if(!date)return bad('Please choose the date.');
+  var prev={desc:e.desc,amount:e.amount,date:e.date,category:e.category,paidFrom:e.paidFrom,note:e.note};
+  e.desc=desc;e.amount=amt;e.date=date;e.category=document.getElementById('vi-cat').value;e.paidFrom=document.getElementById('vi-pay').value;e.note=document.getElementById('vi-note').value.trim();
+  e.modifiedBy=vaultWho();e.modifiedAt=new Date().toISOString();
+  saveData('expenses',list);expenses=list;closeModal('vault-inv-modal');
+  vaultAudit('vault_investment_edited','Edited investment "'+desc+'": '+vaultMoney(prev.amount)+' → '+vaultMoney(amt)+(prev.date!==date?', date '+prev.date+' → '+date:''),{record:e.id,amount:amt,date:date,prev:prev,next:{desc:e.desc,amount:e.amount,date:e.date,category:e.category,paidFrom:e.paidFrom,note:e.note}});
+  renderVault();showToast('Investment updated ✓');
+}
+function vaultDeleteInvestment(id){
+  if(!vaultGuard())return;
+  var e=loadData('expenses',[]).find(function(x){return x.id===id&&vaultIsInv(x);});if(!e)return;
+  var m=document.getElementById('confirm-modal-msg');if(m)m.textContent='Delete the investment "'+(e.desc||'')+'" ('+vaultMoney(e.amount)+')? It moves to the Recycle Bin and can be restored.';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    if(!vaultGuard())return;
+    var list=loadData('expenses',[]).filter(function(x){return x.id!==id;});
+    recycleBin=loadData('recycleBin',[]);
+    recycleBin.push({binId:'bin_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),type:'investment',deletedAt:new Date().toISOString(),data:e});
+    saveData('expenses',list);expenses=list;saveData('recycleBin',recycleBin);updateBinBadge();closeModal('confirm-modal');
+    vaultAudit('vault_investment_deleted','Deleted investment "'+(e.desc||'')+'" — '+vaultMoney(e.amount)+' ('+e.date+'), moved to the Recycle Bin',{record:e.id,amount:e.amount,date:e.date,prev:{desc:e.desc,category:e.category}});
+    try{renderExpenses();}catch(x){}
+    renderVault();showToast('Investment moved to the Recycle Bin');
+  };
+  openModal('confirm-modal');
+}
+var _binTypeLabelVault=binTypeLabel;binTypeLabel=function(t){return t==='investment'?'🏦 Investment':_binTypeLabelVault(t);};
+var _binSummaryVault=binItemSummary;binItemSummary=function(i){return i.type==='investment'?((i.data.desc||'Investment')+' · '+formatDate(i.data.date)):_binSummaryVault(i);};
+var _binDetailsVault=binItemDetails;binItemDetails=function(i){return i.type==='investment'?(vaultMoney(i.data.amount)+' · '+(i.data.category||'')):_binDetailsVault(i);};
+var _performRestoreVault=performRestore;
+performRestore=function(item){
+  if(item.type!=='investment')return _performRestoreVault(item);
+  if(!vaultGuard())return;
+  var list=loadData('expenses',[]);
+  if(!list.some(function(x){return x.id===item.data.id;})){list.push(item.data);saveData('expenses',list);expenses=list;}
+  vaultAudit('vault_investment_restored','Restored investment "'+(item.data.desc||'')+'" — '+vaultMoney(item.data.amount)+' ('+item.data.date+')',{record:item.data.id,amount:item.data.amount,date:item.data.date});
+  try{renderExpenses();}catch(x){}
+  if(document.getElementById('page-vault').classList.contains('active'))renderVault();
+};
+var _restoreBinItemVault=restoreBinItem;
+restoreBinItem=function(binId){
+  var it=loadData('recycleBin',[]).find(function(i){return i.binId===binId;});
+  if(it&&it.type==='investment'&&!vaultGuard())return;
+  _restoreBinItemVault(binId);
+};
+
+// ── Monthly Report print additions (administrators only; cashiers see no investments and no balance) ──
+function vaultReportLines(month,invList){
+  if(!isAdmin)return '';
+  var inv=invList.reduce(function(s,e){return s+(e.amount||0);},0),h='';
+  if(inv>0)h+='<div class="print-row" style="color:#6d28d9;"><span>Investments this month (paid from the total balance — not in the net above)</span><span>- '+vaultMoney(inv)+'</span></div>';
+  var end=month+'-31',cfg=vaultCfg(),last=(function(){var d=rpDate(month+'-01');d.setMonth(d.getMonth()+1);d.setDate(0);return rpStr(d);})();
+  var b=vaultBalance(last<today()?last:today());
+  h+='<div class="print-row bold"><span>TOTAL BALANCE '+(b&&b.started?'at the end of '+vaultFmtDate(b.asOf):'')+'</span><span>'+(b===null?'Opening balance not set':(b.started?vaultMoney(b.balance):'Accounting starts '+vaultFmtDate(cfg.effective)))+'</span></div>';
+  return h;
+}
+function vaultReportInvTable(invList){
+  if(!isAdmin||!invList.length)return '';
+  return '<hr class="print-divider"><div class="print-section-title">Investments</div><table class="print-table"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Paid From</th></tr></thead><tbody>'
+    +invList.map(function(e){return '<tr><td>'+formatDate(e.date)+'</td><td>'+rpEsc(e.desc||'-')+'</td><td>'+rpEsc(e.category||'-')+'</td><td>'+vaultMoney(e.amount)+'</td><td>'+rpEsc(VAULT_METHODS[e.paidFrom]||e.paidFrom||'-')+'</td></tr>';}).join('')+'</tbody></table>';
+}
+
+// ── the screens ──
+function vaultOpenFromAdmin(){
+  if(!vaultGuard())return;
+  closeModal('admin-panel-modal');
+  showPage('vault',document.querySelector('.nav-item[data-page="vault"]'));
+}
+function renderVault(){
+  var denied=document.getElementById('vault-denied'),body=document.getElementById('vault-body');if(!body)return;
+  if(!vaultGuard(true)){denied.style.display='block';body.style.display='none';document.getElementById('vault-hero-balance').innerHTML='';
+    ['overview','income','expenses','investments','reports','audit'].forEach(function(t){var e=document.getElementById('vtab-'+t);if(e)e.innerHTML='';});return;}
+  denied.style.display='none';body.style.display='';
+  vaultHero();vaultTab(_vaultTab,true);
+}
+function vaultHero(){
+  var el=document.getElementById('vault-hero-balance'),b=vaultBalance(),cfg=vaultCfg();
+  if(b===null){el.innerHTML='<div class="lbl">TOTAL BALANCE</div><div class="num unset" id="vault-hero-num">Opening balance not set</div><div class="sub">Set it in Overview to start the accounts</div>';return;}
+  el.innerHTML='<div class="lbl">TOTAL BALANCE'+(b.started?' · as of '+vaultFmtDate(b.asOf):'')+'</div><div class="num '+(b.balance<0?'neg':'pos')+'" id="vault-hero-num" data-v="'+b.balance+'">'+vaultMoney(b.balance)+'</div><div class="sub">'+(b.started?'Accounting since '+vaultFmtDate(cfg.effective):'Accounting starts on '+vaultFmtDate(cfg.effective))+'</div>';
+}
+function vaultTab(name,quiet){
+  if(!vaultGuard(quiet))return;
+  _vaultTab=name;
+  vaultHero();   // the balance at the top is recalculated whenever a tab is shown
+  document.querySelectorAll('#vault-tabs button').forEach(function(b){b.classList.toggle('active',b.dataset.vtab===name);});
+  document.querySelectorAll('.vtab').forEach(function(t){t.style.display=(t.id==='vtab-'+name)?'':'none';});
+  ({overview:vaultRenderOverview,income:vaultRenderIncome,expenses:vaultRenderExpenses,investments:vaultRenderInvestments,reports:vaultRenderReports,audit:vaultRenderAudit})[name]();
+}
+function vaultStat(label,val,color,sub,id){return '<div class="stat"><div class="stat-label">'+label+'</div><div class="stat-value money" '+(id?'id="'+id+'" data-v="'+val+'"':'')+' style="color:'+color+';">'+vaultMoney(val)+'</div>'+(sub?'<div class="stat-sub">'+sub+'</div>':'')+'</div>';}
+
+function vaultRenderOverview(){
+  var el=document.getElementById('vtab-overview'),cfg=vaultCfg(),b=vaultBalance(),t=today(),ms=t.slice(0,8)+'01';
+  var last=(function(){var d=rpDate(ms);d.setMonth(d.getMonth()+1);d.setDate(0);return rpStr(d);})();
+  var mon=vaultSummary(ms,last),pre=ms<cfg.effective;
+  var h='';
+  if(b===null)h+='<div class="vault-warn" id="vault-setup-warning"><strong>Setup needed:</strong> the opening balance has not been set. Enter the money SpaceCo actually has at the start of '+vaultFmtDate(cfg.effective)+' in the box below; until then no balance can be shown.</div>';
+  else if(!b.started)h+='<div class="vault-warn">The accounting period starts on <strong>'+vaultFmtDate(cfg.effective)+'</strong>. Until then the balance equals the opening balance and nothing recorded earlier is counted.</div>';
+  if(b&&b.balance<0)h+='<div class="vault-neg" id="vault-negative-warning">⚠ The Total Balance is negative ('+vaultMoney(b.balance)+'). Spending is higher than the money available.</div>';
+  var rev=b?b.revenue:0,nor=b?b.normal:0,inv=b?b.investments:0;
+  h+='<div class="vault-grid">'
+    +vaultStat('Opening balance',b?b.opening:0,'var(--text)',b?'on '+vaultFmtDate(cfg.effective):'not set','vault-opening')
+    +vaultStat('Revenue to date',rev,'var(--green)','since '+vaultFmtDate(cfg.effective),'vault-revenue')
+    +vaultStat('Normal expenses to date',nor,'var(--red)','since '+vaultFmtDate(cfg.effective),'vault-normal')
+    +vaultStat('Investments to date',inv,'#8b5cf6','since '+vaultFmtDate(cfg.effective),'vault-invest')
+    +'</div>';
+  h+='<div class="card mb-16"><div class="card-title">Where the balance comes from</div>';
+  var bal=b?b.balance:0,mx=Math.max(1,Math.abs(b?b.opening:0),rev,nor,inv,Math.abs(bal));
+  var row=function(label,val,color,sign,cls){return '<div class="vwf '+(cls||'')+'"><div>'+label+'</div><div class="vtrack"><div class="vfill" style="width:'+Math.max(1,Math.round(Math.abs(val)/mx*100))+'%;background:'+color+';"></div></div><div class="vval" style="color:'+color+';">'+sign+vaultMoney(Math.abs(val))+'</div></div>';};
+  h+=row('Opening balance',b?b.opening:0,'var(--text2)','')+row('+ Revenue',rev,'var(--green)','+ ')+row('− Normal expenses',nor,'var(--red)','− ')+row('− Investments',inv,'#8b5cf6','− ')+row('= Total balance',bal,bal<0?'var(--red)':'var(--green)',bal<0?'− ':'','total');
+  h+='</div>';
+  h+='<div class="card-title" style="margin:6px 2px 10px;">This month'+(pre?' <span style="font-weight:400;color:var(--text3);font-size:12px;">(before the accounting start — shown for information, not in the balance)</span>':'')+'</div>';
+  h+='<div class="vault-grid">'
+    +vaultStat('Current month revenue',mon.revenue,'var(--green)','','vault-m-revenue')
+    +vaultStat('Current month normal expenses',mon.normal,'var(--red)','','vault-m-normal')
+    +vaultStat('Current month net profit',mon.net,mon.net>=0?'var(--green)':'var(--red)','revenue − normal expenses','vault-m-net')
+    +vaultStat('Investments this month',mon.investments,'#8b5cf6','not in the net profit','vault-m-invest')
+    +'</div>';
+  h+='<div class="grid-2" style="gap:16px;">'
+    +'<div class="card"><div class="card-title">🧮 Purchase calculator</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px;">See what is left after a planned purchase. Nothing is saved.</div>'
+    +'<div class="form-group"><label>Planned purchase (LE)</label><input type="number" id="vault-calc-amt" min="0" step="1" oninput="vaultCalc()" placeholder="e.g. 200000"></div><div id="vault-calc-out" style="font-size:14px;"></div></div>'
+    +'<div class="card"><div class="card-title">⚙ Opening balance</div>'
+    +'<div class="form-row" style="grid-template-columns:1fr 1fr;"><div class="form-group"><label>Opening balance (LE)</label><input type="number" id="vault-open-amt" step="1" value="'+(cfg.opening===null?'':cfg.opening)+'"></div>'
+    +'<div class="form-group"><label>Effective date</label><input type="date" id="vault-open-date" value="'+cfg.effective+'"></div></div>'
+    +'<button class="btn btn-primary btn-sm" onclick="vaultSaveOpening()">'+(cfg.opening===null?'Save opening balance':'Update opening balance')+'</button>'
+    +(cfg.setAt?'<div style="font-size:11px;color:var(--text3);margin-top:8px;">Last set by '+rpEsc(cfg.setBy)+' on '+new Date(cfg.setAt).toLocaleString()+'</div>':'')
+    +'<div id="vault-open-warn" class="lk-warn" style="margin-top:8px;"></div>'
+    +(cfg.history.length?'<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--text2);">History</div>'+cfg.history.slice().reverse().map(function(x){return '<div style="font-size:12px;color:var(--text3);padding:3px 0;border-bottom:1px solid var(--border);">'+new Date(x.at).toLocaleDateString()+' · '+rpEsc(x.by)+' · '+(x.prevAmount===null?'first set':vaultMoney(x.prevAmount)+' → ')+(x.prevAmount===null?'':'')+vaultMoney(x.newAmount)+' · from '+vaultFmtDate(x.newEffective)+'</div>';}).join(''):'')
+    +'</div></div>';
+  el.innerHTML=h;vaultCalc();
+}
+function vaultCalc(){
+  if(!vaultGuard(true))return;
+  var out=document.getElementById('vault-calc-out'),inp=document.getElementById('vault-calc-amt');if(!out||!inp)return;
+  var amt=parseFloat(inp.value),b=vaultBalance();
+  if(!isFinite(amt)||amt<=0){out.innerHTML='';return;}
+  if(b===null){out.innerHTML='<span style="color:var(--amber);">Set the opening balance first.</span>';return;}
+  var rem=b.balance-amt;
+  out.innerHTML='Balance now: <strong>'+vaultMoney(b.balance)+'</strong><br>After this purchase: <strong id="vault-calc-after" data-v="'+rem+'" style="color:'+(rem<0?'var(--red)':'var(--green)')+';">'+vaultMoney(rem)+'</strong>'+(rem<0?'<div class="vault-neg" style="margin:8px 0 0;">⚠ There is not enough in the balance for this purchase.</div>':'');
+}
+function vaultSaveOpening(){
+  if(!vaultGuard())return;
+  var w=document.getElementById('vault-open-warn'),amt=parseFloat(document.getElementById('vault-open-amt').value),date=document.getElementById('vault-open-date').value;
+  var bad=function(m){w.textContent=m;w.style.display='block';};
+  if(!isFinite(amt))return bad('Type the opening balance (a number).');if(!date)return bad('Choose the effective date.');
+  var cfg=vaultCfg();
+  if(cfg.opening!==null&&cfg.opening===amt&&cfg.effective===date){return bad('Nothing changed.');}
+  var entry={at:new Date().toISOString(),by:vaultWho(),prevAmount:cfg.opening,prevEffective:cfg.opening===null?null:cfg.effective,newAmount:amt,newEffective:date};
+  var next={opening:amt,effective:date,setBy:entry.by,setAt:entry.at,history:cfg.history.concat([entry])};
+  saveData('vaultConfig',next);
+  vaultAudit('vault_opening_set',(cfg.opening===null?'Opening balance set to ':'Opening balance changed from '+vaultMoney(cfg.opening)+' to ')+vaultMoney(amt)+', effective '+date,{record:'opening balance',amount:amt,date:date,prev:{amount:cfg.opening,effective:cfg.opening===null?null:cfg.effective},next:{amount:amt,effective:date}});
+  renderVault();showToast('Opening balance saved ✓');
+}
+
+// income register — read from the existing records, never entered twice
+function vaultDefaultRange(){var t=today(),cfg=vaultCfg();if(t>=cfg.effective)return {from:cfg.effective,to:t};return {from:t.slice(0,8)+'01',to:t};}
+function vaultRenderIncome(){
+  var el=document.getElementById('vtab-income');
+  if(!document.getElementById('vi-from')){
+    var r=vaultDefaultRange();
+    el.innerHTML='<div class="card"><div class="card-title flex-between"><span>Income register</span><span id="vi-total" style="font-size:14px;"></span></div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Every pound of revenue, taken from the records SpaceCo already keeps (visits, drinks &amp; snacks, academy, package and locker payments). Nothing is typed in twice, so nothing can be counted twice.</div>'
+      +'<div class="vault-filters"><input type="date" id="vi-from" value="'+r.from+'" onchange="vaultRenderIncome()"> to <input type="date" id="vi-to" value="'+r.to+'" onchange="vaultRenderIncome()">'
+      +'<select id="vi-catf" onchange="vaultRenderIncome()"><option value="">All categories</option></select><select id="vi-methf" onchange="vaultRenderIncome()"><option value="">All payment methods</option></select></div>'
+      +'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Payment</th><th>Source</th></tr></thead><tbody id="vi-tbody"></tbody></table></div></div>';
+  }
+  var from=document.getElementById('vi-from').value,to=document.getElementById('vi-to').value,all=vaultIncome(from,to);
+  var cs=document.getElementById('vi-catf'),ms=document.getElementById('vi-methf'),cv=cs.value,mv=ms.value;
+  var cats=[],meths=[];all.forEach(function(i){if(cats.indexOf(i.category)===-1)cats.push(i.category);var m=i.method||'—';if(meths.indexOf(m)===-1)meths.push(m);});
+  cs.innerHTML='<option value="">All categories</option>'+cats.map(function(c){return '<option'+(c===cv?' selected':'')+'>'+rpEsc(c)+'</option>';}).join('');
+  ms.innerHTML='<option value="">All payment methods</option>'+meths.map(function(c){return '<option'+(c===mv?' selected':'')+'>'+rpEsc(c)+'</option>';}).join('');
+  var rows=all.filter(function(i){return (!cv||i.category===cv)&&(!mv||(i.method||'—')===mv);}),tot=rows.reduce(function(s,i){return s+i.amount;},0);
+  document.getElementById('vi-total').innerHTML='Total: <strong id="vi-total-v" data-v="'+tot+'">'+vaultMoney(tot)+'</strong> · '+rows.length+' records';
+  document.getElementById('vi-tbody').innerHTML=rows.length?rows.map(function(i){return '<tr><td>'+vaultFmtDate(i.date)+'</td><td>'+rpEsc(i.desc)+'</td><td><span class="badge badge-green">'+rpEsc(i.category)+'</span></td><td class="money" style="color:var(--green);">'+vaultMoney(i.amount)+'</td><td>'+rpEsc(i.method||'—')+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(i.ref)+'</td></tr>';}).join(''):'<tr class="empty-row"><td colspan="6">No income in this range</td></tr>';
+}
+
+// expenses (normal and investments, labelled)
+function vaultRenderExpenses(){
+  var el=document.getElementById('vtab-expenses');
+  if(!document.getElementById('vx-from')){
+    var r=vaultDefaultRange();
+    el.innerHTML='<div class="card"><div class="card-title flex-between"><span>Expenses</span><span><button class="btn btn-outline btn-sm" onclick="openModal(\'add-expense-modal\')">+ Expense</button> <button class="btn btn-primary btn-sm" onclick="openAddInvestment()">+ Investment</button></span></div>'
+      +'<div class="vault-filters"><input type="date" id="vx-from" value="'+r.from+'" onchange="vaultRenderExpenses()"> to <input type="date" id="vx-to" value="'+r.to+'" onchange="vaultRenderExpenses()">'
+      +'<select id="vx-type" onchange="vaultRenderExpenses()"><option value="">All types</option><option value="normal">Normal expenses</option><option value="investment">Investments</option></select>'
+      +'<select id="vx-cat" onchange="vaultRenderExpenses()"><option value="">All categories</option></select></div>'
+      +'<div id="vx-totals" style="font-size:13px;margin-bottom:10px;"></div>'
+      +'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Category</th><th>Amount</th><th>Paid from</th><th>Note</th><th>By</th><th></th></tr></thead><tbody id="vx-tbody"></tbody></table></div></div>';
+  }
+  var from=document.getElementById('vx-from').value,to=document.getElementById('vx-to').value,tf=document.getElementById('vx-type').value,cs=document.getElementById('vx-cat'),cv=cs.value;
+  var all=vaultExpenses(from,to),cats=[];all.forEach(function(e){var c=e.category||'Other';if(cats.indexOf(c)===-1)cats.push(c);});
+  cs.innerHTML='<option value="">All categories</option>'+cats.map(function(c){return '<option'+(c===cv?' selected':'')+'>'+rpEsc(c)+'</option>';}).join('');
+  var rows=all.filter(function(e){return (!tf||(tf==='investment')===vaultIsInv(e))&&(!cv||(e.category||'Other')===cv);});
+  var nT=rows.filter(function(e){return !vaultIsInv(e);}).reduce(function(s,e){return s+(e.amount||0);},0),iT=rows.filter(vaultIsInv).reduce(function(s,e){return s+(e.amount||0);},0);
+  document.getElementById('vx-totals').innerHTML='Normal expenses: <strong id="vx-normal" data-v="'+nT+'" style="color:var(--red);">'+vaultMoney(nT)+'</strong> · Investments: <strong id="vx-inv" data-v="'+iT+'" style="color:#8b5cf6;">'+vaultMoney(iT)+'</strong>';
+  document.getElementById('vx-tbody').innerHTML=rows.length?rows.slice().reverse().map(function(e){
+    var inv=vaultIsInv(e);
+    return '<tr><td>'+vaultFmtDate(e.date)+'</td><td><strong>'+rpEsc(e.desc||e.description||'-')+'</strong></td><td><span class="vault-chip '+(inv?'inv':'norm')+'">'+(inv?'Investment':'Normal')+'</span></td><td>'+rpEsc(e.category||'-')+'</td>'
+      +'<td class="money" style="color:'+(inv?'#8b5cf6':'var(--red)')+';">'+vaultMoney(e.amount)+'</td><td>'+rpEsc(VAULT_METHODS[e.paidFrom]||e.paidFrom||'-')+'</td><td style="font-size:12px;color:var(--text3);">'+rpEsc(e.note||'')+'</td><td style="font-size:12px;">'+rpEsc(e.createdBy||'')+'</td>'
+      +'<td style="white-space:nowrap;">'+(inv?'<button class="btn btn-outline btn-sm" onclick="vaultOpenInvEdit('+e.id+')">Edit</button> ':'')+'<button class="btn btn-danger btn-sm" onclick="deleteExpense('+e.id+')">Del</button></td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="9">No expenses in this range</td></tr>';
+}
+
+// investments history
+function vaultRenderInvestments(){
+  var el=document.getElementById('vtab-investments'),all=loadData('expenses',[]).filter(vaultIsInv).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0;});
+  var tot=all.reduce(function(s,e){return s+(e.amount||0);},0),byCat={};all.forEach(function(e){byCat[e.category||'Other']=(byCat[e.category||'Other']||0)+(e.amount||0);});
+  var h='<div class="card"><div class="card-title flex-between"><span>Investment history</span><button class="btn btn-primary btn-sm" onclick="openAddInvestment()">+ Add investment</button></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">One-off purchases (furniture, equipment, renovations…). They reduce the Total Balance but never the month\'s operating profit.</div>'
+    +'<div style="margin-bottom:12px;font-size:13px;">All investments: <strong id="vinv-total" data-v="'+tot+'" style="color:#8b5cf6;">'+vaultMoney(tot)+'</strong> '+Object.keys(byCat).map(function(c){return '<span class="vault-chip inv" style="margin-left:6px;">'+rpEsc(c)+' '+vaultMoney(byCat[c])+'</span>';}).join('')+'</div>'
+    +'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Payment</th><th>Notes</th><th>Created by</th><th>Created</th><th>Last modified</th><th></th></tr></thead><tbody>'
+    +(all.length?all.map(function(e){return '<tr><td>'+vaultFmtDate(e.date)+'</td><td><strong>'+rpEsc(e.desc||'-')+'</strong></td><td>'+rpEsc(e.category||'-')+'</td><td class="money" style="color:#8b5cf6;">'+vaultMoney(e.amount)+'</td><td>'+rpEsc(VAULT_METHODS[e.paidFrom]||e.paidFrom||'-')+'</td><td style="font-size:12px;color:var(--text3);">'+rpEsc(e.note||'')+'</td>'
+      +'<td>'+rpEsc(e.createdBy||'')+'</td><td style="font-size:11px;">'+(e.createdAt?new Date(e.createdAt).toLocaleString():'')+'</td><td style="font-size:11px;">'+(e.modifiedBy?rpEsc(e.modifiedBy)+'<br>'+new Date(e.modifiedAt).toLocaleString():'—')+'</td>'
+      +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="vaultOpenInvEdit('+e.id+')">Edit</button> <button class="btn btn-danger btn-sm" onclick="vaultDeleteInvestment('+e.id+')">Del</button></td></tr>';}).join(''):'<tr class="empty-row"><td colspan="10">No investments yet</td></tr>')
+    +'</tbody></table></div></div>';
+  el.innerHTML=h;
+}
+
+// reports: month / quarter / year / custom — always revenue, normal expenses, net profit, investments, total balance
+function vaultRepRange(){
+  var ty=(document.getElementById('vr-type')||{}).value||'month',t=today(),from,to,label;
+  if(ty==='month'){var m=document.getElementById('vr-month').value||t.slice(0,7);from=m+'-01';var d=rpDate(from);d.setMonth(d.getMonth()+1);d.setDate(0);to=rpStr(d);label=new Date(from).toLocaleDateString('en-GB',{month:'long',year:'numeric'});}
+  else if(ty==='quarter'){var y=parseInt(document.getElementById('vr-year').value,10)||parseInt(t.slice(0,4),10),q=parseInt(document.getElementById('vr-q').value,10)||1;var sm=(q-1)*3;from=y+'-'+String(sm+1).padStart(2,'0')+'-01';var d2=new Date(y,sm+3,0);to=rpStr(d2);label='Q'+q+' '+y;}
+  else if(ty==='year'){var y2=parseInt(document.getElementById('vr-year').value,10)||parseInt(t.slice(0,4),10);from=y2+'-01-01';to=y2+'-12-31';label='Year '+y2;}
+  else{from=document.getElementById('vr-from').value||t.slice(0,8)+'01';to=document.getElementById('vr-to').value||t;if(from>to){var x=from;from=to;to=x;}label=vaultFmtDate(from)+' – '+vaultFmtDate(to);}
+  return {type:ty,from:from,to:to,label:label};
+}
+function vaultRenderReports(){
+  var el=document.getElementById('vtab-reports'),t=today();
+  if(!document.getElementById('vr-type')){
+    el.innerHTML='<div class="card"><div class="card-title flex-between"><span>Financial reports</span><span><button class="btn btn-outline btn-sm" onclick="vaultPrintReport()">🖨 Print</button> <button class="btn btn-outline btn-sm" onclick="vaultExportReport()">⬇ Export to Excel</button></span></div>'
+      +'<div class="vault-filters"><select id="vr-type" onchange="vaultRepTypeChanged()"><option value="month">Monthly</option><option value="quarter">Quarterly</option><option value="year">Annual</option><option value="custom">Custom range</option></select>'
+      +'<input type="month" id="vr-month" value="'+t.slice(0,7)+'" onchange="vaultRenderReports()"><input type="number" id="vr-year" value="'+t.slice(0,4)+'" style="display:none;width:100px;" onchange="vaultRenderReports()">'
+      +'<select id="vr-q" style="display:none;" onchange="vaultRenderReports()"><option value="1">Q1 (Jan–Mar)</option><option value="2">Q2 (Apr–Jun)</option><option value="3">Q3 (Jul–Sep)</option><option value="4">Q4 (Oct–Dec)</option></select>'
+      +'<span id="vr-custom" style="display:none;gap:6px;align-items:center;"><input type="date" id="vr-from" onchange="vaultRenderReports()"> to <input type="date" id="vr-to" onchange="vaultRenderReports()"></span></div>'
+      +'<div id="vr-out"></div></div>';
+    document.getElementById('vr-q').value=String(Math.floor(parseInt(t.slice(5,7),10)-1)/3+1|0);
+  }
+  var r=vaultRepRange(),s=vaultSummary(r.from,r.to),cfg=vaultCfg(),endAsOf=r.to<t?r.to:t,b=vaultBalance(endAsOf);
+  window._vaultRep={range:r,summary:s,balance:b};
+  var balCell=b===null?'<span style="color:var(--amber);">Opening balance not set</span>':(b.started?'<strong id="vr-balance" data-v="'+b.balance+'" style="color:'+(b.balance<0?'var(--red)':'var(--green)')+';">'+vaultMoney(b.balance)+'</strong> <span style="color:var(--text3);font-size:12px;">at the end of '+vaultFmtDate(b.asOf)+'</span>':'<span style="color:var(--text3);">Accounting starts '+vaultFmtDate(cfg.effective)+'</span>');
+  var catTable=function(title,map,color){var ks=Object.keys(map).sort(function(a,b2){return map[b2]-map[a];});return '<div class="card" style="margin-top:12px;"><div class="card-title">'+title+'</div>'+(ks.length?'<table class="vault-rep" style="width:100%;">'+ks.map(function(k){return '<tr><td>'+rpEsc(k)+'</td><td style="text-align:right;color:'+color+';">'+vaultMoney(map[k])+'</td></tr>';}).join('')+'</table>':'<div style="font-size:13px;color:var(--text3);">Nothing in this period.</div>')+'</div>';};
+  document.getElementById('vr-out').innerHTML='<div style="font-size:14px;font-weight:600;margin-bottom:8px;">'+rpEsc(r.label)+' <span style="font-weight:400;color:var(--text3);font-size:12px;">('+vaultFmtDate(r.from)+' – '+vaultFmtDate(r.to)+')</span></div>'
+    +'<table class="vault-rep" style="width:100%;max-width:560px;"><tbody>'
+    +'<tr><td>Total revenue</td><td style="text-align:right;color:var(--green);"><strong id="vr-revenue" data-v="'+s.revenue+'">'+vaultMoney(s.revenue)+'</strong></td></tr>'
+    +'<tr><td>Normal expenses</td><td style="text-align:right;color:var(--red);"><strong id="vr-normal" data-v="'+s.normal+'">− '+vaultMoney(s.normal)+'</strong></td></tr>'
+    +'<tr class="sep"><td>Net profit (revenue − normal expenses)</td><td style="text-align:right;color:'+(s.net>=0?'var(--green)':'var(--red)')+';"><strong id="vr-net" data-v="'+s.net+'">'+vaultMoney(s.net)+'</strong></td></tr>'
+    +'<tr><td>Investments <span style="color:var(--text3);font-size:12px;">(not in the net profit)</span></td><td style="text-align:right;color:#8b5cf6;"><strong id="vr-invest" data-v="'+s.investments+'">− '+vaultMoney(s.investments)+'</strong></td></tr>'
+    +'<tr class="sep"><td>Total balance</td><td style="text-align:right;">'+balCell+'</td></tr></tbody></table>'
+    +catTable('Revenue by category',s.revByCat,'var(--green)')+catTable('Normal expenses by category',s.normalByCat,'var(--red)')+catTable('Investments by category',s.invByCat,'#8b5cf6');
+}
+function vaultRepTypeChanged(){
+  var ty=document.getElementById('vr-type').value;
+  document.getElementById('vr-month').style.display=ty==='month'?'':'none';document.getElementById('vr-year').style.display=(ty==='quarter'||ty==='year')?'':'none';
+  document.getElementById('vr-q').style.display=ty==='quarter'?'':'none';document.getElementById('vr-custom').style.display=ty==='custom'?'inline-flex':'none';
+  if(ty==='custom'){var t=today();if(!document.getElementById('vr-from').value)document.getElementById('vr-from').value=t.slice(0,8)+'01';if(!document.getElementById('vr-to').value)document.getElementById('vr-to').value=t;}
+  vaultRenderReports();
+}
+function vaultReportSheets(){
+  var L=window._vaultRep,r=L.range,s=L.summary,b=L.balance,sheets={};
+  sheets['Summary']=[['SPACECO VAULT — financial report'],['Period',r.label+' ('+r.from+' to '+r.to+')'],[],['Measure','Amount (LE)'],
+    ['Total revenue',s.revenue],['Normal expenses',s.normal],['Net profit (revenue - normal expenses)',s.net],['Investments (not in the net profit)',s.investments],
+    ['Total balance at the end of the period',b===null?'Opening balance not set':(b.started?b.balance:'Accounting starts '+vaultCfg().effective)]];
+  sheets['Revenue']=[['Date','Description','Category','Amount (LE)','Payment','Source']].concat(s.income.map(function(i){return [i.date,i.desc,i.category,i.amount,i.method,i.ref];}));
+  sheets['Normal expenses']=[['Date','Description','Category','Amount (LE)','Paid from','Note']].concat(s.normalList.map(function(e){return [e.date,e.desc||'',e.category||'',e.amount||0,VAULT_METHODS[e.paidFrom]||e.paidFrom||'',e.note||''];}));
+  sheets['Investments']=[['Date','Description','Category','Amount (LE)','Paid from','Note','Created by']].concat(s.invList.map(function(e){return [e.date,e.desc||'',e.category||'',e.amount||0,VAULT_METHODS[e.paidFrom]||e.paidFrom||'',e.note||'',e.createdBy||''];}));
+  return sheets;
+}
+function vaultSaveWorkbook(){
+  var sh=vaultReportSheets(),r=window._vaultRep.range,wb=XLSX.utils.book_new();
+  Object.keys(sh).forEach(function(n){XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sh[n]),n.slice(0,31));});
+  XLSX.writeFile(wb,'spaceco_vault_'+r.from+'_to_'+r.to+'.xlsx');showToast('Excel file saved ✓');
+}
+function vaultExportReport(){
+  if(!vaultGuard())return;
+  vaultRenderReports();
+  if(typeof XLSX!=='undefined'){vaultSaveWorkbook();return;}
+  var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.onload=function(){vaultSaveWorkbook();};
+  sc.onerror=function(){var sh=vaultReportSheets(),rows=[];Object.keys(sh).forEach(function(n){rows.push([n]);sh[n].forEach(function(x){rows.push(x);});rows.push([]);});downloadCSV(rows,'spaceco_vault_'+window._vaultRep.range.from+'_to_'+window._vaultRep.range.to+'.csv');showToast('Excel tool could not load — saved as CSV instead',true);};
+  document.head.appendChild(sc);
+}
+function vaultPrintReport(){
+  if(!vaultGuard())return;
+  vaultRenderReports();
+  var L=window._vaultRep,r=L.range,s=L.summary,b=L.balance,pa=document.getElementById('print-area');
+  var tbl=function(title,map){var ks=Object.keys(map).sort(function(a,b2){return map[b2]-map[a];});return ks.length?'<div class="print-section-title" style="margin-top:12px;">'+title+'</div>'+ks.map(function(k){return '<div class="print-row"><span>'+rpEsc(k)+'</span><span>'+vaultMoney(map[k])+'</span></div>';}).join(''):'';};
+  pa.innerHTML=printHeader('SPACECO VAULT — '+r.label)+'<hr class="print-divider">'
+    +'<div class="print-row"><span>Period</span><span>'+vaultFmtDate(r.from)+' – '+vaultFmtDate(r.to)+'</span></div>'
+    +'<div class="print-row bold"><span>Total revenue</span><span>'+vaultMoney(s.revenue)+'</span></div>'
+    +'<div class="print-row"><span>Normal expenses</span><span>− '+vaultMoney(s.normal)+'</span></div>'
+    +'<div class="print-row bold" style="border-top:2px solid #333;padding-top:6px;"><span>Net profit</span><span>'+vaultMoney(s.net)+'</span></div>'
+    +'<div class="print-row" style="color:#6d28d9;"><span>Investments (not in the net profit)</span><span>− '+vaultMoney(s.investments)+'</span></div>'
+    +'<div class="print-row bold" style="border-top:2px solid #333;padding-top:6px;"><span>Total balance</span><span>'+(b===null?'Opening balance not set':(b.started?vaultMoney(b.balance)+' (at the end of '+vaultFmtDate(b.asOf)+')':'Accounting starts '+vaultFmtDate(vaultCfg().effective)))+'</span></div>'
+    +tbl('Revenue by category',s.revByCat)+tbl('Normal expenses by category',s.normalByCat)+tbl('Investments by category',s.invByCat)
+    +vaultReportInvTable(s.invList)+'<div class="print-footer">SPACECO VAULT — Every pound accounted for. Every decision informed.</div>';
+  window.print();
+}
+
+// audit trail (administrators only; read-only — nothing here can edit or erase a record)
+async function vaultRenderAudit(){
+  var el=document.getElementById('vtab-audit');if(!vaultGuard(true)){el.innerHTML='';return;}
+  el.innerHTML='<div class="card"><div class="card-title">Audit trail</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Opening balance changes and every investment or expense added, edited or deleted. This list is read-only.</div><div id="vault-audit-rows" style="font-size:13px;color:var(--text3);">Loading…</div></div>';
+  var all=await auditFetch();
+  if(!vaultGuard(true))return;
+  var keep=['vault_opening_set','vault_investment_added','vault_investment_edited','vault_investment_deleted','vault_investment_restored','expense_added','expense_deleted'];
+  var rows=all.filter(function(e){return keep.indexOf(e.action)!==-1;});
+  var fmt=function(o){return o?Object.keys(o).filter(function(k){return o[k]!==null&&o[k]!==undefined&&o[k]!=='';}).map(function(k){return k+': '+o[k];}).join(', '):'';};
+  document.getElementById('vault-audit-rows').innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>By</th><th>Record</th><th>Amount</th><th>Date</th><th>Before</th><th>After</th></tr></thead><tbody>'
+    +rows.map(function(e){var m=e.meta||{};return '<tr><td style="white-space:nowrap;">'+new Date(e.at).toLocaleString()+'</td><td><span class="badge badge-blue">'+rpEsc(AUDIT_LABELS[e.action]||e.action)+'</span></td><td>'+rpEsc(e.by)+'</td><td style="font-size:12px;">'+rpEsc(e.detail)+'</td><td>'+(m.amount!==undefined?vaultMoney(m.amount):'')+'</td><td>'+(m.date?vaultFmtDate(m.date):'')+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(fmt(m.prev))+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(fmt(m.next))+'</td></tr>';}).join('')+'</tbody></table></div>'
+    :'<div style="padding:8px 0;">Nothing recorded yet.</div>';
+}
+
 </script>
 
 <!-- EDIT VISIT MODAL -->
@@ -13079,6 +13622,11 @@ setInterval(function(){try{var pg=document.getElementById('page-reservations');i
       <div class="form-group"><label>Amount (LE) *</label><input type="number" id="exp-amount" placeholder="0" min="0"></div>
     </div>
     <div class="form-group"><label>Description *</label><input type="text" id="exp-desc" placeholder="e.g. Electricity bill"></div>
+    <div class="form-group admin-only" id="exp-type-wrap"><label>Type</label>
+      <select id="exp-type" onchange="expTypeChanged()">
+        <option value="normal">Normal expense — counts in this month's profit</option>
+        <option value="investment">One-off investment — paid from the total balance, not from this month</option>
+      </select></div>
     <div class="form-row" style="grid-template-columns:1fr 1fr;">
       <div class="form-group"><label>Category</label>
         <select id="exp-cat">
@@ -13088,7 +13636,7 @@ setInterval(function(){try{var pg=document.getElementById('page-reservations');i
         </select>
       </div>
       <div class="form-group"><label>Paid From</label>
-        <select id="exp-paid-from"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select>
+        <select id="exp-paid-from"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="bank">Bank / savings</option></select>
       </div>
     </div>
     <div class="form-group"><label>Note (optional)</label><input type="text" id="exp-note" placeholder="Any extra details..."></div>
