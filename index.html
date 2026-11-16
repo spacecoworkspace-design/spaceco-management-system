@@ -161,6 +161,20 @@
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
   /* Settlement boxes: keep the amounts on one line even when a label wraps (e.g. "Instapay Collected"). */
   .settle-grid>div{display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── OFFICE ATTENDANCE ── */
+  .att-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;}
+  .att-card{padding:16px 18px;}
+  .att-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .att-name{font-size:16px;font-weight:700;} .att-shift{font-size:12px;color:var(--text3);margin-top:2px;}
+  .att-times{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+  .att-time{background:var(--bg3);border-radius:var(--radius-sm);padding:8px 10px;} .att-time .l{font-size:11px;color:var(--text3);} .att-time .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .att-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .att-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .att-outing{font-size:12px;color:var(--text2);padding:3px 0;}
+  .att-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  .att-tabs button{background:none;border:none;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;}
+  .att-tabs button.active{color:var(--text);border-bottom-color:var(--accent);}
+  .att-mini td,.att-mini th{padding:5px 8px;font-size:12px;} .att-off{opacity:.55;}
   /* ── SPACECO VAULT ── */
   .vault-hero{background:linear-gradient(135deg,#0b1220 0%,#16213a 60%,#1c2c4d 100%);color:#fff;border-radius:var(--radius);padding:22px 26px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;border:1px solid rgba(212,168,67,.4);}
   .vault-brand{font-size:11px;letter-spacing:3px;color:#d4a843;font-weight:700;margin-bottom:4px;}
@@ -577,6 +591,7 @@
       <button class="nav-item" data-page="reservations" id="nav-reservations" onclick="showPage(&#39;reservations&#39;,this);renderReservations();"><span class="nav-icon">📅</span> Reservations <span id="pending-res-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="packagerequests" id="nav-packagerequests" onclick="showPage(&#39;packagerequests&#39;,this);renderPackageRequests();"><span class="nav-icon">📦</span> Package Requests <span id="pending-pkg-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="lockers" id="nav-lockers" onclick="showPage(&#39;lockers&#39;,this)"><span class="nav-icon">🔐</span> Lockers</button>
+      <button class="nav-item" data-page="attendance" onclick="showPage(&#39;attendance&#39;,this)"><span class="nav-icon">🗓</span> Office Attendance</button>
       <button class="nav-item" data-page="clients" onclick="showPage(&#39;clients&#39;,this)"><span class="nav-icon">☰</span> Client Log</button>
       <button class="nav-item" data-page="topclients" onclick="showPage(&#39;topclients&#39;,this);renderTopClients();"><span class="nav-icon">🏆</span> Top Performers</button>
     </div>
@@ -1342,6 +1357,61 @@
     <div class="lk-warn" id="pp-warn"></div>
     <button class="btn btn-success btn-full" onclick="ppSavePlan()">✓ Save plan</button>
   </div>
+</div>
+
+<!-- OFFICE ATTENDANCE: record / edit window -->
+<div class="modal-overlay" id="att-edit-modal">
+  <div class="modal" style="width:580px;">
+    <div class="modal-header"><div class="modal-title" id="att-edit-title">Attendance</div><button class="close-btn" onclick="closeModal('att-edit-modal')">✕</button></div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>Status</label><select id="att-status" onchange="attStatusChanged()"><option value="present">Present</option><option value="absent">Absent</option><option value="leave">On leave</option></select></div>
+      <div class="form-group" id="att-leave-wrap" style="display:none;"><label>Leave type</label><select id="att-leavetype"><option value="annual">Annual leave</option><option value="sick">Sick leave</option><option value="other">Other (excused day)</option></select></div>
+    </div>
+    <div id="att-times-wrap">
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label>Arrived</label><input type="time" id="att-in"></div>
+        <div class="form-group"><label>Left</label><input type="time" id="att-out"></div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin:6px 0;">Excused outings during the shift</div>
+      <div id="att-outings"></div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="attAddOutingRow()">+ Add an outing</button>
+    </div>
+    <div class="form-group" style="margin-top:12px;"><label>Note (optional)</label><input type="text" id="att-note" placeholder="e.g. doctor's appointment"></div>
+    <div class="lk-warn" id="att-warn"></div>
+    <div style="display:flex;gap:8px;margin-top:6px;"><button class="btn btn-success btn-full" onclick="attSaveEdit()">✓ Save</button><button class="btn btn-danger admin-only" id="att-clear-btn" onclick="attClearOpen()">Clear day</button></div>
+  </div>
+</div>
+
+<!-- OFFICE ATTENDANCE: step out with an excuse -->
+<div class="modal-overlay" id="att-out-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header"><div class="modal-title" id="att-out-title">Out with an excuse</div><button class="close-btn" onclick="closeModal('att-out-modal')">✕</button></div>
+    <div class="form-group"><label>Reason *</label><input type="text" id="att-out-reason" placeholder="e.g. bank, doctor, family"></div>
+    <div class="form-group"><label>Time they left</label><input type="time" id="att-out-time"></div>
+    <div class="lk-warn" id="att-out-warn"></div>
+    <button class="btn btn-success btn-full" onclick="attSaveOut()">✓ Record — they will be marked back when they return</button>
+  </div>
+</div>
+
+<!-- OFFICE ATTENDANCE page -->
+<div id="page-attendance" class="page">
+  <div class="page-header flex-between">
+    <div><div class="page-title">🗓 Office Attendance</div><div class="page-sub">Recorded by the front desk — the office staff never use the system</div></div>
+    <div style="display:flex;gap:6px;align-items:center;" id="att-datenav">
+      <button class="btn btn-outline btn-sm" onclick="attShiftDay(-1)">‹</button>
+      <input type="date" id="att-date" onchange="attSetDate(this.value)" style="width:160px;">
+      <button class="btn btn-outline btn-sm" onclick="attShiftDay(1)">›</button>
+      <button class="btn btn-outline btn-sm" onclick="attSetDate('')">Today</button>
+    </div>
+  </div>
+  <div class="att-tabs admin-only" id="att-tabs">
+    <button class="active" data-att="daily" onclick="attTab('daily')">Daily</button>
+    <button data-att="monthly" onclick="attTab('monthly')">Monthly sheet</button>
+    <button data-att="people" onclick="attTab('people')">People &amp; shifts</button>
+  </div>
+  <div id="att-daily"></div>
+  <div id="att-monthly" style="display:none;"></div>
+  <div id="att-people" style="display:none;"></div>
 </div>
 
 <!-- SPACECO VAULT: investment edit window -->
@@ -2727,7 +2797,7 @@ function renderRoomCards(){
 // ============================================================
 var PAGE_TO_CATEGORY={
   dashboard:'dashboard',
-  checkin:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
+  checkin:'operations',attendance:'operations',reservations:'operations',packagerequests:'operations',clients:'operations',topclients:'operations',lockers:'operations',
   shifts:'finance',reports:'finance',vault:'finance',staffdebts:'finance',expenses:'finance',
   watemplates:'inventory',wasend:'inventory',broadcast:'inventory',sharedpkgs:'inventory',documents:'inventory',
   'archived-academies':'academies',
@@ -2786,6 +2856,7 @@ function showPage(id,btn){
   if(id==='wasend')renderWaSend();
   if(id==='auditlog')renderAuditLog();
   if(id==='vault')renderVault();
+  if(id==='attendance')renderAttendance();
   if(academies[id])renderAcademy(id);
   syncNavCategoryForPage(id);
 }
@@ -13343,6 +13414,377 @@ async function vaultRenderAudit(){
     +rows.map(function(e){var m=e.meta||{};return '<tr><td style="white-space:nowrap;">'+new Date(e.at).toLocaleString()+'</td><td><span class="badge badge-blue">'+rpEsc(AUDIT_LABELS[e.action]||e.action)+'</span></td><td>'+rpEsc(e.by)+'</td><td style="font-size:12px;">'+rpEsc(e.detail)+'</td><td>'+(m.amount!==undefined?vaultMoney(m.amount):'')+'</td><td>'+(m.date?vaultFmtDate(m.date):'')+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(fmt(m.prev))+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(fmt(m.next))+'</td></tr>';}).join('')+'</tbody></table></div>'
     :'<div style="padding:8px 0;">Nothing recorded yet.</div>';
 }
+
+
+// ============================================================
+// OFFICE ATTENDANCE — the office girl and boy never use the system; the front desk (you, Aya, Nour) records for them.
+//   One check-in and one check-out per day, optional excused outings (out and back again) during the shift,
+//   Fridays off, late / early / overtime worked out from each person's own shift, a monthly sheet for the administrator.
+// ============================================================
+var ATT_DEFAULT_STAFF=[
+  {id:'of_aya',name:'Aya (office)',role:'Office girl',start:'09:00',end:'17:00',off:[5],grace:10,active:true},
+  {id:'of_mahmoud',name:'Mahmoud',role:'Office boy',start:'17:00',end:'22:00',off:[5],grace:10,active:true}
+];
+var ATT_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var ATT_LEAVE={annual:'Annual leave',sick:'Sick leave',other:'Excused day'};
+var _attDate='',_attTab='daily',_attEdit=null;
+AUDIT_LABELS.attendance_in='Attendance: arrived';AUDIT_LABELS.attendance_out='Attendance: left';AUDIT_LABELS.attendance_outing='Attendance: excused outing';AUDIT_LABELS.attendance_back='Attendance: back from outing';
+AUDIT_LABELS.attendance_absent='Attendance: absent';AUDIT_LABELS.attendance_leave='Attendance: leave';AUDIT_LABELS.attendance_edit='Attendance: edited';AUDIT_LABELS.attendance_clear='Attendance: day cleared';AUDIT_LABELS.attendance_staff='Attendance: people & shifts';
+
+function attStaff(all){
+  var s=loadData('officeStaff',null);
+  if(!Array.isArray(s)||!s.length)s=JSON.parse(JSON.stringify(ATT_DEFAULT_STAFF));
+  return all?s:s.filter(function(x){return x.active!==false;});
+}
+function attSettings(){var x=loadData('attSettings',null)||{};return {notifyAfter:(typeof x.notifyAfter==='number'&&x.notifyAfter>=0)?x.notifyAfter:30};}
+function attMin(t){return t?timeToMin(t):null;}
+function attNowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
+function attDayOf(ds){return new Date(ds+'T00:00').getDay();}
+function attKey(ds){return 'attendance_'+ds.slice(0,7);}
+function attMonthData(ds){var m=loadData(attKey(ds),null);return (m&&typeof m==='object'&&!Array.isArray(m))?m:{};}
+function attRec(ds,id){var m=attMonthData(ds);return m[ds]&&m[ds][id]?m[ds][id]:null;}
+function attPut(ds,id,rec){
+  var m=attMonthData(ds);m[ds]=m[ds]||{};
+  if(rec)m[ds][id]=rec;else delete m[ds][id];
+  if(m[ds]&&!Object.keys(m[ds]).length)delete m[ds];
+  saveData(attKey(ds),m);
+}
+function attWho(){return currentStaffName||(isAdmin?'Admin':'-');}
+function attCanEdit(ds){return isAdmin||ds===today();}
+function attIsOff(st,ds){return (st.off||[]).indexOf(attDayOf(ds))!==-1;}
+function attFmtMin(m){m=Math.round(m);if(m<=0)return '0 min';var h=Math.floor(m/60),r=m%60;return (h?h+' h ':'')+(r||!h?r+' min':'');}
+function attFmtHM(m){if(m===null||m===undefined)return '—';m=Math.max(0,Math.round(m));return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';}
+
+// everything worked out for one person on one day
+function attCalc(st,ds,rec){
+  var c={state:'',lateMin:0,late:false,earlyMin:0,overMin:0,awayMin:0,netMin:null,openOuting:false,noCheckout:false,off:attIsOff(st,ds)};
+  var isToday=ds===today(),now=attNowMin(),start=attMin(st.start),end=attMin(st.end);if(end<=start)end+=1440;
+  if(!rec||(!rec.in&&rec.status!=='absent'&&rec.status!=='leave')){c.state=c.off?'off':(ds>today()?'future':'notrecorded');return c;}
+  if(rec.status==='absent'){c.state='absent';return c;}
+  if(rec.status==='leave'){c.state='leave';return c;}
+  var tin=attMin(rec.in),tout=rec.out?attMin(rec.out):null;
+  c.lateMin=Math.max(0,tin-start);c.late=c.lateMin>(+st.grace||0);
+  if(tout!==null){c.earlyMin=Math.max(0,end-tout);c.overMin=Math.max(0,tout-end);}
+  var limit=tout!==null?tout:(isToday?now:end);
+  (rec.outings||[]).forEach(function(o){
+    var a=attMin(o.out),b=o.back?attMin(o.back):limit;
+    if(!o.back)c.openOuting=true;
+    if(a!==null&&b!==null&&b>a)c.awayMin+=b-a;
+  });
+  if(tout!==null)c.netMin=(tout-tin)-c.awayMin;else if(isToday)c.netMin=(now-tin)-c.awayMin;
+  if(tout===null&&!isToday&&ds<today())c.noCheckout=true;
+  c.state=tout!==null?'left':(c.openOuting?'away':'in');
+  return c;
+}
+
+// ── actions ──
+function attGuard(ds){if(!attCanEdit(ds)){showToast('Past days can only be changed by the administrator',true);return false;}return true;}
+function attStamp(rec,what){rec.updatedBy=attWho();rec.updatedAt=new Date().toISOString();rec.log=(rec.log||[]).concat([{at:rec.updatedAt,by:rec.updatedBy,what:what}]).slice(-30);return rec;}
+function attStaffById(id){return attStaff(true).find(function(x){return x.id===id;});}
+function attDo(id,action){
+  var ds=_attDate||today(),st=attStaffById(id);if(!st||!attGuard(ds))return;
+  var rec=attRec(ds,id)||{status:'present',in:'',out:'',outings:[],note:'',recordedBy:attWho(),recordedAt:new Date().toISOString(),log:[]};
+  rec.outings=rec.outings||[];
+  var nt=nowTime();
+  if(action==='arrive'){
+    if(rec.in){showToast(st.name+' is already marked as arrived at '+fmt12(rec.in),true);return;}
+    rec.status='present';rec.in=nt;attStamp(rec,'Arrived '+nt);attPut(ds,id,rec);
+    auditLog('attendance_in',st.name+' arrived at '+fmt12(nt)+' (shift '+fmt12(st.start)+')',{record:st.name,date:ds,next:{in:nt}});showToast(st.name+' marked as arrived at '+fmt12(nt)+' ✓');
+  }else if(action==='left'){
+    if(!rec.in){showToast('Mark '+st.name+' as arrived first',true);return;}
+    if(rec.out){showToast(st.name+' is already marked as left at '+fmt12(rec.out),true);return;}
+    if(rec.outings.some(function(o){return !o.back;})){showToast(st.name+' is out with an excuse — mark them back first (or use Edit)',true);return;}
+    rec.out=nt;attStamp(rec,'Left '+nt);attPut(ds,id,rec);
+    auditLog('attendance_out',st.name+' left at '+fmt12(nt)+' (shift ends '+fmt12(st.end)+')',{record:st.name,date:ds,next:{out:nt}});showToast(st.name+' marked as left at '+fmt12(nt)+' ✓');
+  }else if(action==='back'){
+    var o=rec.outings.find(function(x){return !x.back;});if(!o)return;
+    o.back=nt;attStamp(rec,'Back '+nt);attPut(ds,id,rec);
+    auditLog('attendance_back',st.name+' came back at '+fmt12(nt)+' (out since '+fmt12(o.out)+')',{record:st.name,date:ds,next:{back:nt}});showToast(st.name+' is back ✓');
+  }
+  renderAttendance();
+}
+function attAbsentOpen(id){
+  var ds=_attDate||today(),st=attStaffById(id);if(!st||!attGuard(ds))return;
+  var m=document.getElementById('confirm-modal-msg');if(m)m.textContent='Mark '+st.name+' as absent on '+formatDate(ds)+'?';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    var rec=attRec(ds,id)||{status:'absent',in:'',out:'',outings:[],note:'',recordedBy:attWho(),recordedAt:new Date().toISOString(),log:[]};
+    rec.status='absent';rec.in='';rec.out='';rec.outings=[];attStamp(rec,'Marked absent');attPut(ds,id,rec);closeModal('confirm-modal');
+    auditLog('attendance_absent',st.name+' marked absent on '+ds,{record:st.name,date:ds});renderAttendance();showToast(st.name+' marked as absent');
+  };
+  openModal('confirm-modal');
+}
+function attOutOpen(id){
+  var ds=_attDate||today(),st=attStaffById(id);if(!st||!attGuard(ds))return;
+  _attEdit={id:id,ds:ds};document.getElementById('att-out-title').textContent=st.name+' — out with an excuse';
+  document.getElementById('att-out-reason').value='';document.getElementById('att-out-time').value=ds===today()?nowTime():'';document.getElementById('att-out-warn').style.display='none';
+  openModal('att-out-modal');setTimeout(function(){document.getElementById('att-out-reason').focus();},80);
+}
+function attSaveOut(){
+  var e=_attEdit,st=attStaffById(e.id),w=document.getElementById('att-out-warn'),bad=function(m){w.textContent=m;w.style.display='block';};
+  if(!attGuard(e.ds))return;
+  var reason=document.getElementById('att-out-reason').value.trim(),tm=document.getElementById('att-out-time').value;
+  if(!reason)return bad('Please type the reason (the excuse).');if(!tm)return bad('Please set the time they left.');
+  var rec=attRec(e.ds,e.id);if(!rec||!rec.in)return bad('Mark them as arrived first.');
+  if(attMin(tm)<attMin(rec.in))return bad('They cannot leave before they arrived ('+fmt12(rec.in)+').');
+  if(rec.out&&attMin(tm)>attMin(rec.out))return bad('They already left at '+fmt12(rec.out)+'.');
+  if((rec.outings||[]).some(function(o){return !o.back||(attMin(tm)>=attMin(o.out)&&attMin(tm)<attMin(o.back));}))return bad('That overlaps another outing.');
+  rec.outings=(rec.outings||[]).concat([{out:tm,back:'',reason:reason,by:attWho()}]);attStamp(rec,'Out with excuse '+tm+': '+reason);attPut(e.ds,e.id,rec);
+  closeModal('att-out-modal');auditLog('attendance_outing',st.name+' went out at '+fmt12(tm)+' with an excuse: '+reason,{record:st.name,date:e.ds,next:{out:tm,reason:reason}});renderAttendance();showToast(st.name+' recorded as out with an excuse');
+}
+
+// the full editor
+function attStatusChanged(){
+  var v=document.getElementById('att-status').value;
+  document.getElementById('att-leave-wrap').style.display=v==='leave'?'':'none';
+  document.getElementById('att-times-wrap').style.display=v==='present'?'':'none';
+}
+function attOutingRow(o,i){
+  return '<div class="form-row att-orow" style="grid-template-columns:1fr 1fr 2fr auto;align-items:end;margin-bottom:6px;">'
+    +'<div class="form-group" style="margin:0;"><label style="font-size:10px;">Out</label><input type="time" class="ao-out" value="'+(o.out||'')+'"></div>'
+    +'<div class="form-group" style="margin:0;"><label style="font-size:10px;">Back</label><input type="time" class="ao-back" value="'+(o.back||'')+'"></div>'
+    +'<div class="form-group" style="margin:0;"><label style="font-size:10px;">Reason</label><input type="text" class="ao-reason" value="'+rpEsc(o.reason||'')+'"></div>'
+    +'<button type="button" class="btn btn-danger btn-sm" onclick="this.closest(\'.att-orow\').remove()">✕</button></div>';
+}
+function attAddOutingRow(o){document.getElementById('att-outings').insertAdjacentHTML('beforeend',attOutingRow(o&&o.out!==undefined?o:{},0));}
+function attOpenEdit(id){
+  var ds=_attDate||today(),st=attStaffById(id);if(!st||!attGuard(ds))return;
+  var rec=attRec(ds,id)||{status:'present',in:'',out:'',outings:[],note:''};
+  _attEdit={id:id,ds:ds};
+  document.getElementById('att-edit-title').textContent=st.name+' — '+formatDate(ds)+' ('+ATT_DAYS[attDayOf(ds)]+')';
+  document.getElementById('att-status').value=rec.status||'present';document.getElementById('att-leavetype').value=rec.leaveType||'annual';
+  document.getElementById('att-in').value=rec.in||'';document.getElementById('att-out').value=rec.out||'';document.getElementById('att-note').value=rec.note||'';
+  document.getElementById('att-outings').innerHTML=(rec.outings||[]).map(attOutingRow).join('');
+  document.getElementById('att-warn').style.display='none';document.getElementById('att-clear-btn').style.display=(isAdmin&&attRec(ds,id))?'':'none';
+  attStatusChanged();openModal('att-edit-modal');
+}
+function attSaveEdit(){
+  var e=_attEdit,st=attStaffById(e.id),w=document.getElementById('att-warn'),bad=function(m){w.textContent=m;w.style.display='block';return false;};
+  if(!attGuard(e.ds))return;
+  var status=document.getElementById('att-status').value,note=document.getElementById('att-note').value.trim();
+  var prev=attRec(e.ds,e.id),rec={status:status,in:'',out:'',outings:[],note:note,recordedBy:prev?prev.recordedBy:attWho(),recordedAt:prev?prev.recordedAt:new Date().toISOString(),log:prev?prev.log||[]:[]};
+  if(status==='leave')rec.leaveType=document.getElementById('att-leavetype').value;
+  if(status==='present'){
+    rec.in=document.getElementById('att-in').value;rec.out=document.getElementById('att-out').value;
+    if(!rec.in)return bad('Please set the time they arrived (or choose Absent / On leave).');
+    if(rec.out&&attMin(rec.out)<=attMin(rec.in))return bad('"Left" must be after "Arrived".');
+    var rows=[].slice.call(document.querySelectorAll('#att-outings .att-orow'));
+    for(var i=0;i<rows.length;i++){
+      var o=rows[i].querySelector('.ao-out').value,b=rows[i].querySelector('.ao-back').value,r=rows[i].querySelector('.ao-reason').value.trim();
+      if(!o&&!b&&!r)continue;
+      if(!o)return bad('Outing '+(i+1)+': set the time they left.');if(!r)return bad('Outing '+(i+1)+': please type the reason.');
+      if(attMin(o)<attMin(rec.in))return bad('Outing '+(i+1)+' starts before they arrived.');
+      if(b&&attMin(b)<=attMin(o))return bad('Outing '+(i+1)+': "Back" must be after "Out".');
+      if(rec.out&&attMin(o)>=attMin(rec.out))return bad('Outing '+(i+1)+' is after they left for the day.');
+      if(rec.out&&b&&attMin(b)>attMin(rec.out))return bad('Outing '+(i+1)+': they cannot come back after they left for the day.');
+      if(!b&&rec.out)return bad('Outing '+(i+1)+': they left for the day, so please add the time they came back.');
+      rec.outings.push({out:o,back:b,reason:r,by:(prev&&prev.outings&&prev.outings[i]&&prev.outings[i].by)||attWho()});
+    }
+    rec.outings.sort(function(a,b2){return attMin(a.out)-attMin(b2.out);});
+    for(var j=1;j<rec.outings.length;j++){var pb=rec.outings[j-1].back;if(!pb||attMin(rec.outings[j].out)<attMin(pb))return bad('Two outings overlap.');}
+  }
+  attStamp(rec,prev?'Edited':'Recorded');attPut(e.ds,e.id,rec);closeModal('att-edit-modal');
+  var d=status==='present'?('arrived '+fmt12(rec.in)+(rec.out?', left '+fmt12(rec.out):'')+(rec.outings.length?', '+rec.outings.length+' outing(s)':'')):(status==='leave'?'on leave ('+ATT_LEAVE[rec.leaveType]+')':'absent');
+  auditLog(prev?'attendance_edit':(status==='leave'?'attendance_leave':status==='absent'?'attendance_absent':'attendance_in'),st.name+' on '+e.ds+': '+d,{record:st.name,date:e.ds,prev:prev?{status:prev.status,in:prev.in,out:prev.out,outings:(prev.outings||[]).length}:null,next:{status:status,in:rec.in,out:rec.out,outings:rec.outings.length}});
+  renderAttendance();showToast('Saved ✓');
+}
+function attClearOpen(){
+  if(!isAdmin){showToast('Only the administrator can clear a day',true);return;}
+  var e=_attEdit,st=attStaffById(e.id);
+  var m=document.getElementById('confirm-modal-msg');if(m)m.textContent='Clear everything recorded for '+st.name+' on '+formatDate(e.ds)+'?';
+  document.getElementById('confirm-delete-btn').onclick=function(){
+    if(!isAdmin)return;var prev=attRec(e.ds,e.id);attPut(e.ds,e.id,null);closeModal('confirm-modal');closeModal('att-edit-modal');
+    auditLog('attendance_clear','Cleared '+st.name+'\'s attendance for '+e.ds,{record:st.name,date:e.ds,prev:prev?{status:prev.status,in:prev.in,out:prev.out}:null});renderAttendance();showToast('Day cleared');
+  };
+  openModal('confirm-modal');
+}
+
+// ── screens ──
+function attSetDate(v){_attDate=(v&&v!==today())?v:'';renderAttendance();}
+function attShiftDay(n){var d=new Date((_attDate||today())+'T00:00');d.setDate(d.getDate()+n);attSetDate(rpStr(d));}
+function attTab(name){
+  if(name!=='daily'&&!isAdmin){showToast('Only the administrator can open this',true);name='daily';}
+  _attTab=name;
+  document.querySelectorAll('#att-tabs button').forEach(function(b){b.classList.toggle('active',b.dataset.att===name);});
+  ['daily','monthly','people'].forEach(function(t){document.getElementById('att-'+t).style.display=(t===name)?'':'none';});
+  document.getElementById('att-datenav').style.display=name==='daily'?'flex':'none';
+  ({daily:attRenderDaily,monthly:attRenderMonthly,people:attRenderPeople})[name]();
+}
+function renderAttendance(){
+  var inp=document.getElementById('att-date');if(!inp)return;
+  inp.value=_attDate||today();
+  if(!isAdmin)_attTab='daily';
+  attTab(_attTab);
+}
+function attChipsFor(st,ds,rec,c){
+  var h='';
+  if(c.state==='notrecorded')h+='<span class="badge badge-amber">Not recorded yet</span>';
+  else if(c.state==='off')h+='<span class="badge" style="background:var(--bg3);color:var(--text3);">Day off</span>';
+  else if(c.state==='future')h+='<span class="badge" style="background:var(--bg3);color:var(--text3);">Upcoming</span>';
+  else if(c.state==='absent')h+='<span class="badge badge-red">Absent</span>';
+  else if(c.state==='leave')h+='<span class="badge badge-blue">'+rpEsc(ATT_LEAVE[rec.leaveType]||'On leave')+'</span>';
+  else{
+    h+='<span class="badge badge-green">'+(c.state==='left'?'Left':c.state==='away'?'Out with an excuse':'Present')+'</span>';
+    if(c.off)h+=' <span class="badge" style="background:var(--bg3);color:var(--text3);">worked on a day off</span>';
+    if(c.late)h+=' <span class="badge badge-amber">Late '+attFmtMin(c.lateMin)+'</span>';
+    else if(c.lateMin>0)h+=' <span class="badge" style="background:var(--bg3);color:var(--text3);">'+attFmtMin(c.lateMin)+' after start (within grace)</span>';
+    if(c.earlyMin>0)h+=' <span class="badge badge-amber">Left '+attFmtMin(c.earlyMin)+' early</span>';
+    if(c.overMin>0)h+=' <span class="badge badge-blue">Overtime '+attFmtMin(c.overMin)+'</span>';
+    if(c.noCheckout)h+=' <span class="badge badge-red">No check-out recorded</span>';
+  }
+  return h;
+}
+function attRenderDaily(){
+  var ds=_attDate||today(),el=document.getElementById('att-daily'),staff=attStaff(),can=attCanEdit(ds);
+  var h=(can?'':'<div class="vault-warn" style="margin-bottom:14px;">This is a past day: only the administrator can change it.</div>')
+    +'<div style="font-size:14px;font-weight:600;margin-bottom:12px;">'+ATT_DAYS[attDayOf(ds)]+' '+formatDate(ds)+(ds===today()?' <span style="color:var(--text3);font-weight:400;">· today</span>':'')+'</div><div class="att-grid">';
+  h+=staff.map(function(st){
+    var rec=attRec(ds,st.id),c=attCalc(st,ds,rec),btn=function(label,fn,cls){return '<button class="btn '+(cls||'btn-outline')+' btn-sm" onclick="'+fn+'">'+label+'</button>';};
+    var acts='';
+    if(can){
+      if(c.state==='notrecorded'||c.state==='off'||c.state==='future'){acts=btn('✓ Arrived','attDo(\''+st.id+'\',\'arrive\')','btn-success')+btn('Absent','attAbsentOpen(\''+st.id+'\')')+btn('✏ Edit / leave','attOpenEdit(\''+st.id+'\')');}
+      else if(c.state==='in'){acts=btn('🏁 Left','attDo(\''+st.id+'\',\'left\')','btn-success')+btn('🚪 Out with an excuse','attOutOpen(\''+st.id+'\')')+btn('✏ Edit','attOpenEdit(\''+st.id+'\')');}
+      else if(c.state==='away'){acts=btn('↩ Back now','attDo(\''+st.id+'\',\'back\')','btn-success')+btn('✏ Edit','attOpenEdit(\''+st.id+'\')');}
+      else acts=btn('✏ Edit','attOpenEdit(\''+st.id+'\')');
+    }
+    var times=(rec&&(rec.in||rec.out))||c.state==='in'||c.state==='away'?
+      '<div class="att-times"><div class="att-time"><div class="l">Arrived</div><div class="v">'+(rec&&rec.in?fmt12(rec.in):'—')+'</div></div><div class="att-time"><div class="l">Left</div><div class="v">'+(rec&&rec.out?fmt12(rec.out):'—')+'</div></div></div>':'';
+    var outs=rec&&(rec.outings||[]).length?'<div style="margin-bottom:8px;">'+rec.outings.map(function(o){return '<div class="att-outing">🚪 '+fmt12(o.out)+' → '+(o.back?fmt12(o.back):'<strong style="color:var(--amber);">still out</strong>')+' · '+rpEsc(o.reason)+'</div>';}).join('')+'</div>':'';
+    var worked=c.netMin!==null&&(rec&&rec.in)?'<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Time at work'+(c.state==='left'?'':' so far')+': <strong>'+attFmtHM(c.netMin)+'</strong>'+(c.awayMin?' · away '+attFmtMin(c.awayMin)+' (excused)':'')+'</div>':'';
+    var meta=rec&&rec.recordedBy?'<div style="font-size:11px;color:var(--text3);margin-top:8px;">Recorded by '+rpEsc(rec.recordedBy)+(rec.updatedBy&&rec.updatedBy!==rec.recordedBy?' · last changed by '+rpEsc(rec.updatedBy):'')+(rec.note?' · '+rpEsc(rec.note):'')+'</div>':'';
+    return '<div class="card att-card'+(c.state==='off'?' att-off':'')+'"><div class="att-head"><div><div class="att-name">'+rpEsc(st.name)+'</div><div class="att-shift">'+rpEsc(st.role||'')+' · shift '+fmt12(st.start)+' – '+fmt12(st.end)+'</div></div></div>'
+      +'<div class="att-chips">'+attChipsFor(st,ds,rec,c)+'</div>'+times+outs+worked+'<div class="att-actions">'+acts+'</div>'+meta+'</div>';
+  }).join('')+'</div>';
+  if(!staff.length)h+='<div class="card"><div style="color:var(--text3);">No office staff yet. The administrator adds them under "People &amp; shifts".</div></div>';
+  el.innerHTML=h;
+}
+
+// monthly sheet (administrator)
+function attMonthDays(ym){var d=new Date(ym+'-01T00:00'),out=[];while(rpStr(d).slice(0,7)===ym){out.push(rpStr(d));d.setDate(d.getDate()+1);}return out;}
+function attMonthStats(st,ym){
+  var days=attMonthDays(ym),t=today(),o={rows:[],worked:0,present:0,absent:0,leave:0,notRecorded:0,offWorked:0,late:0,lateMin:0,earlyMin:0,overMin:0,awayMin:0,netMin:0,noCheckout:0,counted:0};
+  days.forEach(function(ds){
+    var rec=attRec(ds,st.id),c=attCalc(st,ds,rec);
+    if(ds<=t&&!c.off)o.counted++;
+    if(c.state==='absent')o.absent++;else if(c.state==='leave')o.leave++;
+    else if(rec&&rec.in){o.present++;if(c.off)o.offWorked++;if(c.late){o.late++;o.lateMin+=c.lateMin;}o.earlyMin+=c.earlyMin;o.overMin+=c.overMin;o.awayMin+=c.awayMin;if(c.netMin!==null)o.netMin+=c.netMin;if(c.noCheckout)o.noCheckout++;}
+    else if(c.state==='notrecorded'&&ds<t)o.notRecorded++;
+    o.rows.push({ds:ds,rec:rec,c:c});
+  });
+  return o;
+}
+function attRenderMonthly(){
+  var el=document.getElementById('att-monthly');if(!isAdmin){el.innerHTML='';return;}
+  var cur=document.getElementById('att-month');var ym=cur?cur.value:today().slice(0,7);
+  var h='<div class="vault-filters"><input type="month" id="att-month" value="'+ym+'" onchange="attRenderMonthly()"><button class="btn btn-outline btn-sm" onclick="attPrintMonth()">🖨 Print</button><button class="btn btn-outline btn-sm" onclick="attExportMonth()">⬇ Export to Excel</button></div>';
+  window._attMonth={ym:ym,people:[]};
+  attStaff(true).forEach(function(st){
+    var m=attMonthStats(st,ym);window._attMonth.people.push({st:st,m:m});
+    h+='<div class="card mb-16"><div class="card-title">'+rpEsc(st.name)+' <span style="font-weight:400;color:var(--text3);font-size:12px;">'+rpEsc(st.role||'')+' · '+fmt12(st.start)+' – '+fmt12(st.end)+(st.active===false?' · inactive':'')+'</span></div>'
+      +'<div class="vault-grid" style="margin-bottom:10px;">'
+      +'<div class="stat"><div class="stat-label">Days present</div><div class="stat-value">'+m.present+'</div><div class="stat-sub">of '+m.counted+' working days so far</div></div>'
+      +'<div class="stat"><div class="stat-label">Absent</div><div class="stat-value" style="color:var(--red);">'+m.absent+'</div><div class="stat-sub">'+m.leave+' on leave · '+m.notRecorded+' not recorded</div></div>'
+      +'<div class="stat"><div class="stat-label">Late</div><div class="stat-value" style="color:var(--amber);">'+m.late+'</div><div class="stat-sub">'+attFmtMin(m.lateMin)+' in total</div></div>'
+      +'<div class="stat"><div class="stat-label">Hours at work</div><div class="stat-value">'+attFmtHM(m.netMin)+'</div><div class="stat-sub">away (excused) '+attFmtMin(m.awayMin)+' · overtime '+attFmtMin(m.overMin)+' · early '+attFmtMin(m.earlyMin)+'</div></div></div>'
+      +'<div class="table-wrap"><table class="att-mini"><thead><tr><th>Date</th><th>Status</th><th>Arrived</th><th>Left</th><th>Away</th><th>At work</th><th>Late</th><th>Notes</th></tr></thead><tbody>'
+      +m.rows.map(function(r){
+        var c=r.c,rec=r.rec,label=c.state==='off'?'Day off':c.state==='future'?'':c.state==='notrecorded'?'Not recorded':c.state==='absent'?'Absent':c.state==='leave'?(ATT_LEAVE[rec.leaveType]||'Leave'):(c.noCheckout?'No check-out':'Present');
+        return '<tr class="'+(c.state==='off'?'att-off':'')+'"><td>'+ATT_DAYS[attDayOf(r.ds)]+' '+formatDate(r.ds)+'</td><td>'+label+'</td><td>'+(rec&&rec.in?fmt12(rec.in):'')+'</td><td>'+(rec&&rec.out?fmt12(rec.out):'')+'</td><td>'+(c.awayMin?attFmtMin(c.awayMin):'')+'</td><td>'+(c.netMin!==null&&rec&&rec.out?attFmtHM(c.netMin):'')+'</td><td>'+(c.late?attFmtMin(c.lateMin):'')+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc((rec&&rec.note)||'')+((rec&&(rec.outings||[]).length)?' · excuses: '+rec.outings.map(function(o){return rpEsc(o.reason);}).join('; '):'')+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>';
+  });
+  el.innerHTML=h;
+}
+function attMonthSheets(){
+  var L=window._attMonth,sheets={},sum=[['Person','Role','Shift','Days present','Absent','On leave','Not recorded','Late (days)','Late (minutes)','Early leave (minutes)','Overtime (minutes)','Away, excused (minutes)','Hours at work']];
+  L.people.forEach(function(p){
+    var m=p.m,st=p.st;
+    sum.push([st.name,st.role||'',st.start+' - '+st.end,m.present,m.absent,m.leave,m.notRecorded,m.late,m.lateMin,m.earlyMin,m.overMin,m.awayMin,Math.round(m.netMin/60*100)/100]);
+    sheets[st.name.slice(0,31)]=[['Date','Day','Status','Arrived','Left','Away (min)','At work (h)','Late (min)','Excuses / notes']].concat(m.rows.filter(function(r){return r.c.state!=='future';}).map(function(r){
+      var c=r.c,rec=r.rec;return [r.ds,ATT_DAYS[attDayOf(r.ds)],c.state==='off'?'Day off':c.state==='notrecorded'?'Not recorded':c.state==='absent'?'Absent':c.state==='leave'?(ATT_LEAVE[rec.leaveType]||'Leave'):(c.noCheckout?'No check-out':'Present'),rec&&rec.in||'',rec&&rec.out||'',c.awayMin||0,(c.netMin!==null&&rec&&rec.out)?Math.round(c.netMin/60*100)/100:'',c.late?c.lateMin:0,((rec&&rec.note)||'')+((rec&&(rec.outings||[]).length)?' | '+rec.outings.map(function(o){return o.out+'-'+(o.back||'?')+' '+o.reason;}).join('; '):'')];
+    }));
+  });
+  var out={'Summary':sum};Object.keys(sheets).forEach(function(k){out[k]=sheets[k];});return out;
+}
+function attExportMonth(){
+  if(!isAdmin)return;attRenderMonthly();
+  var save=function(){var sh=attMonthSheets(),wb=XLSX.utils.book_new();Object.keys(sh).forEach(function(n){XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sh[n]),n.slice(0,31));});XLSX.writeFile(wb,'office_attendance_'+window._attMonth.ym+'.xlsx');showToast('Excel file saved ✓');};
+  if(typeof XLSX!=='undefined'){save();return;}
+  var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=save;
+  sc.onerror=function(){var sh=attMonthSheets(),rows=[];Object.keys(sh).forEach(function(n){rows.push([n]);sh[n].forEach(function(x){rows.push(x);});rows.push([]);});downloadCSV(rows,'office_attendance_'+window._attMonth.ym+'.csv');showToast('Excel tool could not load — saved as CSV instead',true);};
+  document.head.appendChild(sc);
+}
+function attPrintMonth(){
+  if(!isAdmin)return;attRenderMonthly();
+  var L=window._attMonth,pa=document.getElementById('print-area'),label=new Date(L.ym+'-01T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  pa.innerHTML=printHeader('Office Attendance — '+label)+L.people.map(function(p){
+    var m=p.m;
+    return '<hr class="print-divider"><div class="print-section-title">'+rpEsc(p.st.name)+' — '+rpEsc(p.st.role||'')+' ('+fmt12(p.st.start)+' – '+fmt12(p.st.end)+')</div>'
+      +'<div class="print-row"><span>Days present / absent / on leave / not recorded</span><span>'+m.present+' / '+m.absent+' / '+m.leave+' / '+m.notRecorded+'</span></div>'
+      +'<div class="print-row"><span>Late</span><span>'+m.late+' day(s), '+attFmtMin(m.lateMin)+'</span></div>'
+      +'<div class="print-row"><span>Left early / overtime</span><span>'+attFmtMin(m.earlyMin)+' / '+attFmtMin(m.overMin)+'</span></div>'
+      +'<div class="print-row"><span>Away with an excuse</span><span>'+attFmtMin(m.awayMin)+'</span></div>'
+      +'<div class="print-row bold"><span>Hours at work</span><span>'+attFmtHM(m.netMin)+'</span></div>'
+      +'<table class="print-table"><thead><tr><th>Date</th><th>Status</th><th>Arrived</th><th>Left</th><th>Away</th><th>Late</th><th>Notes</th></tr></thead><tbody>'
+      +m.rows.filter(function(r){return r.c.state!=='future';}).map(function(r){var c=r.c,rec=r.rec;return '<tr><td>'+ATT_DAYS[attDayOf(r.ds)]+' '+formatDate(r.ds)+'</td><td>'+(c.state==='off'?'Day off':c.state==='notrecorded'?'Not recorded':c.state==='absent'?'Absent':c.state==='leave'?(ATT_LEAVE[rec.leaveType]||'Leave'):(c.noCheckout?'No check-out':'Present'))+'</td><td>'+(rec&&rec.in?fmt12(rec.in):'')+'</td><td>'+(rec&&rec.out?fmt12(rec.out):'')+'</td><td>'+(c.awayMin?attFmtMin(c.awayMin):'')+'</td><td>'+(c.late?attFmtMin(c.lateMin):'')+'</td><td>'+rpEsc((rec&&rec.note)||'')+((rec&&(rec.outings||[]).length)?' ['+rec.outings.map(function(o){return rpEsc(o.reason);}).join('; ')+']':'')+'</td></tr>';}).join('')+'</tbody></table>';
+  }).join('')+'<div class="print-footer">Space-Co Management System — Office Attendance</div>';
+  window.print();
+}
+
+// people & shifts (administrator)
+function attRenderPeople(){
+  var el=document.getElementById('att-people');if(!isAdmin){el.innerHTML='';return;}
+  var staff=attStaff(true),set=attSettings();
+  var h='<div class="card mb-16"><div class="card-title">Office staff</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px;">They are only listed here. They never sign in, and they do not appear in the cashier lists or the shift settlement.</div><div class="table-wrap"><table class="att-mini"><thead><tr><th>Name</th><th>Role</th><th>Starts</th><th>Ends</th><th>Days off</th><th>Grace (min)</th><th>Active</th></tr></thead><tbody>';
+  h+=staff.map(function(st,i){
+    return '<tr data-i="'+i+'"><td><input type="text" class="ap-name" value="'+rpEsc(st.name)+'" style="min-width:140px;"></td><td><input type="text" class="ap-role" value="'+rpEsc(st.role||'')+'" style="width:110px;"></td>'
+      +'<td><input type="time" class="ap-start" value="'+st.start+'"></td><td><input type="time" class="ap-end" value="'+st.end+'"></td>'
+      +'<td style="white-space:nowrap;">'+[6,0,1,2,3,4,5].map(function(d){return '<label style="display:inline-flex;flex-direction:column;align-items:center;font-size:10px;margin-right:4px;text-transform:none;letter-spacing:0;">'+ATT_DAYS[d]+'<input type="checkbox" class="ap-off" data-d="'+d+'" '+((st.off||[]).indexOf(d)!==-1?'checked':'')+' style="appearance:auto;-webkit-appearance:checkbox;width:16px;height:16px;padding:0;accent-color:var(--accent);"></label>';}).join('')+'</td>'
+      +'<td><input type="number" class="ap-grace" min="0" step="1" value="'+(st.grace||0)+'" style="width:70px;"></td>'
+      +'<td><input type="checkbox" class="ap-active" '+(st.active===false?'':'checked')+' style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;padding:0;accent-color:var(--accent);"></td></tr>';
+  }).join('')+'</tbody></table></div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="attSavePeople()">✓ Save people &amp; shifts</button><button class="btn btn-outline btn-sm" onclick="attAddPerson()">+ Add a person</button></div><div class="lk-warn" id="ap-warn" style="margin-top:8px;"></div></div>';
+  h+='<div class="card"><div class="card-title">Reminders</div><label style="display:flex;gap:10px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0;">Remind in Needs Attention when someone has not been marked as arrived <input type="number" id="ap-notify" min="0" step="5" value="'+set.notifyAfter+'" style="width:80px;" onchange="attSaveNotify()"> minutes after their shift starts</label></div>';
+  el.innerHTML=h;
+}
+function attSavePeople(){
+  if(!isAdmin)return;
+  var staff=attStaff(true),w=document.getElementById('ap-warn'),bad=function(m){w.textContent=m;w.style.display='block';};
+  var rows=[].slice.call(document.querySelectorAll('#att-people tbody tr')),next=[],names={};
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i],st=Object.assign({},staff[parseInt(r.dataset.i,10)]);
+    st.name=r.querySelector('.ap-name').value.trim();st.role=r.querySelector('.ap-role').value.trim();st.start=r.querySelector('.ap-start').value;st.end=r.querySelector('.ap-end').value;
+    st.off=[].slice.call(r.querySelectorAll('.ap-off')).filter(function(c){return c.checked;}).map(function(c){return parseInt(c.dataset.d,10);});
+    st.grace=Math.max(0,parseInt(r.querySelector('.ap-grace').value,10)||0);st.active=r.querySelector('.ap-active').checked;
+    if(!st.name)return bad('Every person needs a name.');if(!st.start||!st.end)return bad(st.name+': set the start and end of the shift.');
+    if(names[st.name.toLowerCase()])return bad('Two people share the name "'+st.name+'".');names[st.name.toLowerCase()]=1;
+    if(!st.id)st.id='of_'+Date.now()+'_'+i;next.push(st);
+  }
+  var before=JSON.stringify(staff);saveData('officeStaff',next);
+  auditLog('attendance_staff','Office staff and shifts saved: '+next.map(function(s){return s.name+' '+s.start+'-'+s.end;}).join(', '),{record:'office staff',prev:JSON.parse(before).length+' people',next:next.length+' people'});
+  renderAttendance();showToast('Saved ✓');
+}
+function attAddPerson(){
+  if(!isAdmin)return;var staff=attStaff(true);
+  staff.push({id:'of_'+Date.now(),name:'New person',role:'Office',start:'09:00',end:'17:00',off:[5],grace:10,active:true});
+  saveData('officeStaff',staff);attRenderPeople();showToast('Added — change the name and shift, then save');
+}
+function attSaveNotify(){
+  if(!isAdmin)return;var v=parseInt(document.getElementById('ap-notify').value,10);if(!isFinite(v)||v<0)return;
+  saveData('attSettings',{notifyAfter:v});showToast('Saved ✓');
+}
+
+// reminders in Needs Attention
+function attNotifications(){
+  var out=[],t=today(),now=attNowMin(),notify=attSettings().notifyAfter,y=rpAddDays(t,-1);
+  attStaff().forEach(function(st){
+    var start=attMin(st.start),end=attMin(st.end);if(end<=start)end+=1440;
+    var rec=attRec(t,st.id),c=attCalc(st,t,rec);
+    if(c.state==='notrecorded'&&now>=start+notify&&now<end)out.push({id:'att-in-'+st.id+'-'+t,icon:'🗓',text:st.name+' has not been marked as arrived (shift started at '+fmt12(st.start)+') — open Office Attendance.',color:'var(--amber)'});
+    var yr=attRec(y,st.id),yc=attCalc(st,y,yr);
+    if(yc.noCheckout)out.push({id:'att-out-'+st.id+'-'+y,icon:'🗓',text:'No check-out was recorded for '+st.name+' yesterday — the administrator can fix it in Office Attendance.',color:'var(--amber)'});
+  });
+  return out;
+}
+var _buildNotificationsAtt=buildNotifications;
+buildNotifications=function(){var items=_buildNotificationsAtt();try{attNotifications().forEach(function(i){items.push(i);});}catch(e){}return items;};
 
 </script>
 
