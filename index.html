@@ -4271,8 +4271,7 @@ function calcCheckoutTotal(){
   var guests=parseInt(s.guests)||1;
   var perPersonRooms=['sharedSpace','drawingRoom'];
   var isPerPerson=perPersonRooms.indexOf(s.roomKey)!==-1;
-  var baseCost=calcCost(s.roomKey,hrs);
-  var roomCost=isPerPerson?baseCost*guests:baseCost;
+  var roomCost=rvxPrimaryCost(s,tout);
 
   var pkg=spActivePackageForName(s.name,s.roomKey);
 
@@ -4309,8 +4308,7 @@ function submitCheckout(){
   var guests=parseInt(s.guests)||1;
   var perPersonRooms=['sharedSpace','drawingRoom'];
   var isPerPerson=perPersonRooms.indexOf(s.roomKey)!==-1;
-  var baseCost=calcCost(s.roomKey,hrs);
-  var roomCost=isPerPerson?baseCost*guests:baseCost;
+  var roomCost=rvxPrimaryCost(s,tout);
 
   var profile=findOrCreateProfile(s.name,s.phone,s.email);
 
@@ -11037,8 +11035,7 @@ renderActiveSessions=function(){
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
       +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
       +(lkList.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">🔐 Locker '+lkEsc(lkLabel(lkList[0].lockerId))+' · until '+lkEsc(lkFmt(lkList[0].end))+(lkDue(lkList[0])>0?' · '+lkMoney(lkDue(lkList[0]))+' to collect':'')+'</div>':'')
-      +(openVisit?'<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+openVisit.room+' since '+fmt12(openVisit.timeIn)+'</div>':'')
-      +(closedVisits.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+closedVisits.length+' room visit(s) — '+closedVisits.reduce(function(a,v){return a+(v.cost||0);},0)+' LE</div>':'')
+      +rvxSessionVisitLines(s)
       +'</div>'
       +roomVisitBtn+lockerBtn
       +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
@@ -13786,7 +13783,390 @@ function attNotifications(){
 var _buildNotificationsAtt=buildNotifications;
 buildNotifications=function(){var items=_buildNotificationsAtt();try{attNotifications().forEach(function(i){items.push(i);});}catch(e){}return items;};
 
+// ============================================================
+// ROOM VISIT FIXES
+// - Edit / Remove a visit (wrong room, time or guest count)
+// - Return time must be after the start; earlier = past midnight (asked)
+// - Visits that run past midnight are charged correctly
+// - Warn when the area is reserved around the visit time
+// - Every visit step goes to the Activity Log
+// ============================================================
+function rvxMin(t){var p=String(t||'0:0').split(':');return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0);}
+// minutes from start to end; an end earlier than the start means the next day
+function rvxMinutes(tin,tout){if(!tin||!tout)return 0;var d=rvxMin(tout)-rvxMin(tin);if(d<0)d+=1440;return d;}
+function rvxIsPerPerson(k){return k==='sharedSpace'||k==='drawingRoom';}
+function rvxCostFor(roomKey,tin,tout,guests){
+  var base=calcCost(roomKey,rvxMinutes(tin,tout)/60);
+  return rvxIsPerPerson(roomKey)?base*(parseInt(guests,10)||1):base;
+}
+function rvxDur(m){var h=Math.floor(m/60),mm=m%60;return (h?h+' h ':'')+mm+' min';}
+function rvxVisitText(v){return v.room+' '+fmt12(v.timeIn)+(v.timeOut?'–'+fmt12(v.timeOut):'')+(parseInt(v.guests,10)>1?' · '+v.guests+' guests':'');}
+
+closeRoomVisit=function(v,timeOutValue){
+  v.timeOut=timeOutValue;
+  v.cost=rvxCostFor(v.roomKey,v.timeIn,v.timeOut,v.guests);
+  return v.cost;
+};
+roomVisitsTotalCost=function(session,previewEnd){
+  return (session.roomVisits||[]).reduce(function(sum,v){
+    return sum+rvxCostFor(v.roomKey,v.timeIn,v.timeOut||previewEnd,v.guests);
+  },0);
+};
+
+// Lines under the guest's name on the Guest Check-in page.
+function rvxSessionVisitLines(s){
+  return (s.roomVisits||[]).map(function(v){
+    var edit=' <a href="javascript:void(0)" style="color:inherit;text-decoration:underline;margin-left:4px;" title="Fix or remove this visit" onclick="rvxOpenEdit('+s.id+','+v.id+')">✏️ Edit</a>';
+    if(!v.timeOut)return '<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+rpEsc(v.room)+' since '+fmt12(v.timeIn)+(parseInt(v.guests,10)>1?' · '+v.guests+' guests':'')+edit+'</div>';
+    return '<div style="font-size:11px;color:var(--teal);margin-top:2px;">🔀 '+rpEsc(rvxVisitText(v))+' · '+(v.cost||0)+' LE'+edit+'</div>';
+  }).join('');
+}
+
+// ── Reservations / blocks on an area around a given time ──
+var RVX_ROOM_NAME={};Object.keys(ROOM_TO_PRICING_KEY).forEach(function(n){RVX_ROOM_NAME[ROOM_TO_PRICING_KEY[n]]=n;});
+// Bookings today that are running at `tin` or start within the next 2 hours.
+function rvxBookingsNear(roomKey,tin){
+  var name=RVX_ROOM_NAME[roomKey];if(!name||roomKey==='sharedSpace')return [];
+  var t=today(),start=rvxMin(tin),out=[];
+  (reservations||[]).forEach(function(r){
+    if(r.date!==t||r.room!==name)return;
+    if(r.status==='no_show'||r.status==='no-show'||r.status==='cancelled'||r.status==='rejected')return;
+    var rs=rvxMin(r.from),re=rvxMin(r.to);
+    if(re>start&&rs<start+120)out.push({who:r.client||'a reservation',from:r.from,to:r.to});
+  });
+  (roomBlocks||[]).forEach(function(b){
+    if(b.date!==t||b.room!==name)return;
+    var bs=rvxMin(b.from),be=rvxMin(b.to);
+    if(be>start&&bs<start+120)out.push({who:'blocked: '+(b.reason||'Blocked'),from:b.from,to:b.to});
+  });
+  return out.sort(function(a,b){return rvxMin(a.from)-rvxMin(b.from);});
+}
+function rvxBookingWarning(roomKey,tin){
+  var hits=rvxBookingsNear(roomKey,tin);
+  if(!hits.length)return '';
+  return hits.map(function(h){return h.who+' '+fmt12(h.from)+'–'+fmt12(h.to);}).join(', ');
+}
+
+// Mark reserved areas in the "Visit Another Area" grid.
+var _rvxPrevGrid=renderRoomVisitRoomGrid;
+renderRoomVisitRoomGrid=function(){
+  _rvxPrevGrid();
+  var tin=(document.getElementById('rvm-timein')||{}).value||nowTime();
+  document.querySelectorAll('#rvm-room-grid .room-card').forEach(function(card){
+    var k=card.getAttribute('data-roomkey');
+    var hits=rvxBookingsNear(k,tin);
+    if(!hits.length||card.classList.contains('occupied'))return;
+    var d=document.createElement('div');
+    d.style.cssText='font-size:10px;color:var(--amber);margin-top:4px;';
+    d.textContent='📅 Booked '+fmt12(hits[0].from)+'–'+fmt12(hits[0].to);
+    card.appendChild(d);
+  });
+};
+(function(){var el=document.getElementById('rvm-timein');if(el)el.addEventListener('change',function(){if(document.getElementById('room-visit-modal').classList.contains('open')){var keep=_roomVisitSelectedKey;renderRoomVisitRoomGrid();if(keep){var c=document.querySelector('#rvm-room-grid .room-card[data-roomkey="'+keep+'"]');if(c)c.classList.add('selected');}}});})();
+
+// Start a visit: check the time and any booking, then log it.
+var _rvxPrevConfirm=confirmRoomVisit;
+confirmRoomVisit=function(){
+  if(!_roomVisitSelectedKey){showToast('Please select an area',true);return;}
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===_roomVisitSessionId;});
+  if(!s)return;
+  if((s.roomVisits||[]).some(function(v){return !v.timeOut;})){showToast(s.name+' is already in another area — mark them back first',true);return;}
+  var tin=document.getElementById('rvm-timein').value||nowTime();
+  var guests=parseInt(document.getElementById('rvm-guests').value,10);
+  if(!(guests>=1)){showToast('Guests going must be at least 1',true);return;}
+  if(s.timeIn&&rvxMin(tin)<rvxMin(s.timeIn)&&!confirm('The visit starts at '+fmt12(tin)+', before '+s.name+' checked in ('+fmt12(s.timeIn)+'). Is that right?'))return;
+  var warn=rvxBookingWarning(_roomVisitSelectedKey,tin);
+  var room=ROOM_VISIT_ROOMS.find(function(r){return r.key===_roomVisitSelectedKey;});
+  if(warn&&!confirm(room.name+' is reserved: '+warn+'.\n\nThe guest must leave before the booking starts. Continue?'))return;
+  var before=(s.roomVisits||[]).length;
+  _rvxPrevConfirm();
+  var after=loadData('activeSessions',[]).find(function(x){return x.id===s.id;});
+  var v=after&&(after.roomVisits||[])[before];
+  if(v)auditLog('room_visit_start',s.name+' went to '+v.room+' at '+fmt12(v.timeIn)+(v.guests>1?' ('+v.guests+' guests)':''),{sessionId:s.id,visitId:v.id});
+};
+
+// Mark back: the time must be after the start (earlier = asked about midnight).
+function rvxCheckReturn(tin,tout,roomName){
+  if(!tout){showToast('Please enter the time they came back',true);return false;}
+  if(rvxMin(tout)===rvxMin(tin)){showToast('The return time must be after '+fmt12(tin)+'. If the visit was a mistake, use ✏️ Edit → Remove visit.',true);return false;}
+  if(rvxMin(tout)<rvxMin(tin))return confirm('Back at '+fmt12(tout)+' is earlier than the start ('+fmt12(tin)+').\n\nOK = they came back after midnight ('+rvxDur(rvxMinutes(tin,tout))+' in '+roomName+').\nCancel = go back and fix the time.');
+  return true;
+}
+confirmEndRoomVisit=function(){
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===_endVisitSessionId;});
+  if(!s){closeModal('end-room-visit-modal');return;}
+  var v=(s.roomVisits||[]).find(function(x){return x.id===_endVisitId;});
+  if(!v||v.timeOut){closeModal('end-room-visit-modal');return;}
+  var tout=document.getElementById('ervm-timeout').value;
+  if(!rvxCheckReturn(v.timeIn,tout,v.room))return;
+  var cost=closeRoomVisit(v,tout);
+  activeSessions=all;saveData('activeSessions',all);
+  closeModal('end-room-visit-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  auditLog('room_visit_end',s.name+' came back from '+v.room+' ('+fmt12(v.timeIn)+'–'+fmt12(v.timeOut)+', '+cost+' LE)',{sessionId:s.id,visitId:v.id,amount:cost});
+  showToast(s.name+' is back from '+v.room+' — '+cost+' LE added to their tab');
+};
+
+// Checkout: a visit still open is closed at the checkout time — stop if that
+// would charge 0 LE or roll past midnight without anyone noticing.
+var _rvxPrevSubmitCheckout=submitCheckout;
+submitCheckout=function(){
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===_checkoutSessionId;});
+  var tout=(document.getElementById('co-timeout')||{}).value;
+  var open=s&&tout?(s.roomVisits||[]).filter(function(v){return !v.timeOut;}):[];
+  for(var i=0;i<open.length;i++){
+    var v=open[i];
+    if(rvxMin(tout)===rvxMin(v.timeIn)){
+      if(!confirm(s.name+' is still marked in '+v.room+' since '+fmt12(v.timeIn)+', and checkout is '+fmt12(tout)+' — so that visit would be charged 0 LE.\n\nOK = check out anyway (0 LE for the visit).\nCancel = go back (fix the time, or use ✏️ Edit on the visit).'))return;
+    }else if(rvxMin(tout)<rvxMin(v.timeIn)){
+      if(!confirm(s.name+' went to '+v.room+' at '+fmt12(v.timeIn)+', and checkout is '+fmt12(tout)+'.\n\nOK = they stayed past midnight ('+rvxDur(rvxMinutes(v.timeIn,tout))+', '+rvxCostFor(v.roomKey,v.timeIn,tout,v.guests)+' LE).\nCancel = go back and fix the time.'))return;
+    }
+  }
+  var openIds=open.map(function(v){return v.id;});
+  var r=_rvxPrevSubmitCheckout.apply(this,arguments);
+  var still=loadData('activeSessions',[]).some(function(x){return x.id===(s&&s.id);});
+  if(s&&!still&&openIds.length){
+    open.forEach(function(v){
+      var cost=rvxCostFor(v.roomKey,v.timeIn,tout,v.guests);
+      auditLog('room_visit_end',s.name+' — '+v.room+' visit closed at checkout ('+fmt12(v.timeIn)+'–'+fmt12(tout)+', '+cost+' LE)',{sessionId:s.id,visitId:v.id,amount:cost});
+    });
+  }
+  return r;
+};
+
+// ── Edit / Remove a visit ──
+var _rvxEditSid=null,_rvxEditVid=null;
+function rvxEnsureEditModal(){
+  if(document.getElementById('rvx-edit-modal'))return;
+  var m=document.createElement('div');
+  m.className='modal-overlay';m.id='rvx-edit-modal';
+  m.innerHTML='<div class="modal" style="width:460px;">'
+    +'<div class="modal-header"><div class="modal-title"><span id="rvx-title">✏️ Edit Room Visit</span> — <span id="rvx-guest"></span></div><button class="close-btn" onclick="closeModal(\'rvx-edit-modal\')">✕</button></div>'
+    +'<div id="rvx-intro" style="font-size:12px;color:var(--text3);margin-bottom:12px;"></div>'
+    +'<div class="form-group"><label>Area</label><select id="rvx-room"></select></div>'
+    +'<div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">'
+    +'<div class="form-group"><label>Guests going</label><input type="number" id="rvx-guests" min="1" value="1"></div>'
+    +'<div class="form-group"><label>Time In</label><input type="time" id="rvx-tin"></div>'
+    +'<div class="form-group"><label>Back at</label><input type="time" id="rvx-tout"></div>'
+    +'</div>'
+    +'<div id="rvx-note" style="font-size:12px;color:var(--text3);margin:-4px 0 10px;"></div>'
+    +'<div id="rvx-cost" style="font-size:14px;font-weight:600;margin-bottom:14px;"></div>'
+    +'<div style="display:flex;gap:10px;">'
+    +'<button class="btn btn-danger" id="rvx-remove-btn" onclick="rvxRemove()">🗑 Remove visit</button>'
+    +'<button class="btn btn-primary" style="flex:1;" onclick="rvxSave()">✓ Save changes</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+  ['rvx-room','rvx-guests','rvx-tin','rvx-tout'].forEach(function(id){
+    var el=document.getElementById(id);el.addEventListener('input',rvxPreview);el.addEventListener('change',rvxPreview);
+  });
+}
+function rvxFind(){
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===_rvxEditSid;});
+  var v=s&&(s.roomVisits||[]).find(function(x){return x.id===_rvxEditVid;});
+  return {all:all,s:s,v:v};
+}
+var _rvxAdding=false;
+function rvxModalMode(adding){
+  _rvxAdding=adding;
+  document.getElementById('rvx-title').textContent=adding?'➕ Add Room Visit':'✏️ Edit Room Visit';
+  document.getElementById('rvx-remove-btn').style.display=adding?'none':'';
+  document.getElementById('rvx-intro').textContent=adding
+    ?'Add time the guest spent in another area that was not recorded. Leave "Back at" empty if they are still there — it closes at checkout.'
+    :'Fix the area, the times or how many went. To undo a visit made by mistake, use Remove visit — nothing is charged for it.';
+}
+function rvxOpenAdd(sid){
+  _rvxEditSid=sid;_rvxEditVid=null;
+  var f=rvxFind();if(!f.s){showToast('That guest was not found — the page may be out of date',true);return;}
+  rvxEnsureEditModal();rvxModalMode(true);
+  document.getElementById('rvx-guest').textContent=f.s.name;
+  document.getElementById('rvx-room').innerHTML=ROOM_VISIT_ROOMS.filter(function(r){return r.key!==f.s.roomKey;}).map(function(r){
+    return '<option value="'+r.key+'">'+rpEsc(r.name)+'</option>';
+  }).join('');
+  document.getElementById('rvx-guests').value=f.s.guests||1;
+  document.getElementById('rvx-tin').value='';
+  var co=document.getElementById('checkout-modal');
+  document.getElementById('rvx-tout').value=(co&&co.classList.contains('open')&&document.getElementById('co-timeout').value)||'';
+  rvxPreview();
+  openModal('rvx-edit-modal');
+}
+function rvxOpenEdit(sid,vid){
+  _rvxEditSid=sid;_rvxEditVid=vid;
+  var f=rvxFind();if(!f.v){showToast('That visit was not found — the page may be out of date',true);return;}
+  rvxEnsureEditModal();rvxModalMode(false);
+  document.getElementById('rvx-guest').textContent=f.s.name;
+  document.getElementById('rvx-room').innerHTML=ROOM_VISIT_ROOMS.filter(function(r){return r.key!==f.s.roomKey;}).map(function(r){
+    return '<option value="'+r.key+'"'+(r.key===f.v.roomKey?' selected':'')+'>'+rpEsc(r.name)+'</option>';
+  }).join('');
+  document.getElementById('rvx-guests').value=f.v.guests||1;
+  document.getElementById('rvx-tin').value=f.v.timeIn||'';
+  document.getElementById('rvx-tout').value=f.v.timeOut||'';
+  rvxPreview();
+  openModal('rvx-edit-modal');
+}
+function rvxPreview(){
+  var f=rvxFind();if(!f.s||(!_rvxAdding&&!f.v))return;
+  var k=document.getElementById('rvx-room').value,g=document.getElementById('rvx-guests').value;
+  var tin=document.getElementById('rvx-tin').value,tout=document.getElementById('rvx-tout').value;
+  var note=[],costEl=document.getElementById('rvx-cost');
+  if(!tout){
+    note.push('No return time yet — the guest stays in this area until marked back or checked out.');
+    costEl.textContent='So far: '+(tin?rvxCostFor(k,tin,nowTime(),g):0)+' LE';
+  }else{
+    var m=rvxMinutes(tin,tout);
+    if(tin&&rvxMin(tout)<rvxMin(tin))note.push('Back time is earlier than the start, so it counts as past midnight.');
+    costEl.textContent=(tin&&m>0?rvxDur(m)+' · ':'')+'Visit cost: '+(tin&&m>0?rvxCostFor(k,tin,tout,g):0)+' LE';
+  }
+  var warn=tin?rvxBookingWarning(k,tin):'';
+  if(warn)note.push('📅 Reserved: '+warn);
+  document.getElementById('rvx-note').textContent=note.join(' ');
+}
+function rvxSave(){
+  var f=rvxFind();
+  if(!f.s||(!_rvxAdding&&!f.v)){closeModal('rvx-edit-modal');showToast('That visit was not found',true);return;}
+  if(_rvxAdding){f.v={id:Date.now(),room:'',roomKey:'',timeIn:'',timeOut:null,guests:1,cost:null,addedLater:true};}
+  var k=document.getElementById('rvx-room').value;
+  var g=parseInt(document.getElementById('rvx-guests').value,10);
+  var tin=document.getElementById('rvx-tin').value,tout=document.getElementById('rvx-tout').value;
+  if(!k){showToast('Please choose an area',true);return;}
+  if(!(g>=1)){showToast('Guests going must be at least 1',true);return;}
+  if(!tin){showToast('Please enter the time they went in',true);return;}
+  var room=ROOM_VISIT_ROOMS.find(function(r){return r.key===k;});
+  if(tout&&!rvxCheckReturn(tin,tout,room.name))return;
+  if(!tout&&(f.s.roomVisits||[]).some(function(x){return x.id!==f.v.id&&!x.timeOut;})){showToast('Only one visit can be open at a time — enter a Back at time',true);return;}
+  // another guest already using that private area (not counting this visit)
+  if(k!=='sharedSpace'&&k!==f.v.roomKey){
+    var busy=f.all.some(function(x){return x.roomKey===k;})||f.all.some(function(x){return (x.roomVisits||[]).some(function(y){return y.id!==f.v.id&&!y.timeOut&&y.roomKey===k;});});
+    if(busy&&!tout&&!confirm(room.name+' is in use by another guest right now. Save anyway?'))return;
+  }
+  var adding=_rvxAdding;
+  var before=adding?'':rvxVisitText(f.v)+' · '+(f.v.timeOut?(f.v.cost||0)+' LE':'open');
+  f.v.room=room.name;f.v.roomKey=k;f.v.guests=g;f.v.timeIn=tin;
+  if(tout){closeRoomVisit(f.v,tout);}else{f.v.timeOut=null;f.v.cost=null;}
+  if(adding){f.s.roomVisits=f.s.roomVisits||[];f.s.roomVisits.push(f.v);}
+  var afterTxt=rvxVisitText(f.v)+' · '+(f.v.timeOut?f.v.cost+' LE':'open');
+  activeSessions=f.all;saveData('activeSessions',f.all);
+  closeModal('rvx-edit-modal');
+  rvxAfterVisitChange();
+  if(adding)auditLog('room_visit_start',f.s.name+' — visit added afterwards: '+afterTxt,{sessionId:f.s.id,visitId:f.v.id});
+  else if(before!==afterTxt)auditLog('room_visit_edit',f.s.name+': '+before+'  →  '+afterTxt,{sessionId:f.s.id,visitId:f.v.id});
+  showToast(adding?'Visit added':'Visit updated');
+}
+function rvxRemove(){
+  var f=rvxFind();if(!f.v){closeModal('rvx-edit-modal');return;}
+  var txt=rvxVisitText(f.v)+(f.v.timeOut?' · '+(f.v.cost||0)+' LE':'');
+  if(!confirm('Remove this visit?\n\n'+f.s.name+': '+txt+'\n\nNothing will be charged for it.'))return;
+  f.s.roomVisits=(f.s.roomVisits||[]).filter(function(x){return x.id!==f.v.id;});
+  activeSessions=f.all;saveData('activeSessions',f.all);
+  closeModal('rvx-edit-modal');
+  rvxAfterVisitChange();
+  auditLog('room_visit_removed',f.s.name+': removed '+txt,{sessionId:f.s.id,visitId:f.v.id});
+  showToast('Visit removed');
+}
+AUDIT_LABELS.room_visit_start='Room visit: started';AUDIT_LABELS.room_visit_end='Room visit: back';
+AUDIT_LABELS.room_visit_edit='Room visit: edited';AUDIT_LABELS.room_visit_removed='Room visit: removed';
+
+// ============================================================
+// SHARED SPACE PAUSES DURING ROOM VISITS + AREAS IN THE CHECKOUT WINDOW
+// A Shared Space guest is not charged Shared Space for the time spent in
+// another room. If only some of the group went (fewer "guests going" than
+// guests checked in), the ones who stayed keep paying for the whole stay.
+// ============================================================
+function rvxPrimaryBreakdown(s,tout){
+  var guests=parseInt(s.guests,10)||1;
+  var stayMin=Math.round(calcHours(s.timeIn,tout)*60);
+  var visits=s.roomVisits||[];
+  var o={guests:guests,stayMin:stayMin,awayMin:0,chargedMin:stayMin,went:0,paused:false};
+  if(s.roomKey==='sharedSpace'&&visits.length){
+    // time away = the visits, merged, inside the stay (check-in → checkout)
+    var iv=visits.map(function(v){
+      var st=rvxMin(v.timeIn)-rvxMin(s.timeIn);if(st<0)st=0;
+      var en=st+rvxMinutes(v.timeIn,v.timeOut||tout);
+      return [Math.min(st,stayMin),Math.min(en,stayMin)];
+    }).filter(function(x){return x[1]>x[0];}).sort(function(a,b){return a[0]-b[0];});
+    var away=0,cs=-1,ce=-1;
+    iv.forEach(function(x){if(x[0]>ce){if(ce>cs)away+=ce-cs;cs=x[0];ce=x[1];}else if(x[1]>ce)ce=x[1];});
+    if(ce>cs)away+=ce-cs;
+    o.awayMin=away;o.chargedMin=Math.max(0,stayMin-away);
+    o.went=Math.min(guests,Math.max.apply(null,visits.map(function(v){return parseInt(v.guests,10)||1;})));
+    o.paused=away>0;
+  }
+  var per=rvxIsPerPerson(s.roomKey);
+  if(o.paused){
+    o.cost=o.went*calcCost('sharedSpace',o.chargedMin/60)+(guests-o.went)*calcCost('sharedSpace',stayMin/60);
+  }else{
+    var b=calcCost(s.roomKey,stayMin/60);o.cost=per?b*guests:b;
+  }
+  return o;
+}
+function rvxPrimaryCost(s,tout){return rvxPrimaryBreakdown(s,tout).cost;}
+
+// "Areas used" box in the checkout window: the guest's own area and every
+// room visit, each with Edit, plus Add room visit.
+function rvxRenderCheckoutAreas(){
+  var info=document.getElementById('checkout-guest-info');if(!info)return;
+  var box=document.getElementById('co-areas');
+  if(!box){box=document.createElement('div');box.id='co-areas';box.style.cssText='background:var(--bg3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;font-size:13px;';info.parentNode.insertBefore(box,info.nextSibling);}
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_checkoutSessionId;});
+  if(!s){box.innerHTML='';return;}
+  var tout=document.getElementById('co-timeout').value||nowTime();
+  var b=rvxPrimaryBreakdown(s,tout);
+  var pkg=(typeof spActivePackageForName==='function')?spActivePackageForName(s.name,s.roomKey):null;
+  var visits=s.roomVisits||[];
+  var row=function(l,r){return '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border);"><div>'+l+'</div><div style="white-space:nowrap;font-weight:600;">'+r+'</div></div>';};
+  var sub='font-size:11px;color:var(--text3);';
+  var own='<strong>'+rpEsc(s.room)+'</strong> · '+fmt12(s.timeIn)+' → '+fmt12(tout)+(b.guests>1?' · '+b.guests+' guests':'');
+  if(b.paused){
+    own+='<div style="'+sub+'">'+rvxDur(b.stayMin)+' in total − '+rvxDur(b.awayMin)+' in other rooms = <strong>'+rvxDur(b.chargedMin)+' charged</strong>'
+      +(b.went<b.guests?' for the '+b.went+' who went; the other '+(b.guests-b.went)+' stayed and '+((b.guests-b.went)===1?'pays':'pay')+' the full '+rvxDur(b.stayMin):'')+'</div>';
+  }else own+='<div style="'+sub+'">'+rvxDur(b.stayMin)+'</div>';
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-weight:600;">🏢 Areas used</div>'
+    +'<button class="btn btn-outline btn-sm" type="button" onclick="rvxOpenAdd('+s.id+')">➕ Add room visit</button></div>'
+    +row(own,pkg&&s.roomKey==='sharedSpace'?'Package day':b.cost+' LE');
+  visits.forEach(function(v){
+    var end=v.timeOut||tout,m=rvxMinutes(v.timeIn,end);
+    var cost=v.timeOut?(v.cost||0):rvxCostFor(v.roomKey,v.timeIn,end,v.guests);
+    html+=row('<strong>🔀 '+rpEsc(v.room)+'</strong> · '+fmt12(v.timeIn)+' → '+fmt12(end)+(parseInt(v.guests,10)>1?' · '+v.guests+' guests':'')
+      +' <a href="javascript:void(0)" style="color:var(--teal);margin-left:4px;" onclick="rvxOpenEdit('+s.id+','+v.id+')">✏️ Edit</a>'
+      +'<div style="'+sub+'">'+rvxDur(m)+(v.timeOut?'':' · still there — closes at checkout time')+'</div>',cost+' LE');
+  });
+  if(!visits.length)html+='<div style="'+sub+'padding-top:6px;border-top:1px solid var(--border);">No other rooms used. If the guest used one that was not recorded, press ➕ Add room visit.</div>';
+  box.innerHTML=html;
+}
+var _rvxPrevOpenCheckout=openCheckout;
+openCheckout=function(){var r=_rvxPrevOpenCheckout.apply(this,arguments);try{rvxRenderCheckoutAreas();}catch(e){console.warn(e);}return r;};
+var _rvxPrevCalcCheckout=calcCheckoutTotal;
+calcCheckoutTotal=function(){var r=_rvxPrevCalcCheckout.apply(this,arguments);try{rvxRenderCheckoutAreas();}catch(e){console.warn(e);}return r;};
+function rvxAfterVisitChange(){
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  var co=document.getElementById('checkout-modal');
+  if(co&&co.classList.contains('open'))calcCheckoutTotal();
+}
+
+// Keep a note on the saved visit of how much Shared Space time was charged.
+var _rvxPrevSubmitCheckout2=submitCheckout;
+submitCheckout=function(){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_checkoutSessionId;});
+  var tout=(document.getElementById('co-timeout')||{}).value;
+  var b=s&&tout?rvxPrimaryBreakdown(s,tout):null;
+  var before=clients.length;
+  var r=_rvxPrevSubmitCheckout2.apply(this,arguments);
+  if(b&&b.paused&&clients.length>before){
+    var rec=clients[clients.length-1];
+    rec.sharedAwayMin=b.awayMin;rec.sharedChargedHours=+(b.chargedMin/60).toFixed(2);rec.sharedPausedGuests=b.went;
+    saveData('clients',clients);
+  }
+  return r;
+};
+
 </script>
+
+
 
 <!-- EDIT VISIT MODAL -->
 <div class="modal-overlay" id="edit-visit-modal">
