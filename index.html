@@ -772,7 +772,7 @@
 
     <!-- Add to tab: category grid, backed by the products table -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">☕ Add to Tab <span style="font-weight:400;color:var(--text3);">(tap to add, right-click to remove one)</span></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">☕ Add to Tab <span style="font-weight:400;color:var(--text3);">(tap to add — everything taken earlier is already here)</span></div>
       <input type="text" id="co-prod-search" placeholder="Search products..." oninput="renderCoProductGrid()" style="margin-bottom:8px;">
       <div id="co-cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
       <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;max-height:240px;overflow-y:auto;">
@@ -2399,7 +2399,8 @@ async function loadProducts(){
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
     });
     var rows = await res.json();
-    products = Array.isArray(rows)?rows:[];
+    // Supplies are no longer sold: never shown anywhere (rows stay in the database untouched)
+    products = (Array.isArray(rows)?rows:[]).filter(function(p){return p&&p.category!=='supplies';});
   }catch(e){ console.warn('loadProducts failed',e); products=[]; }
 }
 
@@ -2423,7 +2424,7 @@ async function updateProduct(id,fields){
 }
 
 
-var CATEGORY_LABELS={snacks:'🍟 Snacks',drinks:'🥤 Drinks',hot_drinks:'☕ Hot Drinks',supplies:'🧻 Supplies',printing:'🖨️ Printing',stationery:'✏️ Stationery'};
+var CATEGORY_LABELS={snacks:'🍟 Snacks',drinks:'🥤 Drinks',hot_drinks:'☕ Hot Drinks',printing:'🖨️ Printing',stationery:'✏️ Stationery'};
 
 // ── Boot loader: fetch all keys from Supabase before starting the app ──
 var _appReady = false;
@@ -3056,7 +3057,7 @@ function renderActiveSessions(){
       +'<div style="flex:1;">'
       +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+' · '+elapsed.toFixed(1)+' hrs so far</div>'
-      +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
+      +tbSummaryLine(s)
       +(openVisit?'<div style="font-size:11px;color:var(--amber);margin-top:2px;">🚪 Currently in '+openVisit.room+' since '+fmt12(openVisit.timeIn)+'</div>':'')
       +(closedVisits.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+closedVisits.length+' room visit(s) — '+closedVisits.reduce(function(a,v){return a+(v.cost||0);},0)+' LE</div>':'')
       +'</div>'
@@ -3344,7 +3345,7 @@ function openCheckout(sessionId){
 function renderCoCatTabs(){
   var el=document.getElementById('co-cat-tabs');
   if(!el)return;
-  var order=['snacks','drinks','hot_drinks','supplies','printing','stationery'];
+  var order=['snacks','drinks','hot_drinks','printing','stationery'];
   var cats=[];
   products.forEach(function(p){if(p.is_active && cats.indexOf(p.category)===-1)cats.push(p.category);});
   cats.sort(function(a,b){return order.indexOf(a)-order.indexOf(b);});
@@ -11033,11 +11034,11 @@ renderActiveSessions=function(){
       +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
-      +(s.tab&&s.tab.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">'+s.tab.length+' item(s) on tab</div>':'')
+      +tbSummaryLine(s)
       +(lkList.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">🔐 Locker '+lkEsc(lkLabel(lkList[0].lockerId))+' · until '+lkEsc(lkFmt(lkList[0].end))+(lkDue(lkList[0])>0?' · '+lkMoney(lkDue(lkList[0]))+' to collect':'')+'</div>':'')
       +rvxSessionVisitLines(s)
       +'</div>'
-      +roomVisitBtn+lockerBtn
+      +roomVisitBtn+tbButton(s)+lockerBtn
       +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
       +'<button class="btn btn-danger btn-sm" style="margin-left:8px;" title="Void this check-in — no charge" onclick="openCancelCheckinModal('+s.id+')">✕ Cancel</button>'
       +'</div>';
@@ -14164,7 +14165,162 @@ submitCheckout=function(){
   return r;
 };
 
+// ============================================================
+// GUEST TAB — drinks & snacks saved on the guest while they are inside.
+// Staff add items any time from the guest's card (☕ Tab); everything
+// stays on the guest until checkout, where it is already on the bill.
+// s.tab   = one line per product (what checkout charges)
+// s.tabLog = every add/remove with time and who did it
+// ============================================================
+function tbEsc(x){return rpEsc(x);}
+function tbTotal(s){return (s.tab||[]).reduce(function(a,x){return a+(x.total||0);},0);}
+function tbCount(s){return (s.tab||[]).reduce(function(a,x){return a+(x.qty||0);},0);}
+function tbSummaryLine(s){
+  if(!(s.tab||[]).length)return '';
+  return '<div style="font-size:11px;color:var(--teal);margin-top:2px;">☕ '+tbCount(s)+' item'+(tbCount(s)!==1?'s':'')+' on tab · '+tbTotal(s)+' LE</div>';
+}
+function tbButton(s){
+  var n=tbCount(s);
+  return '<button class="btn btn-outline btn-sm" style="margin-left:8px;" title="Add drinks or snacks to this guest — saved until checkout" onclick="tbOpen('+s.id+')">☕ Tab'+(n?' ('+n+')':'')+'</button>';
+}
+// Add (delta>0) or take off (delta<0) one product on a guest's tab, and save at once.
+function tbChange(sid,productId,delta){
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===sid;});
+  if(!s){showToast('This guest is no longer checked in',true);return null;}
+  s.tab=s.tab||[];
+  var line=s.tab.find(function(x){return x.productId===productId;});
+  if(delta>0){
+    var p=products.find(function(x){return x.id===productId;});
+    if(!line){
+      if(!p){showToast('Product not found',true);return null;}
+      line={productId:p.id,name:p.display_name,qty:0,price:p.sale_price,total:0,category:p.category,inventoryMode:p.inventory_mode};
+      s.tab.push(line);
+    }
+  }else if(!line||!(line.qty>0))return null;
+  line.qty+=delta;line.total=line.qty*line.price;
+  if(line.qty<=0)s.tab=s.tab.filter(function(x){return x!==line;});
+  s.tabLog=s.tabLog||[];
+  s.tabLog.push({at:new Date().toISOString(),time:nowTime(),by:currentStaffName||'-',productId:productId,name:line.name,qty:delta,price:line.price});
+  activeSessions=all;saveData('activeSessions',all);
+  auditLog(delta>0?'tab_add':'tab_remove',s.name+': '+(delta>0?'+':'−')+Math.abs(delta)+' '+line.name+' ('+line.price+' LE) — tab now '+tbTotal(s)+' LE',{sessionId:s.id,amount:line.price*delta});
+  return s;
+}
+// Tab lines with −/+ and the times each thing was taken.
+function tbListHtml(s,ctx){
+  var tab=s.tab||[];
+  if(!tab.length)return '<div style="font-size:12px;color:var(--text3);padding:6px 0;">Nothing on the tab yet.</div>';
+  // "taken at 10:05 AM ×2, 1:40 PM" (+ how many were taken off), grouped by minute
+  var times={},offs={};
+  (s.tabLog||[]).forEach(function(e){
+    if(e.qty>0){var g=times[e.productId]=times[e.productId]||[],last=g[g.length-1];if(last&&last.t===e.time)last.n+=e.qty;else g.push({t:e.time,n:e.qty});}
+    else offs[e.productId]=(offs[e.productId]||0)-e.qty;
+  });
+  Object.keys(times).forEach(function(k){times[k]=times[k].map(function(x){return fmt12(x.t)+(x.n>1?' ×'+x.n:'');});if(offs[k])times[k].push(offs[k]+' taken off');});
+  var btn='padding:0 9px;min-width:28px;line-height:24px;';
+  return tab.map(function(x){
+    var tm=times[x.productId];
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);">'
+      +'<div style="flex:1;"><div><strong>'+tbEsc(x.name)+'</strong> × '+x.qty+' <span style="color:var(--text3);">@ '+x.price+' LE</span></div>'
+      +(tm?'<div style="font-size:10px;color:var(--text3);">taken at '+tm.join(', ')+'</div>':'')+'</div>'
+      +'<button type="button" class="btn btn-outline btn-sm" style="'+btn+'" title="Take one off" onclick="tbClick(\''+ctx+'\','+s.id+',\''+x.productId+'\',-1)">−</button>'
+      +'<button type="button" class="btn btn-outline btn-sm" style="'+btn+'" title="Add one more" onclick="tbClick(\''+ctx+'\','+s.id+',\''+x.productId+'\',1)">+</button>'
+      +'<span class="money" style="color:var(--teal);min-width:62px;text-align:right;">'+x.total+' LE</span></div>';
+  }).join('')
+  +'<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding-top:6px;"><span>Tab Total</span><span class="money" style="color:var(--teal);">'+tbTotal(s)+' LE</span></div>';
+}
+function tbClick(ctx,sid,productId,delta){
+  var s=tbChange(sid,productId,delta);if(!s)return;
+  if(ctx==='co')tbRefreshCheckout();else tbRenderModal();
+  renderActiveSessions();
+}
+
+// ── ☕ Tab window (from the guest's card) ──
+var _tbSid=null,_tbCat='';
+function tbEnsureModal(){
+  if(document.getElementById('tb-modal'))return;
+  var m=document.createElement('div');m.className='modal-overlay';m.id='tb-modal';
+  m.innerHTML='<div class="modal" style="width:560px;">'
+    +'<div class="modal-header"><div class="modal-title">☕ Tab — <span id="tb-guest"></span></div><button class="close-btn" onclick="tbClose()">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Tap a product to add it. Everything is saved on the guest straight away and will be on their bill at checkout.</div>'
+    +'<input type="text" id="tb-search" placeholder="Search products..." style="margin-bottom:8px;">'
+    +'<div id="tb-cats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>'
+    +'<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;max-height:230px;overflow-y:auto;margin-bottom:12px;"><div id="tb-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div></div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">On the tab so far</div>'
+    +'<div id="tb-list" style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 14px;margin-bottom:14px;"></div>'
+    +'<button class="btn btn-primary btn-full" onclick="tbClose()">✓ Done</button>'
+    +'</div>';
+  document.body.appendChild(m);
+  document.getElementById('tb-search').addEventListener('input',tbRenderGrid);
+}
+function tbOpen(sid){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===sid;});
+  if(!s){showToast('This guest is no longer checked in',true);return;}
+  tbEnsureModal();_tbSid=sid;_tbCat='';
+  document.getElementById('tb-guest').textContent=s.name;
+  document.getElementById('tb-search').value='';
+  tbRenderModal();
+  openModal('tb-modal');
+}
+function tbClose(){closeModal('tb-modal');renderActiveSessions();}
+function tbSelCat(c){_tbCat=c;tbRenderModal();}
+function tbRenderModal(){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_tbSid;});
+  if(!s){closeModal('tb-modal');return;}
+  var order=['snacks','drinks','hot_drinks','printing','stationery'],cats=[];
+  products.forEach(function(p){if(p.is_active&&cats.indexOf(p.category)===-1)cats.push(p.category);});
+  cats.sort(function(a,b){return order.indexOf(a)-order.indexOf(b);});
+  document.getElementById('tb-cats').innerHTML=['<button type="button" class="btn '+(_tbCat===''?'btn-primary':'btn-outline')+' btn-sm" onclick="tbSelCat(\'\')">All</button>'].concat(cats.map(function(c){
+    return '<button type="button" class="btn '+(_tbCat===c?'btn-primary':'btn-outline')+' btn-sm" onclick="tbSelCat(\''+c+'\')">'+(CATEGORY_LABELS[c]||c)+'</button>';
+  })).join('');
+  tbRenderGrid();
+  document.getElementById('tb-list').innerHTML=tbListHtml(s,'tb');
+}
+function tbRenderGrid(){
+  var g=document.getElementById('tb-grid');if(!g)return;
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_tbSid;})||{};
+  var q=(document.getElementById('tb-search').value||'').toLowerCase().trim();
+  var list=products.filter(function(p){return p.is_active&&(!_tbCat||p.category===_tbCat)&&(!q||p.display_name.toLowerCase().indexOf(q)!==-1);});
+  if(!list.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:14px;">No products found</div>';return;}
+  g.innerHTML=list.map(function(p){
+    var line=(s.tab||[]).find(function(x){return x.productId===p.id;}),n=line?line.qty:0;
+    return '<div class="pos-tile" onclick="tbClick(\'tb\','+_tbSid+',\''+p.id+'\',1)" style="background:var(--bg2);border:1px solid '+(n?'var(--accent)':'var(--border)')+';border-radius:var(--radius-sm);padding:8px;text-align:center;cursor:pointer;">'
+      +'<div style="font-size:11px;margin-bottom:2px;">'+(p.emoji?p.emoji+' ':'')+tbEsc(p.display_name)+'</div>'
+      +'<div style="font-size:10px;color:var(--accent2);">'+p.sale_price+' LE</div>'
+      +(n?'<div style="font-size:12px;font-weight:700;color:var(--accent);margin-top:4px;">× '+n+'</div>':'')+'</div>';
+  }).join('');
+}
+
+// ── Checkout uses the same saved tab (no more starting from empty) ──
+function tbSyncCart(){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_checkoutSessionId;});
+  coCart={};(s&&s.tab||[]).forEach(function(x){coCart[x.productId]=x.qty;});
+  return s;
+}
+function tbRefreshCheckout(){
+  var s=tbSyncCart();
+  renderCoProductGrid();
+  if(s)renderCoTab(s);
+  calcCheckoutTotal();
+}
+coAddProduct=function(id){if(tbChange(_checkoutSessionId,id,1))tbRefreshCheckout();};
+coRemoveProduct=function(id){if(tbChange(_checkoutSessionId,id,-1))tbRefreshCheckout();};
+updateSessionTab=function(){var s=tbSyncCart();if(s)renderCoTab(s);};
+renderCoTab=function(s){
+  var el=document.getElementById('co-tab-list');if(!el)return;
+  el.innerHTML='<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">Current Tab</div>'+tbListHtml(s,'co')+'</div>';
+};
+var _tbPrevOpenCheckout=openCheckout;
+openCheckout=function(){
+  var r=_tbPrevOpenCheckout.apply(this,arguments);
+  try{var s=tbSyncCart();renderCoProductGrid();if(s)renderCoTab(s);}catch(e){console.warn(e);}
+  return r;
+};
+AUDIT_LABELS.tab_add='Tab: item added';AUDIT_LABELS.tab_remove='Tab: item taken off';
+
 </script>
+
 
 
 
