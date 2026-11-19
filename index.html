@@ -617,6 +617,7 @@
     </div>
     <div class="nav-group" data-category="academies">
       <div class="nav-section">Academies <button class="nav-section-btn" onclick="openAddAcademyModal()" title="Add Academy">+</button></div>
+      <button class="nav-item admin-only" data-page="allacademies" onclick="showPage(&#39;allacademies&#39;,this)"><span class="nav-icon">📊</span> All Academies</button>
       <div id="academy-nav"><button class="nav-item" onclick="showPage(&#39;ima&#39;,this)"><span class="nav-icon" style="color:#6c63ff;">◉</span> IMA Academy</button><button class="nav-item" onclick="showPage(&#39;skills&#39;,this)"><span class="nav-icon" style="color:#4da6ff;">◉</span> Skills Academy</button><button class="nav-item" onclick="showPage(&#39;magy&#39;,this)"><span class="nav-icon" style="color:#f5a623;">◉</span> MAGY Academy</button><button class="nav-item" onclick="showPage(&#39;ac_1783620101711&#39;,this)"><span class="nav-icon" style="color:#34d88b;">◉</span> Zaat Academy</button></div>
       <button class="nav-item" data-page="archived-academies" id="nav-archive" onclick="showPage(&#39;archived-academies&#39;,this);renderArchivedAcademies();"><span class="nav-icon">🗂</span> Archived Academies <span id="archive-badge" style="display: inline; background: var(--amber); color: rgb(26, 15, 0); border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">1</span></button>
     </div>
@@ -1528,6 +1529,63 @@
 </div>
 
 <!-- REPORTS PAGE -->
+<div id="page-allacademies" class="page">
+  <div class="page-header flex-between">
+    <div>
+      <div class="page-title">📊 All Academies</div>
+      <div class="page-sub">Every academy in one place — packages bought, money paid, hours used</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+      <select id="aa-period" onchange="aaPeriodChanged()" style="width:160px;">
+        <option value="all" selected>All time</option>
+        <option value="month">This month</option>
+        <option value="lastmonth">Last month</option>
+        <option value="90">Last 3 months</option>
+        <option value="year">This year</option>
+        <option value="custom">Custom range…</option>
+      </select>
+      <input type="date" id="aa-from" style="width:150px;display:none;" onchange="renderAllAcademies()">
+      <input type="date" id="aa-to" style="width:150px;display:none;" onchange="renderAllAcademies()">
+      <select id="aa-status" onchange="renderAllAcademies()" style="width:165px;">
+        <option value="all" selected>All academies</option>
+        <option value="active">Active only</option>
+        <option value="archived">Archived only</option>
+      </select>
+      <select id="aa-sort" onchange="renderAllAcademies()" style="width:170px;">
+        <option value="paid">Sort: Most paid</option>
+        <option value="packages">Most packages</option>
+        <option value="used">Most hours used</option>
+        <option value="last">Latest payment</option>
+        <option value="name">Name A–Z</option>
+      </select>
+      <input type="text" id="aa-search" placeholder="Search academy…" style="width:170px;" oninput="renderAllAcademies()">
+      <button class="btn btn-outline" onclick="aaExportCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+    </div>
+  </div>
+  <div id="aa-kpis" class="grid-4 mb-16"></div>
+  <div class="card mb-16">
+    <div class="card-title">Academies</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Academy</th><th>Type</th><th style="cursor:pointer;" onclick="aaSortBy('packages')">Packages</th>
+        <th style="cursor:pointer;" onclick="aaSortBy('paid')" id="aa-th-paid">Paid</th><th>Paid all time</th>
+        <th style="cursor:pointer;" onclick="aaSortBy('used')" id="aa-th-used">Used</th><th>Current package</th>
+        <th>Drinks</th><th style="cursor:pointer;" onclick="aaSortBy('last')">Last payment</th>
+      </tr></thead>
+      <tbody id="aa-tbody"></tbody>
+    </table></div>
+    <div id="aa-note" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6;"></div>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Money from academies by month (since the start)</div>
+    <div class="table-wrap" id="aa-months"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Every academy payment <span style="font-weight:400;color:var(--text3);font-size:12px;">(in the period above)</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Academy</th><th>Amount</th><th>Paid by</th><th>Cashier</th><th>Note</th></tr></thead><tbody id="aa-payments"></tbody></table></div>
+  </div>
+</div>
+
 <div id="page-reports" class="page">
   <div class="page-header flex-between">
     <div>
@@ -15156,6 +15214,203 @@ openEditClient=function(pid){
     var next=t==='regular'?(TIER_PLUS-n)+' more visit'+(TIER_PLUS-n===1?'':'s')+' to Plus':t==='plus'?(TIER_PRIME-n)+' more visit'+(TIER_PRIME-n===1?'':'s')+' to Prime':'top tier';
     info.innerHTML=getTierBadge(t)+' <span style="color:var(--text3);">'+n+' visits · '+next+' · set automatically</span>';
   }
+  return r;
+};
+
+// ============================================================
+// ALL ACADEMIES page (admin)
+// Money: academy / package lines in Shift Payments (Shared Space packages
+// and lockers are not academy money). Each line is linked to its academy by
+//   1) its academy tag, 2) the academy's name in the note, or
+//   3) the academy's package renewal on that date (older lines had no note;
+//      one line can hold two renewals made the same day — it is split).
+// Packages bought = the academy's package history + its current package.
+// ============================================================
+var AA_SAME={dina:'ac_1790107786553'};   // "DINA Academy" (archived Sep 2026) continued as "Dinalliza Art Academy"
+function aaN(x){return parseFloat(x)||0;}
+function aaNorm(s){return String(s||'').toLowerCase().replace(/academy|اكاديمية|أكاديمية/g,'').replace(/[^a-z0-9؀-ۿ]/g,'');}
+function aaDir(){
+  var list=[];
+  (academyOrder||[]).forEach(function(k){if(academies[k])list.push({key:k,a:academies[k],archived:false});});
+  Object.keys(academies||{}).forEach(function(k){if((academyOrder||[]).indexOf(k)===-1)list.push({key:k,a:academies[k],archived:false});});
+  (loadData('archivedAcademies',[])||[]).forEach(function(x){var d=x&&(x.data||x);if(d&&d.name&&!list.some(function(l){return l.key===x.key;}))list.push({key:x.key||d.name,a:d,archived:true,archivedAt:x.archivedAt});});
+  return list;
+}
+function aaGroupKey(k){return AA_SAME[k]&&academies[AA_SAME[k]]?AA_SAME[k]:k;}
+function aaIsDaily(a){return a&&a.packageType==='days';}
+// every package the academy ever had: [{start?,end,cost,units,sessions}] + current
+function aaRenewals(a){
+  // a renewal on date d replaced package i (cost packages[i].pkgCost) with the next one
+  var pk=(a.packages||[]),out=[];
+  pk.forEach(function(p,i){var next=pk[i+1]?pk[i+1].pkgCost:a.pkgCost;out.push({date:p.renewedAt,newCost:aaN(next)});});
+  return out;
+}
+function aaDayDiff(a,b){return Math.abs((new Date(a)-new Date(b))/86400000);}
+function aaPayments(){
+  var dir=aaDir(),out=[];
+  var named=dir.map(function(d){return {key:d.key,n:aaNorm(d.a.name)};}).filter(function(x){return x.n.length>=3;}).sort(function(x,y){return y.n.length-x.n.length;});
+  (loadData('shiftPayments',[])||[]).forEach(function(x){
+    var amt=aaN(x.academyPayments);if(amt<=0)return;
+    var note=x.note||'';
+    if(/shared space/i.test(note))return;                       // Shared Space package (not academy)
+    if(/^locker /i.test(note)&&!x.academyKey)return;             // locker rental
+    var v=(typeof spView==='function')?spView(x):x;
+    var method=['cash','instapay','visa','other'].filter(function(k){return aaN(v[k])>0;});
+    var base={id:x.id,date:x.date,cashier:x.cashier,note:note,method:method.length===1?method[0]:(method.length?'mixed':'')};
+    var key=x.academyKey||null;
+    if(!key){var nn=aaNorm(note);var hit=named.find(function(c){return nn.indexOf(c.n)!==-1;});if(hit)key=hit.key;}
+    if(key){out.push(Object.assign({},base,{key:aaGroupKey(key),amount:amt,how:x.academyKey?'tag':'note'}));return;}
+    // match to package renewals on (about) that day
+    var ev=[];dir.forEach(function(d){aaRenewals(d.a).forEach(function(r){if(r.date&&aaDayDiff(r.date,x.date)<=1)ev.push({key:d.key,cost:r.newCost});});});
+    var one=ev.filter(function(e){return Math.abs(e.cost-amt)<0.5;});
+    if(one.length===1){out.push(Object.assign({},base,{key:aaGroupKey(one[0].key),amount:amt,how:'renewal'}));return;}
+    for(var i=0;i<ev.length;i++)for(var j=i+1;j<ev.length;j++){
+      if(Math.abs(ev[i].cost+ev[j].cost-amt)<0.5){
+        out.push(Object.assign({},base,{key:aaGroupKey(ev[i].key),amount:ev[i].cost,how:'renewal-split'}));
+        out.push(Object.assign({},base,{key:aaGroupKey(ev[j].key),amount:ev[j].cost,how:'renewal-split'}));return;
+      }
+    }
+    // a first package (bought before any renewal was recorded): the only academy with a package at that price
+    var same=dir.filter(function(d){var costs=[aaN(d.a.pkgCost)].concat((d.a.packages||[]).map(function(p){return aaN(p.pkgCost);}));return costs.some(function(c){return Math.abs(c-amt)<0.5;});});
+    if(same.length===1){out.push(Object.assign({},base,{key:aaGroupKey(same[0].key),amount:amt,how:'price'}));return;}
+    out.push(Object.assign({},base,{key:'__unlinked',amount:amt,how:'none'}));
+  });
+  return out.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+}
+function aaRange(){
+  var v=(document.getElementById('aa-period')||{}).value||'all',t=today();
+  if(v==='all')return null;
+  if(v==='custom'){var f=document.getElementById('aa-from').value,to=document.getElementById('aa-to').value;return f&&to?[f,to]:null;}
+  return clPeriodRange(v==='90'?'90':v);
+}
+function aaPeriodChanged(){
+  var c=document.getElementById('aa-period').value==='custom';
+  document.getElementById('aa-from').style.display=c?'':'none';document.getElementById('aa-to').style.display=c?'':'none';
+  if(c&&!document.getElementById('aa-from').value){document.getElementById('aa-from').value=today().slice(0,8)+'01';document.getElementById('aa-to').value=today();}
+  renderAllAcademies();
+}
+function aaSortBy(k){var s=document.getElementById('aa-sort');if(s){s.value=k;renderAllAcademies();}}
+function aaMoney(n){return Math.round(n).toLocaleString('en-US')+' LE';}
+function aaRows(){
+  var range=aaRange(),pays=aaPayments(),dir=aaDir();
+  var inR=function(d){return !range||(d>=range[0]&&d<=range[1]);};
+  var rows={};
+  dir.forEach(function(d){
+    var g=aaGroupKey(d.key);
+    var r=rows[g]||(rows[g]={key:g,name:'',archived:true,merged:[],a:null,packagesAll:0,packagesIn:0,paysAll:0,paidIn:0,paidAll:0,usedIn:0,usedH:0,usedD:0,sessionsIn:0,drinksIn:0,owed:0,lastPay:null,daily:false});
+    if(g===d.key){r.name=d.a.name;r.a=d.a;r.archived=d.archived;r.daily=aaIsDaily(d.a);}else r.merged.push(d.a.name);
+    r.packagesAll+=(d.a.packages||[]).length+1;
+    var sess=(d.a.sessions||[]).concat.apply(d.a.sessions||[],(d.a.packages||[]).map(function(p){return p.sessions||[];}));
+    var dly=aaIsDaily(d.a);
+    sess.forEach(function(x){if(x&&x.date&&inR(x.date)){var v=aaN(x.duration);r.usedIn+=v;if(dly)r.usedD+=v;else r.usedH+=v;r.sessionsIn++;}});
+  });
+  pays.forEach(function(p){
+    var r=rows[p.key];
+    if(!r)r=rows[p.key]={key:p.key,name:p.key==='__unlinked'?'Not linked to an academy':p.key,archived:false,merged:[],a:null,packagesAll:0,packagesIn:0,paysAll:0,paidIn:0,paidAll:0,usedIn:0,usedH:0,usedD:0,sessionsIn:0,drinksIn:0,owed:0,lastPay:null,unlinked:p.key==='__unlinked'};
+    r.paidAll+=p.amount;r.paysAll++;
+    if(inR(p.date)){r.paidIn+=p.amount;r.packagesIn++;}
+    if(!r.lastPay||p.date>=r.lastPay.date)r.lastPay=p;
+  });
+  (loadData('drinkOrders',[])||[]).forEach(function(o){if(o.academyKey&&inR(o.date)){var r=rows[aaGroupKey(o.academyKey)];if(r)r.drinksIn+=aaN(o.total);}});
+  Object.keys(rows).forEach(function(k){try{rows[k].owed=typeof adOwedTotal==='function'?adOwedTotal(k):0;}catch(e){}});
+  return {rows:Object.keys(rows).map(function(k){return rows[k];}),pays:pays,range:range};
+}
+function aaCurrent(r){
+  if(!r.a||r.archived)return '<span style="color:var(--text3);">—</span>';
+  var a=r.a,debt=aaN(a.debtHours),used=debt+(a.sessions||[]).reduce(function(s,x){return s+aaN(x.duration);},0),tot=aaN(a.pkgHours),left=Math.max(0,tot-used);
+  var pct=tot?Math.min(100,Math.round(used/tot*100)):0,bc=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)';
+  var u=r.daily?'days':'h';
+  return '<div style="min-width:150px;"><div style="font-size:12px;">'+aaMoney(aaN(a.pkgCost))+' · '+(Math.round(left*10)/10)+' of '+tot+' '+u+' left</div>'
+    +'<div style="height:5px;background:var(--bg3);border-radius:3px;margin-top:4px;"><div style="width:'+pct+'%;height:5px;background:'+bc+';border-radius:3px;"></div></div></div>';
+}
+function renderAllAcademies(){
+  var page=document.getElementById('page-allacademies');if(!page)return;
+  if(!can('view_reports')){document.getElementById('aa-kpis').innerHTML='<div class="alert alert-danger" style="grid-column:1/-1;">You do not have access to this page.</div>';['aa-tbody','aa-months','aa-payments','aa-note'].forEach(function(i){var e=document.getElementById(i);if(e)e.innerHTML='';});return;}
+  var R=aaRows(),range=R.range;
+  var st=document.getElementById('aa-status').value,q=normalizeStr(document.getElementById('aa-search').value),sort=document.getElementById('aa-sort').value;
+  var rows=R.rows.filter(function(r){
+    if(r.unlinked)return r.paidIn>0;
+    if(st==='active'&&r.archived)return false;if(st==='archived'&&!r.archived)return false;
+    if(q&&normalizeStr(r.name+' '+r.merged.join(' ')).indexOf(q)===-1)return false;
+    return true;
+  });
+  rows.sort(function(a,b){
+    if(a.unlinked)return 1;if(b.unlinked)return -1;
+    if(sort==='packages')return (range?b.packagesIn-a.packagesIn:b.paysAll-a.paysAll)||b.paidIn-a.paidIn;
+    if(sort==='used')return b.usedIn-a.usedIn;
+    if(sort==='last')return ((b.lastPay||{}).date||'').localeCompare((a.lastPay||{}).date||'');
+    if(sort==='name')return a.name.localeCompare(b.name);
+    return b.paidIn-a.paidIn||b.paidAll-a.paidAll;
+  });
+  var shownKeys={};rows.forEach(function(r){shownKeys[r.key]=1;});
+  var paysShown=R.pays.filter(function(p){return shownKeys[p.key];});
+  var pIn=paysShown.filter(function(p){return !range||(p.date>=range[0]&&p.date<=range[1]);});
+  var income=pIn.reduce(function(s,p){return s+p.amount;},0),allTime=paysShown.reduce(function(s,p){return s+p.amount;},0);
+  var mon=clPeriodRange('month'),thisMonth=paysShown.filter(function(p){return p.date>=mon[0]&&p.date<=mon[1];}).reduce(function(s,p){return s+p.amount;},0);
+  var active=R.rows.filter(function(r){return !r.archived&&!r.unlinked;}).length;
+  var hours=rows.reduce(function(s,r){return s+r.usedH;},0),days=rows.reduce(function(s,r){return s+r.usedD;},0);
+  var all=null;try{var f=range?range[0]:'2000-01-01',t=range?range[1]:'2999-12-31';all=rpMetrics(f,t);}catch(e){}
+  var share=all&&all.revenue?Math.round(income/all.revenue*100):null;
+  var top=rows.filter(function(r){return !r.unlinked;})[0];
+  var kpi=function(icon,label,val,sub){return '<div class="stat"><div class="stat-label">'+icon+'&nbsp;'+label+'</div><div class="stat-value" style="font-size:22px;">'+val+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">'+(sub||'')+'</div></div>';};
+  document.getElementById('aa-kpis').innerHTML=
+    kpi('💰','Academy income',aaMoney(income),range?(formatDate(range[0])+' – '+formatDate(range[1])):'since the start of the system')
+    +kpi('📅','This month',aaMoney(thisMonth),'all time: '+aaMoney(allTime))
+    +kpi('📦','Packages paid',pIn.length,pIn.length?'average '+aaMoney(income/pIn.length):'')
+    +kpi('🎓','Active academies',active,(share!==null?share+'% of all revenue in this period':'')+(top&&top.paidIn?' · top: '+rpEsc(top.name):''));
+  var u=function(r){if(r.unlinked)return '';var parts=[];if(r.usedH||(!r.usedD&&!r.daily))parts.push((Math.round(r.usedH*10)/10)+' h');if(r.usedD||(!r.usedH&&r.daily))parts.push((Math.round(r.usedD*10)/10)+' days');return parts.join(' + ')+'<div style="font-size:10px;color:var(--text3);">'+r.sessionsIn+' session'+(r.sessionsIn===1?'':'s')+'</div>';};
+  document.getElementById('aa-tbody').innerHTML=rows.length?rows.map(function(r){
+    var name=r.unlinked?'<span style="color:var(--amber);">⚠ '+r.name+'</span>':(!r.archived&&academies[r.key]?'<a href="javascript:void(0)" onclick="showPage(\''+r.key+'\',document.querySelector(\'.nav-item[data-page=&quot;'+r.key+'&quot;]\'))" style="color:inherit;font-weight:600;">'+rpEsc(r.name)+'</a>':'<strong>'+rpEsc(r.name)+'</strong>');
+    return '<tr><td>'+name+(r.archived?' <span class="badge badge-amber" style="font-size:10px;">archived</span>':'')+(r.merged.length?'<div style="font-size:10px;color:var(--text3);">includes '+rpEsc(r.merged.join(', '))+'</div>':'')+'</td>'
+      +'<td>'+(r.unlinked?'':r.daily?'Days':'Hours')+'</td>'
+      +'<td>'+(r.unlinked?'':'<strong>'+(range?r.packagesIn:r.paysAll)+'</strong>'+(range?' in period<div style="font-size:10px;color:var(--text3);">'+r.paysAll+' all time</div>':'')+(r.packagesAll>r.paysAll?'<div style="font-size:10px;color:var(--text3);">+'+(r.packagesAll-r.paysAll)+' bought before records started</div>':''))+'</td>'
+      +'<td class="money money-green" style="white-space:nowrap;">'+aaMoney(r.paidIn)+'</td>'
+      +'<td style="white-space:nowrap;">'+aaMoney(r.paidAll)+'</td>'
+      +'<td style="white-space:nowrap;">'+u(r)+'</td>'
+      +'<td>'+aaCurrent(r)+'</td>'
+      +'<td style="white-space:nowrap;font-size:12px;">'+(r.drinksIn?aaMoney(r.drinksIn)+' paid':'—')+(r.owed?'<div style="color:var(--amber);">'+aaMoney(r.owed)+' owed</div>':'')+'</td>'
+      +'<td style="white-space:nowrap;font-size:12px;">'+(r.lastPay?formatDate(r.lastPay.date)+'<div style="color:var(--text3);">'+aaMoney(r.lastPay.amount)+'</div>':'—')+'</td></tr>';
+  }).join('')+'<tr style="font-weight:700;"><td>TOTAL</td><td></td><td>'+rows.reduce(function(s,r){return s+(range?r.packagesIn:r.paysAll);},0)+'</td><td class="money money-green">'+aaMoney(rows.reduce(function(s,r){return s+r.paidIn;},0))+'</td><td>'+aaMoney(rows.reduce(function(s,r){return s+r.paidAll;},0))+'</td><td colspan="4"></td></tr>'
+    :'<tr class="empty-row"><td colspan="9">No academies match</td></tr>';
+  // note on what is (not) counted
+  var sp=loadData('shiftPayments',[]).filter(function(x){return aaN(x.academyPayments)>0&&(!range||(x.date>=range[0]&&x.date<=range[1]));});
+  var shared=sp.filter(function(x){return /shared space/i.test(x.note||'');}).reduce(function(s,x){return s+aaN(x.academyPayments);},0);
+  var lock=sp.filter(function(x){return /^locker /i.test(x.note||'')&&!x.academyKey;}).reduce(function(s,x){return s+aaN(x.academyPayments);},0);
+  var linked={tag:0,note:0,renewal:0,'renewal-split':0,price:0};pIn.forEach(function(p){if(linked[p.how]!==undefined)linked[p.how]++;});
+  document.getElementById('aa-note').innerHTML='Paid = academy package payments recorded in Shift Payments. Packages = package payments recorded in the system (one payment = one package); packages bought before records started are shown under the number. Used = sessions logged in the period ('+(hours?Math.round(hours*10)/10+' h':'0 h')+(days?' and '+days+' days':'')+' in total). '
+    +(shared||lock?'Not academy money and left out: '+(shared?'Shared Space packages '+aaMoney(shared):'')+(shared&&lock?', ':'')+(lock?'lockers '+aaMoney(lock):'')+'. ':'')
+    +(linked.renewal+linked['renewal-split']+linked.price?(linked.renewal+linked['renewal-split']+linked.price)+' older payment'+((linked.renewal+linked['renewal-split']+linked.price)>1?'s':'')+' without a note were matched to their academy by the package renewed that day.':'');
+  // months table (since the start)
+  var months=[];R.pays.forEach(function(p){var m=p.date.slice(0,7);if(months.indexOf(m)===-1)months.push(m);});months.sort();
+  var cur=today().slice(0,7);if(months.length&&months[months.length-1]<cur)months.push(cur);
+  var mrows=R.rows.filter(function(r){return r.paidAll>0;}).sort(function(a,b){return b.paidAll-a.paidAll;});
+  var cell=function(k,m){return R.pays.filter(function(p){return p.key===k&&p.date.slice(0,7)===m;}).reduce(function(s,p){return s+p.amount;},0);};
+  var mname=function(m){return new Date(m+'-01').toLocaleDateString('en-GB',{month:'short',year:'2-digit'});};
+  document.getElementById('aa-months').innerHTML=months.length?'<table><thead><tr><th>Academy</th>'+months.map(function(m){return '<th style="text-align:right;">'+mname(m)+'</th>';}).join('')+'<th style="text-align:right;">Total</th></tr></thead><tbody>'
+    +mrows.map(function(r){return '<tr><td>'+rpEsc(r.name)+'</td>'+months.map(function(m){var v=cell(r.key,m);return '<td style="text-align:right;white-space:nowrap;'+(v?'':'color:var(--text3);')+'">'+(v?Math.round(v).toLocaleString('en-US'):'–')+'</td>';}).join('')+'<td style="text-align:right;font-weight:600;white-space:nowrap;">'+aaMoney(r.paidAll)+'</td></tr>';}).join('')
+    +'<tr style="font-weight:700;"><td>Total</td>'+months.map(function(m){var v=R.pays.filter(function(p){return p.date.slice(0,7)===m;}).reduce(function(s,p){return s+p.amount;},0);return '<td style="text-align:right;white-space:nowrap;">'+Math.round(v).toLocaleString('en-US')+'</td>';}).join('')+'<td style="text-align:right;white-space:nowrap;">'+aaMoney(allTime)+'</td></tr></tbody></table>'
+    :'<div style="color:var(--text3);font-size:13px;padding:10px;">No academy payments yet.</div>';
+  var nameOf=function(k){var r=R.rows.find(function(x){return x.key===k;});return r?r.name:k;};
+  document.getElementById('aa-payments').innerHTML=pIn.length?pIn.slice().reverse().map(function(p){
+    return '<tr><td style="white-space:nowrap;">'+formatDate(p.date)+'</td><td>'+rpEsc(nameOf(p.key))+(p.how==='renewal-split'?' <span style="font-size:10px;color:var(--text3);">(part of a combined line)</span>':'')+'</td><td class="money money-green" style="white-space:nowrap;">'+aaMoney(p.amount)+'</td><td>'+(p.method?(p.method==='mixed'?'Mixed':payLabel(p.method)):'—')+'</td><td>'+rpEsc(p.cashier||'')+'</td><td style="font-size:11px;color:var(--text3);">'+rpEsc(p.note||'')+'</td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="6">No academy payments in this period</td></tr>';
+}
+function aaExportCSV(){
+  var R=aaRows(),lines=[['Academy','Status','Type','Packages paid (all time)','Packages paid in period','Packages before records','Paid in period (LE)','Paid all time (LE)','Hours used in period','Days used in period','Sessions in period','Drinks paid in period (LE)','Drinks owed (LE)','Last payment date','Last payment (LE)']];
+  R.rows.forEach(function(r){lines.push([r.name,r.unlinked?'':r.archived?'Archived':'Active',r.unlinked?'':r.daily?'Days':'Hours',r.paysAll,r.packagesIn,Math.max(0,r.packagesAll-r.paysAll),Math.round(r.paidIn),Math.round(r.paidAll),Math.round(r.usedH*10)/10,Math.round(r.usedD*10)/10,r.sessionsIn,Math.round(r.drinksIn),Math.round(r.owed),r.lastPay?r.lastPay.date:'',r.lastPay?Math.round(r.lastPay.amount):'']);});
+  var csv=lines.map(function(l){return l.map(function(c){c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='academies_'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();
+}
+PAGE_TO_CATEGORY.allacademies='academies';
+var _aaPrevShowPage=showPage;
+showPage=function(id,btn){var r=_aaPrevShowPage.apply(this,arguments);if(id==='allacademies'){try{renderAllAcademies();}catch(e){console.warn(e);}}return r;};
+// From now on every academy payment carries its academy, so it never has to be matched later
+var _aaPrevConfirmRenew=confirmRenew;
+confirmRenew=function(){
+  var key=currentAcademy,n0=(shiftPayments||[]).length,ids={};(shiftPayments||[]).forEach(function(x){ids[x.id]=1;});
+  var r=_aaPrevConfirmRenew.apply(this,arguments);
+  var tagged=0;(shiftPayments||[]).forEach(function(x){if(!ids[x.id]&&aaN(x.academyPayments)>0&&!x.academyKey){x.academyKey=key;tagged++;}});
+  if(tagged)saveData('shiftPayments',shiftPayments);
   return r;
 };
 
