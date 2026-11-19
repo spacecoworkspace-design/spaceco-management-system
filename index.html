@@ -2723,10 +2723,15 @@ function findOrCreateProfile(name,phone,email){
   // second profile every time the spelling drifted, splitting one real
   // client's package eligibility, visit history, and spend across two
   // records. Phone is the more stable identifier when it's present.
-  var profile = phoneDigits.length>=3
-    ? clientProfiles.find(function(p){return (p.phone||'').replace(/\D/g,'')===phoneDigits;})
+  var last10=function(x){return (x||'').replace(/\D/g,'').slice(-10);};
+  var profile = phoneDigits.length>=7
+    ? clientProfiles.find(function(p){return last10(p.phone)===last10(phoneDigits);})
     : null;
-  if(!profile) profile=clientProfiles.find(function(p){return p.normalizedName===norm;});
+  if(!profile) profile=clientProfiles.find(function(p){
+    if(p.normalizedName!==norm)return false;
+    // same name but both have a (different) phone = a different person
+    return !(phoneDigits.length>=7&&last10(p.phone).length>=7);
+  });
   if(!profile){
     profile={id:'p'+Date.now()+'_'+Math.random().toString(36).slice(2),name:name.trim(),normalizedName:norm,phone:phone||'',email:email||'',createdAt:today()};
     clientProfiles.push(profile);
@@ -14937,7 +14942,145 @@ function mgAfterMerge(key){
   if(on('dashboard')){try{refreshDashboard();}catch(e){}}
 }
 
+// ============================================================
+// GUARDS — keep the numbers right from now on
+// 1) A visit's payments must add up to its price (edit visit, manual entry)
+// 2) Checking in under an academy's name asks first (academy money has its own place)
+// 3) Data Health: an automatic check of the records, shown to the admin
+// ============================================================
+function gdNum(id){var e=document.getElementById(id);return e?(parseFloat(e.value)||0):0;}
+
+// 1a) Edit visit
+var _gdPrevSaveEditVisit=saveEditVisit;
+saveEditVisit=function(){
+  var v=clients.find(function(c){return c.id===_editingVisitId;});
+  if(!v)return _gdPrevSaveEditVisit();
+  var cost=gdNum('ev-cost'),paid=gdNum('ev-cash')+gdNum('ev-instapay')+gdNum('ev-visa')+(parseFloat(v.other)||0);
+  if(Math.abs(cost-paid)>0.001){
+    if(!confirm('The payments add up to '+paid+' LE, but the price is '+cost+' LE.\n\nOK = set the price to '+paid+' LE\nCancel = go back and fix the amounts'))return;
+    document.getElementById('ev-cost').value=paid;
+  }
+  var before={cost:v.cost,cash:v.cash,instapay:v.instapay,visa:v.visa,date:v.date};
+  var r=_gdPrevSaveEditVisit.apply(this,arguments);
+  var after=clients.find(function(c){return c.id===_editingVisitId;})||v;
+  if(before.cost!==after.cost||before.cash!==after.cash||before.instapay!==after.instapay||before.visa!==after.visa||before.date!==after.date){
+    try{auditLog('visit_edited',(after.name||'Visit')+' '+formatDate(after.date)+': price '+before.cost+' → '+after.cost+' LE, paid cash '+(before.cash||0)+'/instapay '+(before.instapay||0)+'/visa '+(before.visa||0)+' → '+(after.cash||0)+'/'+(after.instapay||0)+'/'+(after.visa||0),{visitId:after.id});}catch(e){}
+  }
+  return r;
+};
+// 1b) Manual guest entry
+var _gdPrevSubmitManual=submitManualGuest;
+submitManualGuest=function(){
+  var cost=gdNum('mg-cost'),paid=gdNum('mg-cash')+gdNum('mg-instapay')+gdNum('mg-visa');
+  if(cost&&Math.abs(cost-paid)>0.001){
+    if(!confirm('The payments add up to '+paid+' LE, but the cost is '+cost+' LE.\n\nOK = save the cost as '+paid+' LE\nCancel = go back and fix the amounts'))return;
+    if(!paid){showToast('Enter how the guest paid (cash, Instapay or Visa)',true);return;}
+    document.getElementById('mg-cost').value=paid;
+  }
+  return _gdPrevSubmitManual.apply(this,arguments);
+};
+
+// 2) Checking in an academy as a normal guest
+function gdAcademyByName(name){
+  var n=String(name||'').toLowerCase().replace(/[^a-z0-9؀-ۿ]/g,'');
+  if(n.length<3)return null;
+  var hit=null;
+  Object.keys(academies||{}).forEach(function(k){
+    var a=academies[k];if(!a||!a.name)return;
+    var an=a.name.toLowerCase().replace(/academy|اكاديمية|أكاديمية/g,'').replace(/[^a-z0-9؀-ۿ]/g,'');
+    var m=an.length>=3&&(n.indexOf(an)!==-1||(/academy|اكاديمية|أكاديمية/.test(String(name).toLowerCase())&&an.indexOf(n.replace(/academy/g,''))!==-1));
+    if(m&&(!hit||an.length>hit._len))hit={name:a.name,_len:an.length};
+  });
+  return hit;
+}
+var _gdPrevCheckIn=checkInGuest;
+checkInGuest=function(){
+  var nm=(document.getElementById('ci-name')||{}).value||'';
+  var a=gdAcademyByName(nm);
+  if(a&&!confirm('"'+nm+'" looks like the academy "'+a.name+'".\n\nFor an academy, use 🎓 Start academy day (it logs their hours), and record package money with Renew Package — otherwise their payment is counted as a room visit.\n\nCheck in as a normal guest anyway?'))return;
+  return _gdPrevCheckIn.apply(this,arguments);
+};
+
+// 3) Data Health
+function dhIgnored(){return loadData('dhIgnored',[]);}
+function dhIssues(){
+  var out=[],N=function(x){return parseFloat(x)||0;};
+  var ids={};(clientProfiles||[]).forEach(function(p){ids[p.id]=p;});
+  var ign=dhIgnored();
+  (clients||[]).forEach(function(c){
+    var paid=N(c.cash)+N(c.instapay)+N(c.visa)+N(c.other);
+    if(Math.abs(N(c.cost)-paid)>0.001)out.push({type:'price',id:c.id,date:c.date,text:(c.name||'Visit')+' · '+formatDate(c.date)+' · '+(c.room||'')+': price '+N(c.cost)+' LE but '+paid+' LE paid'});
+    if(c.profileId&&!ids[c.profileId])out.push({type:'orphan',id:c.id,date:c.date,text:(c.name||'Visit')+' · '+formatDate(c.date)+': this visit has no client in the Client Log'});
+    if(N(c.cost)<0||paid<0)out.push({type:'negative',id:c.id,date:c.date,text:(c.name||'Visit')+' · '+formatDate(c.date)+': a negative amount'});
+  });
+  (loadData('drinkOrders',[])||[]).forEach(function(o){
+    // old orders list items as a description only (no prices): their total is the record, nothing to compare
+    var priced=(o.items||[]).some(function(i){return N(i.total)||N(i.price);});
+    if(priced){var s=o.items.reduce(function(a,i){return a+N(i.total);},0);if(Math.abs(s-N(o.total))>0.001)out.push({type:'drinks',id:o.id,date:o.date,text:(o.client||'Walk-in')+' · '+formatDate(o.date)+': drinks order total '+N(o.total)+' LE but its items add up to '+s+' LE'});}
+    if(N(o.total)<0)out.push({type:'negative',id:o.id,date:o.date,text:'Drinks order '+formatDate(o.date)+': a negative amount'});
+  });
+  var byPhone={};
+  (clientProfiles||[]).forEach(function(p){var d=(p.phone||'').replace(/\D/g,'').slice(-10);if(d.length===10)(byPhone[d]=byPhone[d]||[]).push(p);});
+  Object.keys(byPhone).forEach(function(d){
+    var g=byPhone[d];if(g.length<2)return;
+    var key='phone:'+d+':'+g.map(function(p){return p.id;}).sort().join(',');
+    if(ign.indexOf(key)!==-1)return;
+    out.push({type:'dupphone',key:key,text:'0'+d+' is on '+g.length+' clients: '+g.map(function(p){return p.name;}).join(', ')});
+  });
+  return out;
+}
+var DH_LABEL={price:'Price and payment differ',orphan:'Visit without a client',negative:'Negative amount',drinks:'Drinks order does not add up',dupphone:'Same phone on several clients'};
+function dhEnsureModal(){
+  if(document.getElementById('dh-modal'))return;
+  var m=document.createElement('div');m.className='modal-overlay';m.id='dh-modal';
+  m.innerHTML='<div class="modal" style="width:640px;"><div class="modal-header"><div class="modal-title">🩺 Data Health</div><button class="close-btn" onclick="closeModal(\'dh-modal\')">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">An automatic check of the records behind every total. Anything listed here makes screens disagree or a client\'s history incomplete.</div>'
+    +'<div id="dh-body" style="max-height:60vh;overflow-y:auto;"></div></div>';
+  document.body.appendChild(m);
+}
+function dhOpen(){
+  dhEnsureModal();
+  var list=dhIssues(),el=document.getElementById('dh-body');
+  if(!list.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--green);font-weight:600;">✅ Everything checks out — all records agree.</div>';}
+  else{
+    var groups={};list.forEach(function(i){(groups[i.type]=groups[i.type]||[]).push(i);});
+    el.innerHTML=Object.keys(groups).map(function(t){
+      return '<div style="font-weight:600;margin:10px 0 4px;">'+DH_LABEL[t]+' ('+groups[t].length+')</div>'
+        +groups[t].map(function(i){
+          var act='';
+          if(i.type==='price'||i.type==='negative')act='<button class="btn btn-outline btn-sm" onclick="closeModal(\'dh-modal\');openEditVisit('+i.id+')">✏️ Fix</button>';
+          if(i.type==='dupphone')act='<button class="btn btn-outline btn-sm" onclick="dhIgnore(\''+i.key+'\')">Different people</button>';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);"><span>'+rpEsc(i.text)+'</span>'+act+'</div>';
+        }).join('');
+    }).join('');
+  }
+  openModal('dh-modal');
+}
+function dhIgnore(key){var l=dhIgnored();if(l.indexOf(key)===-1)l.push(key);saveData('dhIgnored',l);dhOpen();try{renderNotifPanel();renderAttentionWidget();}catch(e){}}
+var _dhPrevNotifs=buildNotifications;
+buildNotifications=function(){
+  var items=_dhPrevNotifs();
+  try{
+    if(isAdmin){
+      var n=dhIssues();
+      if(n.length)items.unshift({icon:'🩺',text:'Data check: '+n.length+' record'+(n.length>1?'s need':' needs')+' attention — <a href="javascript:void(0)" onclick="dhOpen()" style="color:inherit;text-decoration:underline;">open Data Health</a>',color:'var(--red)'});
+    }
+  }catch(e){}
+  return items;
+};
+AUDIT_LABELS.visit_edited='Visit edited';
+// a Data Health button next to Monthly Report on the dashboard (admins)
+(function(){
+  var b=[].slice.call(document.querySelectorAll('button')).find(function(x){return /Monthly Report/.test(x.textContent);});
+  if(!b||document.getElementById('dh-btn'))return;
+  var n=document.createElement('button');n.id='dh-btn';n.className=b.className;n.type='button';n.style.marginLeft='8px';n.textContent='🩺 Data Health';n.onclick=dhOpen;
+  b.parentNode.insertBefore(n,b.nextSibling);
+})();
+var _dhPrevApplyRole=_applyRoleUI;
+_applyRoleUI=function(){var r=_dhPrevApplyRole.apply(this,arguments);var b=document.getElementById('dh-btn');if(b)b.style.display=isAdmin?'':'none';return r;};
+
 </script>
+
 
 
 
