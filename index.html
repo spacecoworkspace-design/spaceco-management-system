@@ -480,7 +480,7 @@
 <body>
 <div id="login-screen" style="display: none;">
   <div class="login-box">
-    <span class="logo-text">SPACE-CO</span>
+    <img id="login-logo" alt="SPACE-CO Workspace" style="height:64px;width:auto;max-width:100%;display:block;margin:0 auto 10px;">
     <span class="logo-sub">Management System</span>
     <div style="font-size:13px;color:var(--text3);margin-bottom:20px;">Select your role</div>
     <button class="btn btn-primary btn-full btn-lg" style="margin-bottom:12px;" onclick="selectRole(&#39;cashier&#39;)">💼 Cashier</button>
@@ -498,7 +498,7 @@
 </div>
 <!-- BOOT OVERLAY -->
 <div id="boot-overlay" style="display: none; position: fixed; inset: 0px; z-index: 99999; background: rgb(14, 14, 16); align-items: center; justify-content: center; flex-direction: column; gap: 18px;">
-  <div style="font-size:28px;font-weight:700;background:linear-gradient(135deg,#d4a843,#1ab8b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;">SPACE-CO</div>
+  <img id="boot-logo" alt="SPACE-CO Workspace" style="height:72px;width:auto;max-width:80vw;display:block;">
   <div style="display:flex;gap:8px;align-items:center;">
     <div style="width:10px;height:10px;border-radius:50%;background:#d4a843;animation:sbpulse 1.2s ease-in-out infinite;"></div>
     <div style="width:10px;height:10px;border-radius:50%;background:#d4a843;animation:sbpulse 1.2s ease-in-out 0.2s infinite;"></div>
@@ -15069,6 +15069,16 @@ buildNotifications=function(){
   return items;
 };
 AUDIT_LABELS.visit_edited='Visit edited';
+// Real logo on the loading screen (white, dark background) and on the login card (follows the theme)
+(function(){
+  var b=document.getElementById('boot-logo');if(b&&LOGO_DARK_SRC)b.src=LOGO_DARK_SRC;
+  var setLogin=function(){var l=document.getElementById('login-logo');if(l){var src=_darkMode?LOGO_LIGHT_SRC:LOGO_DARK_SRC;if(src)l.src=src;}};
+  setLogin();
+  var prev=applyLogoForTheme;applyLogoForTheme=function(){var r=prev.apply(this,arguments);setLogin();return r;};
+})();
+// Notifications wait until the data has loaded (the panel used to try to draw half a second after opening, before slow loads finished)
+var _nfPrevBuild=buildNotifications;
+buildNotifications=function(){if(!_appReady)return [];return _nfPrevBuild.apply(this,arguments);};
 // a Data Health button next to Monthly Report on the dashboard (admins)
 (function(){
   var b=[].slice.call(document.querySelectorAll('button')).find(function(x){return /Monthly Report/.test(x.textContent);});
