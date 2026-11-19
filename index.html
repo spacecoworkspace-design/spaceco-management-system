@@ -11034,12 +11034,14 @@ renderActiveSessions=function(){
       +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
+      +adCardLine(s)
       +tbSummaryLine(s)
       +(lkList.length?'<div style="font-size:11px;color:var(--teal);margin-top:2px;">🔐 Locker '+lkEsc(lkLabel(lkList[0].lockerId))+' · until '+lkEsc(lkFmt(lkList[0].end))+(lkDue(lkList[0])>0?' · '+lkMoney(lkDue(lkList[0]))+' to collect':'')+'</div>':'')
       +rvxSessionVisitLines(s)
       +'</div>'
-      +roomVisitBtn+tbButton(s)+lockerBtn
-      +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>'
+      +(s.academyDay?tbButton(s)+'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="adOpenEnd('+s.id+')">🏁 End day</button>'
+        :roomVisitBtn+tbButton(s)+lockerBtn
+      +'<button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="openCheckout('+s.id+')">🏁 Checkout</button>')
       +'<button class="btn btn-danger btn-sm" style="margin-left:8px;" title="Void this check-in — no charge" onclick="openCancelCheckinModal('+s.id+')">✕ Cancel</button>'
       +'</div>';
   }).join('');
@@ -14319,7 +14321,332 @@ openCheckout=function(){
 };
 AUDIT_LABELS.tab_add='Tab: item added';AUDIT_LABELS.tab_remove='Tab: item taken off';
 
+// ============================================================
+// ACADEMY DAY — an academy is "inside" like a guest: it has a room, a
+// timer and a ☕ Tab. End day logs the session in the academy (hours or
+// one day off the package) and the drinks are paid now or added to the
+// academy's drinks balance, collected later from the academy page.
+// kv 'academyTabs': [{id,academyKey,academyName,date,timeIn,timeOut,items,
+//   total,status:'owed'|'paid',payment,cashier,paidDate,paidAt,orderId}]
+// ============================================================
+function adEsc(x){return rpEsc(x);}
+function adTabs(){return loadData('academyTabs',[]);}
+function adSaveTabs(list){saveData('academyTabs',list);}
+function adOwed(key){return adTabs().filter(function(x){return x.academyKey===key&&x.status==='owed';});}
+function adOwedTotal(key){return adOwed(key).reduce(function(a,x){return a+(x.total||0);},0);}
+function adAcademyKeys(){return (academyOrder||[]).filter(function(k){return academies[k];});}
+function adRemaining(a){
+  var debt=parseFloat(a.debtHours)||0;
+  var used=debt+(a.sessions||[]).reduce(function(s,x){return s+(parseFloat(x.duration)||0);},0);
+  return (parseFloat(a.pkgHours)||0)-used;
+}
+function adItemsText(items){return (items||[]).map(function(x){return x.name+' ×'+x.qty;}).join(', ');}
+function adCardLine(s){
+  if(!s.academyDay)return '';
+  var owed=adOwedTotal(s.academyDay.key);
+  return '<div style="font-size:11px;color:var(--accent2);margin-top:2px;">🎓 Academy day'+(s.academyDay.instructor?' · '+adEsc(s.academyDay.instructor):'')+(s.guests>1?' · '+s.guests+' people':'')
+    +(owed?' · <span style="color:var(--amber);">'+owed+' LE drinks owed from before</span>':'')+'</div>';
+}
+function adStaffOptions(sel){return staff.map(function(st){return '<option value="'+adEsc(st.name)+'"'+(st.name===sel?' selected':'')+'>'+adEsc(st.name)+'</option>';}).join('');}
+
+// ── Start academy day ──
+function adEnsureStartModal(){
+  if(document.getElementById('ad-start-modal'))return;
+  var m=document.createElement('div');m.className='modal-overlay';m.id='ad-start-modal';
+  m.innerHTML='<div class="modal" style="width:460px;">'
+    +'<div class="modal-header"><div class="modal-title">🎓 Start Academy Day</div><button class="close-btn" onclick="closeModal(\'ad-start-modal\')">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">The academy shows as inside, with a ☕ Tab for drinks. At the end, 🏁 End day records the session in the academy and the drinks are paid or added to its balance.</div>'
+    +'<div class="form-group"><label>Academy *</label><select id="ad-academy"></select></div>'
+    +'<div id="ad-academy-note" style="font-size:12px;color:var(--text3);margin:-6px 0 10px;"></div>'
+    +'<div class="form-group"><label>Room *</label><select id="ad-room"></select></div>'
+    +'<div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">'
+    +'<div class="form-group"><label>People</label><input type="number" id="ad-people" min="1" value="1"></div>'
+    +'<div class="form-group"><label>Start time</label><input type="time" id="ad-tin"></div>'
+    +'<div class="form-group"><label>Cashier</label><select id="ad-cashier"></select></div>'
+    +'</div>'
+    +'<div class="form-group"><label>Instructor (optional)</label><input type="text" id="ad-instructor" placeholder="Who is teaching today"></div>'
+    +'<button class="btn btn-primary btn-full" onclick="adStart()">🎓 Start day</button>'
+    +'</div>';
+  document.body.appendChild(m);
+  document.getElementById('ad-academy').addEventListener('change',adStartNote);
+}
+function adStartNote(){
+  var k=document.getElementById('ad-academy').value,a=academies[k];
+  var el=document.getElementById('ad-academy-note');if(!a){el.textContent='';return;}
+  var rem=adRemaining(a),owed=adOwedTotal(k);
+  el.innerHTML='Package left: <strong>'+acFmtUnits(a,Math.max(0,rem))+' '+acUnitWord(a,Math.max(0,rem))+'</strong>'+(owed?' · <span style="color:var(--amber);">drinks owed: '+owed+' LE</span>':'');
+}
+function adOpenStart(){
+  var keys=adAcademyKeys();
+  if(!keys.length){showToast('There are no academies to start',true);return;}
+  adEnsureStartModal();
+  document.getElementById('ad-academy').innerHTML=keys.map(function(k){return '<option value="'+k+'">'+adEsc(academies[k].name)+'</option>';}).join('');
+  document.getElementById('ad-room').innerHTML=ROOM_VISIT_ROOMS.map(function(r){return '<option value="'+r.key+'"'+(r.key==='classRoom'?' selected':'')+'>'+adEsc(r.name)+'</option>';}).join('');
+  document.getElementById('ad-people').value=1;
+  document.getElementById('ad-tin').value=nowTime();
+  document.getElementById('ad-cashier').innerHTML=adStaffOptions(currentStaffName);
+  document.getElementById('ad-instructor').value='';
+  adStartNote();
+  openModal('ad-start-modal');
+}
+function adStart(){
+  var k=document.getElementById('ad-academy').value,a=academies[k];
+  if(!a){showToast('Please choose an academy',true);return;}
+  var rk=document.getElementById('ad-room').value,room=ROOM_VISIT_ROOMS.find(function(r){return r.key===rk;});
+  var people=parseInt(document.getElementById('ad-people').value,10);
+  var tin=document.getElementById('ad-tin').value;
+  if(!room){showToast('Please choose a room',true);return;}
+  if(!(people>=1)){showToast('People must be at least 1',true);return;}
+  if(!tin){showToast('Please enter the start time',true);return;}
+  var all=loadData('activeSessions',[]);
+  if(all.some(function(x){return x.academyDay&&x.academyDay.key===k;})){showToast(a.name+' already has a day running — end it first',true);return;}
+  if(rk!=='sharedSpace'){
+    var busy=all.some(function(x){return x.roomKey===rk;})||all.some(function(x){return (x.roomVisits||[]).some(function(v){return !v.timeOut&&v.roomKey===rk;});});
+    if(busy&&!confirm(room.name+' is in use by someone else right now. Start the academy day there anyway?'))return;
+    var warn=(typeof rvxBookingWarning==='function')?rvxBookingWarning(rk,tin):'';
+    if(warn&&!confirm(room.name+' is reserved: '+warn+'.\n\nStart the academy day there anyway?'))return;
+  }
+  var cashier=document.getElementById('ad-cashier').value||currentStaffName;
+  var s={id:Date.now(),name:a.name,phone:a.phone||'',email:'',room:room.name,roomKey:rk,guests:people,timeIn:tin,date:today(),cashier:cashier,tab:[],
+    academyDay:{key:k,instructor:document.getElementById('ad-instructor').value.trim()}};
+  all.push(s);activeSessions=all;saveData('activeSessions',all);
+  closeModal('ad-start-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  auditLog('academy_day_start',a.name+' started in '+room.name+' at '+fmt12(tin)+(people>1?' ('+people+' people)':''),{sessionId:s.id,academyKey:k});
+  showToast(a.name+' is in '+room.name+' 🎓');
+}
+
+// ── End day ──
+var _adEndSid=null;
+function adEnsureEndModal(){
+  if(document.getElementById('ad-end-modal'))return;
+  var m=document.createElement('div');m.className='modal-overlay';m.id='ad-end-modal';
+  m.innerHTML='<div class="modal" style="width:520px;">'
+    +'<div class="modal-header"><div class="modal-title">🏁 End Academy Day — <span id="ade-name"></span></div><button class="close-btn" onclick="closeModal(\'ad-end-modal\')">✕</button></div>'
+    +'<div id="ade-info" style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:14px;font-size:13px;"></div>'
+    +'<div class="form-row" style="grid-template-columns:1fr 1fr;">'
+    +'<div class="form-group"><label>End time *</label><input type="time" id="ade-tout"></div>'
+    +'<div class="form-group"><label>Cashier</label><select id="ade-cashier"></select></div>'
+    +'</div>'
+    +'<div id="ade-session" style="font-size:13px;margin:-4px 0 14px;"></div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">☕ Drinks & snacks today <button type="button" class="btn btn-outline btn-sm" onclick="adEditTab()">✏️ Edit tab</button></div>'
+    +'<div id="ade-tab" style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 14px;margin-bottom:14px;font-size:12px;"></div>'
+    +'<div id="ade-pay-box">'
+    +'<div class="form-group"><label>Drinks payment</label>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">'
+    +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="radio" name="ade-how" value="now" checked style="appearance:auto;width:auto;"> Paid now</label>'
+    +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="radio" name="ade-how" value="later" style="appearance:auto;width:auto;"> Add to the academy\'s drinks balance (pay later)</label>'
+    +'</div></div>'
+    +'<div class="form-group" id="ade-method-row"><label>Payment method</label><select id="ade-method"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select></div>'
+    +'</div>'
+    +'<button class="btn btn-primary btn-full" id="ade-btn" onclick="adEnd()">✓ End day</button>'
+    +'</div>';
+  document.body.appendChild(m);
+  document.getElementById('ade-tout').addEventListener('input',adRenderEnd);
+  document.getElementById('ade-tout').addEventListener('change',adRenderEnd);
+  [].forEach.call(document.querySelectorAll('input[name="ade-how"]'),function(r){r.addEventListener('change',adRenderEnd);});
+}
+function adHow(){var r=document.querySelector('input[name="ade-how"]:checked');return r?r.value:'now';}
+function adEditTab(){var sid=_adEndSid;closeModal('ad-end-modal');tbOpen(sid);_adReopenAfterTab=sid;}
+var _adReopenAfterTab=null;
+var _adPrevTbClose=tbClose;
+tbClose=function(){_adPrevTbClose();if(_adReopenAfterTab){var sid=_adReopenAfterTab;_adReopenAfterTab=null;adOpenEnd(sid,true);}};
+function adOpenEnd(sid,keepTime){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===sid;});
+  if(!s||!s.academyDay){showToast('This academy day was not found',true);return;}
+  adEnsureEndModal();_adEndSid=sid;
+  document.getElementById('ade-name').textContent=s.name;
+  if(!keepTime||!document.getElementById('ade-tout').value)document.getElementById('ade-tout').value=nowTime();
+  if(!keepTime)document.getElementById('ade-cashier').innerHTML=adStaffOptions(currentStaffName||s.cashier);
+  if(!keepTime){document.querySelector('input[name="ade-how"][value="now"]').checked=true;document.getElementById('ade-method').value='cash';}
+  adRenderEnd();
+  openModal('ad-end-modal');
+}
+function adRenderEnd(){
+  var s=loadData('activeSessions',[]).find(function(x){return x.id===_adEndSid;});if(!s)return;
+  var a=academies[s.academyDay.key];
+  var tout=document.getElementById('ade-tout').value;
+  var hrs=calcHours(s.timeIn,tout);
+  document.getElementById('ade-info').innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap;">'
+    +'<div><span style="color:var(--text3);">Room: </span><strong>'+adEsc(s.room)+'</strong></div>'
+    +'<div><span style="color:var(--text3);">Started: </span><strong>'+fmt12(s.timeIn)+'</strong></div>'
+    +(s.guests>1?'<div><span style="color:var(--text3);">People: </span><strong>'+s.guests+'</strong></div>':'')
+    +(s.academyDay.instructor?'<div><span style="color:var(--text3);">Instructor: </span><strong>'+adEsc(s.academyDay.instructor)+'</strong></div>':'')
+    +'</div>';
+  var sess='';
+  if(a){
+    var rem=adRemaining(a),take=acIsDaily(a)?1:hrs,after=rem-take;
+    sess='Package: <strong>'+(acIsDaily(a)?'1 day':(hrs>0?hrs.toFixed(2)+' hours':'—'))+'</strong> will be recorded · left after: <strong style="color:'+(after<0?'var(--red)':'inherit')+';">'+acFmtUnits(a,Math.max(0,after))+' '+acUnitWord(a,Math.max(0,after))+'</strong>'+(after<0?' (more than the package has left)':'');
+  }else sess='<span style="color:var(--red);">This academy no longer exists — the session cannot be recorded.</span>';
+  document.getElementById('ade-session').innerHTML=sess;
+  var tab=s.tab||[],tot=tbTotal(s);
+  document.getElementById('ade-tab').innerHTML=tab.length?tab.map(function(x){return '<div style="display:flex;justify-content:space-between;padding:3px 0;"><span>'+adEsc(x.name)+' × '+x.qty+'</span><span>'+x.total+' LE</span></div>';}).join('')
+      +'<div style="display:flex;justify-content:space-between;font-weight:600;padding-top:5px;border-top:1px solid var(--border);margin-top:3px;font-size:13px;"><span>Total</span><span>'+tot+' LE</span></div>'
+    :'<div style="color:var(--text3);">No drinks or snacks today.</div>';
+  document.getElementById('ade-pay-box').style.display=tab.length?'':'none';
+  document.getElementById('ade-method-row').style.display=adHow()==='now'?'':'none';
+  document.getElementById('ade-btn').textContent=!tab.length?'✓ End day':adHow()==='now'?'✓ End day — '+tot+' LE paid':'✓ End day — add '+tot+' LE to balance';
+}
+function adEnd(){
+  var all=loadData('activeSessions',[]);
+  var s=all.find(function(x){return x.id===_adEndSid;});
+  if(!s||!s.academyDay){closeModal('ad-end-modal');return;}
+  var k=s.academyDay.key,a=academies[k];
+  if(!a){showToast('This academy no longer exists',true);return;}
+  var tout=document.getElementById('ade-tout').value;
+  if(!tout){showToast('Please enter the end time',true);return;}
+  var hrs=calcHours(s.timeIn,tout);
+  var daily=acIsDaily(a);
+  if(!daily&&hrs<=0){showToast('The end time must be after the start ('+fmt12(s.timeIn)+')',true);return;}
+  var cashier=document.getElementById('ade-cashier').value||currentStaffName||s.cashier;
+  var tab=s.tab||[],tot=tbTotal(s),how=adHow();
+  var rem=adRemaining(a);
+  // 1) the session, exactly like "Log Session" / "Mark Attendance"
+  a.sessions=a.sessions||[];
+  a.sessions.push({date:s.date||today(),instructor:s.academyDay.instructor||'',timeIn:s.timeIn,timeOut:tout,duration:daily?1:hrs.toFixed(2),
+    type:'Academy day',notes:(s.guests>1?s.guests+' people · ':'')+s.room+(tot?' · drinks '+tot+' LE'+(how==='later'?' (on balance)':' (paid)'):''),fromCheckin:true});
+  saveData('academies',academies);
+  // 2) the drinks
+  var tabRec=null,order=null;
+  if(tab.length){
+    tabRec={id:'at_'+Date.now(),academyKey:k,academyName:a.name,date:s.date||today(),timeIn:s.timeIn,timeOut:tout,items:JSON.parse(JSON.stringify(tab)),total:tot,status:how==='later'?'owed':'paid',cashier:cashier};
+    if(how==='now'){
+      var pay=document.getElementById('ade-method').value||'cash';
+      drinkOrders=loadData('drinkOrders',[]);
+      order={id:Date.now()+3,date:today(),cashier:cashier,client:a.name,items:JSON.parse(JSON.stringify(tab)),total:tot,payment:pay,academyKey:k,academyTabId:tabRec.id};
+      drinkOrders.push(order);saveData('drinkOrders',drinkOrders);
+      tabRec.payment=pay;tabRec.paidDate=today();tabRec.paidAt=new Date().toISOString();tabRec.orderId=order.id;
+    }
+    var list=adTabs();list.push(tabRec);adSaveTabs(list);
+  }
+  // 3) out of "inside now"
+  all=all.filter(function(x){return x.id!==s.id;});activeSessions=all;saveData('activeSessions',all);
+  closeModal('ad-end-modal');
+  renderActiveSessions();
+  if(document.getElementById('dash-room-grid'))renderDashRoomGrid();
+  try{renderShiftCards();calcSettlement();}catch(e){}
+  try{renderAcademy(k);}catch(e){}
+  try{refreshDashboard();}catch(e){}
+  auditLog('academy_day_end',a.name+' ended ('+fmt12(s.timeIn)+'–'+fmt12(tout)+', '+(daily?'1 day':hrs.toFixed(2)+' h')+')'+(tot?' · drinks '+tot+' LE '+(how==='later'?'added to balance':'paid by '+payLabel(order.payment)):''),{sessionId:s.id,academyKey:k,amount:tot});
+  var after=rem-(daily?1:hrs);
+  showToast(a.name+' day ended'+(tot?' · '+tot+' LE '+(how==='later'?'added to balance':'paid'):'')+(after<0?' — package is now over its limit!':''),after<0);
+}
+
+// ── Button on the Guest Check-in page ──
+(function(){
+  var cnt=document.getElementById('active-sessions-count');
+  if(!cnt||document.getElementById('ad-start-btn'))return;
+  var b=document.createElement('button');
+  b.id='ad-start-btn';b.className='btn btn-outline btn-sm';b.type='button';b.style.marginLeft='10px';
+  b.textContent='🎓 Start academy day';b.onclick=adOpenStart;
+  cnt.parentNode.insertBefore(b,cnt.nextSibling);
+})();
+
+// ── Drinks balance on the academy page ──
+function adBalanceCardHtml(key){
+  var owed=adOwed(key),paid=adTabs().filter(function(x){return x.academyKey===key&&x.status==='paid';}).slice(-5).reverse();
+  if(!owed.length&&!paid.length)return '';
+  var tot=owed.reduce(function(a,x){return a+(x.total||0);},0);
+  var h='<div class="card" style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    +'<div class="card-title" style="margin:0;">☕ Drinks balance</div>'
+    +(tot?'<button class="btn btn-primary btn-sm" onclick="adOpenCollect(\''+key+'\')">💰 Collect '+tot+' LE</button>':'<span class="badge badge-green">Nothing owed</span>')+'</div>';
+  if(owed.length){
+    h+='<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">Owed: <strong>'+tot+' LE</strong> for '+owed.length+' day'+(owed.length>1?'s':'')+'</div>'
+      +owed.map(function(x){return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-top:1px solid var(--border);"><div><strong>'+formatDate(x.date)+'</strong> <span style="color:var(--text3);">'+adEsc(adItemsText(x.items))+'</span></div><div style="white-space:nowrap;">'+x.total+' LE</div></div>';}).join('');
+  }
+  if(paid.length){
+    h+='<div style="font-size:11px;color:var(--text3);margin:10px 0 4px;">Recently paid</div>'
+      +paid.map(function(x){return '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:3px 0;"><span>'+formatDate(x.date)+' · paid '+formatDate(x.paidDate)+' by '+payLabel(x.payment)+'</span><span>'+x.total+' LE</span></div>';}).join('');
+  }
+  return h+'</div>';
+}
+var _adPrevRenderAcademy=renderAcademy;
+renderAcademy=function(key){
+  _adPrevRenderAcademy(key);
+  var el=document.getElementById('academy-content-'+key);if(!el)return;
+  var html=adBalanceCardHtml(key);if(!html)return;
+  var stats=el.querySelector('.grid-4');
+  if(stats)stats.insertAdjacentHTML('afterend',html);else el.insertAdjacentHTML('afterbegin',html);
+};
+
+// ── Collect owed drinks ──
+var _adCollectKey=null;
+function adEnsureCollectModal(){
+  if(document.getElementById('ad-collect-modal'))return;
+  var m=document.createElement('div');m.className='modal-overlay';m.id='ad-collect-modal';
+  m.innerHTML='<div class="modal" style="width:480px;">'
+    +'<div class="modal-header"><div class="modal-title">💰 Collect Drinks — <span id="adc-name"></span></div><button class="close-btn" onclick="closeModal(\'ad-collect-modal\')">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Tick the days being paid now.</div>'
+    +'<div id="adc-list" style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 14px;margin-bottom:14px;max-height:260px;overflow-y:auto;"></div>'
+    +'<div class="form-row" style="grid-template-columns:1fr 1fr;">'
+    +'<div class="form-group"><label>Payment method</label><select id="adc-method"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select></div>'
+    +'<div class="form-group"><label>Cashier</label><select id="adc-cashier"></select></div>'
+    +'</div>'
+    +'<button class="btn btn-primary btn-full" id="adc-btn" onclick="adCollect()">Collect</button>'
+    +'</div>';
+  document.body.appendChild(m);
+}
+function adOpenCollect(key){
+  var owed=adOwed(key);if(!owed.length){showToast('Nothing is owed',true);return;}
+  adEnsureCollectModal();_adCollectKey=key;
+  document.getElementById('adc-name').textContent=academies[key]?academies[key].name:owed[0].academyName;
+  document.getElementById('adc-list').innerHTML=owed.map(function(x){
+    return '<label style="display:flex;gap:10px;align-items:center;font-size:12px;font-weight:400;padding:5px 0;border-bottom:1px solid var(--border);">'
+      +'<input type="checkbox" class="adc-chk" value="'+x.id+'" checked style="appearance:auto;width:auto;" onchange="adCollectSum()">'
+      +'<span style="flex:1;"><strong>'+formatDate(x.date)+'</strong> <span style="color:var(--text3);">'+adEsc(adItemsText(x.items))+'</span></span><span style="white-space:nowrap;">'+x.total+' LE</span></label>';
+  }).join('');
+  document.getElementById('adc-method').value='cash';
+  document.getElementById('adc-cashier').innerHTML=adStaffOptions(currentStaffName);
+  adCollectSum();
+  openModal('ad-collect-modal');
+}
+function adCollectPicked(){
+  var ids=[].map.call(document.querySelectorAll('.adc-chk:checked'),function(c){return c.value;});
+  return adOwed(_adCollectKey).filter(function(x){return ids.indexOf(x.id)!==-1;});
+}
+function adCollectSum(){
+  var p=adCollectPicked(),t=p.reduce(function(a,x){return a+x.total;},0);
+  var b=document.getElementById('adc-btn');b.textContent=p.length?'✓ Collect '+t+' LE':'Tick at least one day';b.disabled=!p.length;
+}
+function adCollect(){
+  var picked=adCollectPicked();if(!picked.length){showToast('Tick at least one day',true);return;}
+  var key=_adCollectKey,a=academies[key],name=a?a.name:picked[0].academyName;
+  var pay=document.getElementById('adc-method').value||'cash',cashier=document.getElementById('adc-cashier').value||currentStaffName;
+  var total=picked.reduce(function(s,x){return s+x.total;},0);
+  // one drinks order for the money taken today (that is when the cash comes in)
+  var items=[];picked.forEach(function(x){(x.items||[]).forEach(function(it){var f=items.find(function(y){return y.productId===it.productId&&y.price===it.price;});if(f){f.qty+=it.qty;f.total+=it.total;}else items.push(JSON.parse(JSON.stringify(it)));});});
+  drinkOrders=loadData('drinkOrders',[]);
+  var order={id:Date.now()+4,date:today(),cashier:cashier,client:name,items:items,total:total,payment:pay,academyKey:key,academyTabIds:picked.map(function(x){return x.id;}),note:'Drinks balance for '+picked.map(function(x){return formatDate(x.date);}).join(', ')};
+  drinkOrders.push(order);saveData('drinkOrders',drinkOrders);
+  var ids=picked.map(function(x){return x.id;}),list=adTabs();
+  list.forEach(function(x){if(ids.indexOf(x.id)!==-1){x.status='paid';x.payment=pay;x.paidDate=today();x.paidAt=new Date().toISOString();x.orderId=order.id;x.collectedBy=cashier;}});
+  adSaveTabs(list);
+  closeModal('ad-collect-modal');
+  try{renderAcademy(key);}catch(e){}
+  try{renderShiftCards();calcSettlement();}catch(e){}
+  try{refreshDashboard();}catch(e){}
+  auditLog('academy_drinks_collected',name+': collected '+total+' LE by '+payLabel(pay)+' for '+picked.length+' day'+(picked.length>1?'s':''),{academyKey:key,amount:total});
+  showToast(total+' LE collected from '+name+' ✓');
+}
+
+// ── Needs Attention: drinks owed ──
+var _adPrevNotifs=buildNotifications;
+buildNotifications=function(){
+  var items=_adPrevNotifs();
+  try{
+    adAcademyKeys().forEach(function(k){
+      var o=adOwed(k);if(!o.length)return;
+      var t=o.reduce(function(s,x){return s+x.total;},0);
+      items.push({id:'ad-owed-'+k+'-'+t,icon:'☕',text:academies[k].name+' owes '+t+' LE for drinks ('+o.length+' day'+(o.length>1?'s':'')+') — collect from the academy page',color:'var(--amber)'});
+    });
+  }catch(e){}
+  return items;
+};
+AUDIT_LABELS.academy_day_start='Academy day: started';AUDIT_LABELS.academy_day_end='Academy day: ended';AUDIT_LABELS.academy_drinks_collected='Academy drinks: collected';
+
 </script>
+
 
 
 
