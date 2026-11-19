@@ -4920,7 +4920,7 @@ function submitDrinkOrder(){
   drinkOrders.push(order);
   saveData('drinkOrders',drinkOrders);
   // Also reflect in shift payments
-  var sp=shiftPayments.find(function(x){return x.date===date&&x.cashier===cashier;});
+  var sp=shiftPayments.find(function(x){return x.date===date&&x.cashier===cashier&&!(x.academyPayments>0);});
   if(sp){
     if(payment==='cash')sp.rooms=(sp.rooms||0)+total;
     else if(payment==='visa')sp.visa=(sp.visa||0)+total;
@@ -5022,7 +5022,7 @@ function calcSettlement(){
     else drinksIP+=o.total;
   });
   var drinksNet=drinksCash+drinksIP+drinksVisa;
-  var acEntries=shiftPayments.filter(function(s){return s.date===d&&s.academyPayments>0&&(cashier==='all'||s.cashier===cashier);});
+  var acEntries=shiftPayments.filter(function(s){return s.date===d&&s.academyPayments>0&&(cashier==='all'||s.cashier===cashier);}).map(spView);
   var acCash=acEntries.reduce(function(s,x){return s+(x.cash||0);},0);
   var acIP=acEntries.reduce(function(s,x){return s+(x.instapay||0);},0);
   var acVisa=acEntries.reduce(function(s,x){return s+(x.visa||0);},0);
@@ -5098,7 +5098,7 @@ function renderShiftCards(){
   // Pull from real data sources (same as calcSettlement)
   var dayClients=clients.filter(function(c){return c.date===d;});
   var dayDrinks=loadData('drinkOrders',[]).filter(function(o){return o.date===d;});
-  var dayShifts=loadData('shiftPayments',[]).filter(function(s){return s.date===d&&s.academyPayments>0;});
+  var dayShifts=loadData('shiftPayments',[]).filter(function(s){return s.date===d&&s.academyPayments>0;}).map(spView);
   // Build per-cashier breakdown
   var byP={};
   staff.forEach(function(s){byP[s.name]={rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};});
@@ -5122,7 +5122,7 @@ function renderShiftCards(){
     byP[s.cashier].acVisa+=(s.visa||0);
     byP[s.cashier].acOther+=(s.other||0);
   });
-  document.getElementById('shifts-summary-cards').innerHTML=staff.map(function(st){
+  document.getElementById('shifts-summary-cards').innerHTML=cashiersWithMoney(byP).map(function(st){
     var p=byP[st.name]||{rooms:0,cash:0,instapay:0,visa:0,drinks:0,drinksIP:0,drinksVisa:0,acCash:0,acIP:0,acVisa:0,acOther:0};
     var totalDrinks=p.drinks+p.drinksIP+p.drinksVisa;
     var acTotal=p.acCash+p.acIP+p.acVisa+p.acOther;
@@ -5184,6 +5184,7 @@ function printShiftSummary(){
   // ── Include academy package payments from shiftPayments ──
   dayShiftPayments.forEach(function(s){
     if(!(s.academyPayments>0))return; // only entries that have academy money
+    s=spView(s);
     if(!cashierData[s.cashier])cashierData[s.cashier]={rooms:0,instapay:0,visa:0,cash:0,drinks:0,drinksInstapay:0,drinksVisa:0,academyCash:0,academyInstapay:0,academyVisa:0,academyOther:0,clients:[],academyPayments:[]};
     var cd=cashierData[s.cashier];
     cd.academyCash+=(s.cash||0);
@@ -5318,7 +5319,7 @@ function refreshDashboard(){
   _mEl.style.color=_netMonth>=0?'var(--green)':'var(--red)';
   // Update dashboard staff cards dynamically (cash + instapay + drinks + academy, same as Shift Payments cards)
   var dayDrinks=_allDrk.filter(function(o){return o.date===d;});
-  var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;});
+  var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;}).map(spView);
   var byP={};
   staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,visa:0,other:0};});
   tc.forEach(function(c){
@@ -5342,7 +5343,7 @@ function refreshDashboard(){
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
-    dashStaff.innerHTML=staff.map(function(s){
+    dashStaff.innerHTML=cashiersWithMoney(byP).map(function(s){
       var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
       var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
@@ -5754,7 +5755,7 @@ function confirmSellPackage(){
   var isCash=payment==='cash', isInstapay=payment==='instapay', isVisa=payment==='visa', isOther=payment==='other';
   var existingShift=null;
   for(var si=0;si<shiftPayments.length;si++){
-    if(shiftPayments[si].date===payDate && shiftPayments[si].cashier===cashier){existingShift=shiftPayments[si];break;}
+    if(false){existingShift=shiftPayments[si];break;} // each package payment is its own line (merging made totals count money twice)
   }
   if(existingShift){
     if(isCash)existingShift.cash=(existingShift.cash||0)+tier.cost;
@@ -5892,7 +5893,7 @@ function printMonthlyReport(){
   var md=loadData('drinkOrders',[]).filter(function(o){return o.date&&o.date.startsWith(month);});
   var me=loadData('expenses',[]).filter(function(e){return e.date&&e.date.startsWith(month);});
   var meInv=me.filter(function(e){return e.type==='investment';});me=me.filter(function(e){return e.type!=='investment';});
-  var msp=loadData('shiftPayments',[]).filter(function(s){return s.date&&s.date.startsWith(month)&&s.academyPayments>0;});
+  var msp=loadData('shiftPayments',[]).filter(function(s){return s.date&&s.date.startsWith(month)&&s.academyPayments>0;}).map(spView);
   var roomRev=mc.reduce(function(s,c){return s+(c.cost||0);},0);
   var drkRev=md.reduce(function(s,o){return s+(o.total||0);},0);
   var acRev=msp.reduce(function(s,x){return s+(x.academyPayments||0);},0);
@@ -5915,7 +5916,8 @@ function printMonthlyReport(){
   pa.innerHTML=printHeader('Monthly Report — '+label)
     +'<hr class="print-divider">'
     +'<div class="print-section-title">Summary</div>'
-    +'<div class="print-row"><span>Total Clients</span><span>'+mc.length+'</span></div>'
+    +'<div class="print-row"><span>Visits</span><span>'+mc.length+'</span></div>'
+    +'<div class="print-row"><span>Different Clients</span><span>'+mrUniqueClients(mc)+'</span></div>'
     +'<div class="print-row"><span>Rooms Revenue</span><span>'+roomRev+' LE</span></div>'
     +'<div class="print-row"><span>Drinks &amp; Snacks Revenue</span><span>'+drkRev+' LE</span></div>'
     +(acRev>0?'<div class="print-row"><span>Academy Packages Revenue</span><span>'+acRev+' LE</span></div>':'')
@@ -5923,6 +5925,7 @@ function printMonthlyReport(){
     +'<div class="print-row"><span>Cash Collected</span><span>'+totalCash+' LE</span></div>'
     +'<div class="print-row"><span>Instapay Collected</span><span>'+totalIP+' LE</span></div>'
     +'<div class="print-row"><span>Visa Collected</span><span>'+totalVisa+' LE</span></div>'
+    +(function(){var o=mc.reduce(function(s,c){return s+(c.other||0);},0)+md.filter(function(o){return o.payment&&['cash','instapay','visa'].indexOf(o.payment)===-1;}).reduce(function(s,o){return s+(o.total||0);},0)+msp.reduce(function(s,x){return s+(x.other||0);},0);return o?'<div class="print-row"><span>Other / Bank Collected</span><span>'+o+' LE</span></div>':'';})()
     +(totalExp>0?'<div class="print-row" style="color:#c0392b;"><span>Total Expenses</span><span>- '+totalExp+' LE</span></div>':'')
     +'<div class="print-row bold" style="font-size:16px;border-top:2px solid #333;padding-top:8px;margin-top:4px;"><span>NET REVENUE</span><span>'+(roomRev+drkRev+acRev-totalExp)+' LE</span></div>'
     +vaultReportLines(month,meInv)
@@ -6256,7 +6259,7 @@ function confirmRenew(){
     // Find existing shift entry for this cashier+date, or create one
     var existing = null;
     for(var si=0; si<shiftPayments.length; si++) {
-      if(shiftPayments[si].date === payDate && shiftPayments[si].cashier === payCashier) {
+      if(false) { // each academy payment is its own line (merging made totals count money twice)
         existing = shiftPayments[si]; break;
       }
     }
@@ -10347,7 +10350,7 @@ function submitManualGuest() {
   // Update shift payments for this date+cashier
   var existing = null;
   for (var i = 0; i < shiftPayments.length; i++) {
-    if (shiftPayments[i].date === date && shiftPayments[i].cashier === cashier) {
+    if (shiftPayments[i].date === date && shiftPayments[i].cashier === cashier && !(shiftPayments[i].academyPayments > 0)) {
       existing = shiftPayments[i]; break;
     }
   }
@@ -11684,7 +11687,7 @@ refreshDashboard=function(){
   // Mirror printMonthlyReport()'s math exactly so the two stay equal
   var _monthClients=clients.filter(function(c){return (c.date||'').startsWith(ms);});
   var _monthDrinks=_allDrk.filter(function(o){return (o.date||'').startsWith(ms);});
-  var _monthShifts=_sp.filter(function(s){return (s.date||'').startsWith(ms)&&s.academyPayments>0;});
+  var _monthShifts=_sp.filter(function(s){return (s.date||'').startsWith(ms)&&s.academyPayments>0;}).map(spView);
   var _roomRevMonth=_monthClients.reduce(function(s,c){return s+(c.cost||0);},0);
   var _drkRevMonth=_monthDrinks.reduce(function(s,o){return s+(o.total||0);},0);
   var _acRevMonth=_monthShifts.reduce(function(s,x){return s+(x.academyPayments||0);},0);
@@ -11710,7 +11713,7 @@ refreshDashboard=function(){
   }
   var tc=clients.filter(function(c){return c.date===d;});
   var dayDrinks=_allDrk.filter(function(o){return o.date===d;});
-  var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;});
+  var dayShifts=_sp.filter(function(s){return s.date===d&&s.academyPayments>0;}).map(spView);
   var byP={};
   staff.forEach(function(s){byP[s.name]={cash:0,instapay:0,visa:0,other:0};});
   tc.forEach(function(c){
@@ -11734,7 +11737,7 @@ refreshDashboard=function(){
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
-    dashStaff.innerHTML=staff.map(function(s){
+    dashStaff.innerHTML=cashiersWithMoney(byP).map(function(s){
       var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
       var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
@@ -12103,7 +12106,7 @@ function rpMinutes(t){var m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?parseInt(m
 function rpMetrics(from,to){
   var vis=(clients||[]).filter(function(c){return rpIn(c.date,from,to);});
   var drk=loadData('drinkOrders',[]).filter(function(o){return rpIn(o.date,from,to);});
-  var acc=loadData('shiftPayments',[]).filter(function(x){return (x.academyPayments||0)>0&&rpIn(x.date,from,to);});
+  var acc=loadData('shiftPayments',[]).filter(function(x){return (x.academyPayments||0)>0&&rpIn(x.date,from,to);}).map(spView);
   var exp=loadData('expenses',[]).filter(function(e){return rpIn(e.date,from,to);});
   var m={from:from,to:to,visits:vis,days:{},methods:{cash:0,instapay:0,visa:0,other:0},spaces:{},rooms:0,drinks:0,academy:0,expenses:0,investments:0};
   var day=function(ds){return m.days[ds]||(m.days[ds]={rooms:0,drinks:0,academy:0,total:0});};
@@ -13063,7 +13066,7 @@ function vaultIncome(from,to){
   loadData('shiftPayments',[]).forEach(function(x){
     if(!rpIn(x.date,from,to)||!((x.academyPayments||0)>0))return;
     var note=x.note||'',cat=/^Locker /i.test(note)?'Lockers':(/Shared Space/i.test(note)?'Shared-space packages':(/package payment/i.test(note)?'Academy packages':'Academy & package payments'));
-    out.push({date:x.date,desc:note||'Academy / package payment',category:cat,amount:x.academyPayments,method:vaultMethodOf(x),ref:'payment #'+x.id,source:'shift'});
+    out.push({date:x.date,desc:note||'Academy / package payment',category:cat,amount:x.academyPayments,method:vaultMethodOf(spView(x)),ref:'payment #'+x.id,source:'shift'});
   });
   return out.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
 }
@@ -14721,7 +14724,222 @@ clearFilters=function(){
   _clPrevClearFilters();
 };
 
+// ============================================================
+// MONEY TOTALS FIXES
+// spView: an academy / package / locker line in Shift Payments can also
+// hold drinks or manual-visit money that was merged into it earlier. Only
+// the academy amount belongs to that payment; the rest is already counted
+// from the drinks order or the visit. This returns the line with its
+// cash / instapay / visa / other cut down to the academy amount.
+// ============================================================
+function spView(x){
+  if(!x||!(x.academyPayments>0))return x;
+  var keys=['cash','instapay','visa','other'];
+  var sum=keys.reduce(function(s,k){return s+(parseFloat(x[k])||0);},0);
+  var amt=parseFloat(x.academyPayments)||0;
+  if(sum<=amt+0.001)return x;
+  var v=Object.assign({},x),left=amt;
+  keys.slice().sort(function(a,b){return (parseFloat(x[b])||0)-(parseFloat(x[a])||0);}).forEach(function(k){
+    var have=parseFloat(x[k])||0,take=Math.min(have,left);v[k]=take;left-=take;
+  });
+  return v;
+}
+// Monthly Report: how many different clients the visits belong to
+function mrUniqueClients(list){
+  var seen={};list.forEach(function(c){var k=c.profileId||String(c.name||'').trim().toLowerCase();if(k)seen[k]=1;});
+  return Object.keys(seen).length;
+}
+// Staff cards: everyone in the staff list, plus anyone else who handled money that day
+function cashiersWithMoney(byP){
+  var list=staff.slice(),names={};staff.forEach(function(s){names[s.name]=1;});
+  Object.keys(byP||{}).forEach(function(n){
+    if(names[n]||!n||n==='undefined')return;
+    var p=byP[n],tot=0;Object.keys(p).forEach(function(k){if(typeof p[k]==='number')tot+=p[k];});
+    if(tot)list.push({name:n,shift:'Not in staff list',color:'var(--text2)'});
+  });
+  return list;
+}
+
+// ============================================================
+// SAFE SAVING ACROSS DEVICES
+// Each list (visits, clients, drinks, payments…) is saved as one whole
+// value, so a device that had not refreshed used to overwrite what another
+// device had just added. Now, right before saving, the latest saved copy is
+// read and the two are merged by record id:
+//   • a record only on the other device's copy → added here (unless this
+//     device deleted it)
+//   • a record this device knew about that the other device removed → removed
+//   • a record on both → this device's version is kept
+// "Known about" = seen in the last copy this device read or saved.
+// If the latest copy cannot be read, saving works exactly as before.
+// ============================================================
+var MG_LISTS=['clients','clientProfiles','drinkOrders','shiftPayments','expenses','activeSessions','reservations','recycleBin','lockerBookings','academyTabs','staffDebts','packageRequests','roomBlocks'];
+var MG_MAPS=['academies','sharedSpacePackages'];
+var _mgBase={};
+function mgIdOf(x){if(!x||typeof x!=='object')return null;var i=x.id!==undefined&&x.id!==null?x.id:x.binId;return i===undefined||i===null?null:String(i);}
+function mgIds(v){
+  if(Array.isArray(v)){var ids={};for(var i=0;i<v.length;i++){var k=mgIdOf(v[i]);if(k===null)return null;ids[k]=1;}return ids;}
+  if(v&&typeof v==='object'){var o={};Object.keys(v).forEach(function(k){o[k]=1;});return o;}
+  return null;
+}
+function mgTracked(key){return MG_LISTS.indexOf(key)!==-1||MG_MAPS.indexOf(key)!==-1;}
+function mgSetBase(key,v){if(!mgTracked(key))return;var ids=mgIds(v);if(ids)_mgBase[key]=ids;}
+
+// Remember what this device has seen from the database (boot load, refreshes).
+var _mgRawFetch=window.fetch.bind(window);
+window.fetch=function(url,opt){
+  var p=_mgRawFetch(url,opt);
+  try{
+    var u=typeof url==='string'?url:(url&&url.url)||'';
+    var m=(opt&&opt.method)||'GET';
+    if(m==='GET'&&u.indexOf('/rest/v1/spaceco_kv')!==-1&&u.indexOf('like.audit')===-1){
+      var km=/key=eq\.([^&]+)/.exec(u),one=km?decodeURIComponent(km[1]):null;
+      p.then(function(r){
+        if(!r||!r.ok)return;
+        r.clone().json().then(function(rows){
+          if(!Array.isArray(rows))return;
+          rows.forEach(function(row){
+            var k=row.key||one;if(!k||!mgTracked(k)||row.value===null||row.value===undefined)return;
+            try{mgSetBase(k,JSON.parse(row.value));}catch(e){}
+          });
+        }).catch(function(){});
+      }).catch(function(){});
+    }
+  }catch(e){}
+  return p;
+};
+
+// Three-way merge. Returns {list, added, removed} or null when it cannot merge safely.
+function mgMergeList(base,local,remote){
+  var lIds=mgIds(local),rIds=mgIds(remote);
+  if(!lIds||!rIds)return null;
+  base=base||{};
+  var out=[],added=0,removed=0;
+  local.forEach(function(x){
+    var k=mgIdOf(x);
+    if(!rIds[k]&&base[k]){removed++;return;}     // the other device removed it
+    out.push(x);
+  });
+  remote.forEach(function(x){
+    var k=mgIdOf(x);
+    if(lIds[k]||base[k])return;                    // already here, or this device removed it
+    out.push(x);added++;                           // new from the other device
+  });
+  return {list:out,added:added,removed:removed};
+}
+function mgMergeMap(base,local,remote){
+  if(!local||!remote||typeof local!=='object'||typeof remote!=='object')return null;
+  base=base||{};
+  var out={},added=0,removed=0;
+  Object.keys(local).forEach(function(k){if(!(k in remote)&&base[k]){removed++;return;}out[k]=local[k];});
+  Object.keys(remote).forEach(function(k){if(k in local||base[k])return;out[k]=remote[k];added++;});
+  return {map:out,added:added,removed:removed};
+}
+
+// Write a value; true only when the database confirmed both steps.
+async function mgWrite(key,val){
+  _sbCache[key]=val;
+  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
+  var ss=document.getElementById('sync-status');
+  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
+  try{
+    var h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY};
+    var d=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key),{method:'DELETE',headers:h});
+    var p=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv',{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},h),body:JSON.stringify({key:key,value:JSON.stringify(val)})});
+    var ok=d.ok&&p.ok;
+    if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
+    return ok;
+  }catch(e){
+    console.warn('save failed',key,e);
+    if(ss){ss.style.background='#ff5c5c';ss.title='Offline (local only)';}
+    return false;
+  }
+}
+
+var _mgQueue={};
+var _mgPrevSbSet=sbSet;
+sbSet=function(key,val){
+  if(!mgTracked(key))return _mgPrevSbSet(key,val);
+  var run=(_mgQueue[key]||Promise.resolve()).then(function(){return mgSaveMerged(key);});
+  _mgQueue[key]=run.catch(function(){});
+  return run;
+};
+async function mgReadRemote(key){
+  // A missing row can just mean another device is in the middle of saving (it removes, then writes): look again.
+  for(var i=0;i<3;i++){
+    try{
+      var r=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key)+'&select=value',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+      if(!r.ok)return null;
+      var rows=await r.json();
+      if(Array.isArray(rows)&&rows.length&&rows[0].value!==null)return JSON.parse(rows[0].value);
+    }catch(e){return null;}
+    await new Promise(function(res){setTimeout(res,300);});
+  }
+  return null;
+}
+function mgSameIds(a,b){
+  var x=mgIds(a),y=mgIds(b);if(!x||!y)return true;
+  var kx=Object.keys(x),ky=Object.keys(y);if(kx.length!==ky.length)return false;
+  for(var i=0;i<kx.length;i++)if(!y[kx[i]])return false;return true;
+}
+function mgMergeInto(key,local,remote){
+  var base=_mgBase[key],added=0,removed=0;
+  if(Array.isArray(local)&&Array.isArray(remote)){
+    var m=mgMergeList(base,local,remote);
+    if(m){
+      // safety: never let a merge remove a large part of this device's list
+      if(m.removed>Math.max(5,local.length*0.2)){console.warn('merge would remove',m.removed,'from',key,'— kept them');m=mgMergeList({},local,remote);}
+      if(m.added||m.removed){local.length=0;m.list.forEach(function(x){local.push(x);});}
+      added=m.added;removed=m.removed;
+    }
+  }else if(MG_MAPS.indexOf(key)!==-1){
+    var mm=mgMergeMap(base,local,remote);
+    if(mm&&(mm.added||mm.removed)){
+      if(mm.removed>Math.max(3,Object.keys(local).length*0.2))mm=mgMergeMap({},local,remote);
+      Object.keys(local).forEach(function(k){if(!(k in mm.map))delete local[k];});
+      Object.keys(mm.map).forEach(function(k){local[k]=mm.map[k];});
+      added=mm.added;removed=mm.removed;
+    }
+  }
+  return added+removed;
+}
+async function mgSaveMerged(key){
+  var changed=0,ok=false;
+  for(var attempt=0;attempt<3;attempt++){
+    var remote=await mgReadRemote(key);
+    var local=_sbCache[key];                        // the newest copy on this device
+    if(local===undefined)return;
+    if(remote!==null)changed+=mgMergeInto(key,local,remote);   // unreadable → plain save, never "everything deleted"
+    ok=await mgWrite(key,local);
+    if(!ok||remote===null)break;
+    // another device may have saved at the same moment: check, and merge again if so
+    await new Promise(function(res){setTimeout(res,250+Math.random()*250);});
+    var check=await mgReadRemote(key);
+    if(check===null||mgSameIds(check,_sbCache[key]))break;
+  }
+  if(ok)mgSetBase(key,_sbCache[key]);
+  if(changed){try{mgAfterMerge(key);}catch(e){}}
+  return ok;
+}
+// Refresh what is on screen when another device's records were merged in.
+function mgAfterMerge(key){
+  var on=function(id){var p=document.getElementById('page-'+id);return p&&p.classList.contains('active');};
+  if(key==='activeSessions'){activeSessions=_sbCache.activeSessions;renderActiveSessions();if(document.getElementById('dash-room-grid'))renderDashRoomGrid();}
+  if(key==='clients')clients=_sbCache.clients;
+  if(key==='clientProfiles')clientProfiles=_sbCache.clientProfiles;
+  if(key==='drinkOrders')drinkOrders=_sbCache.drinkOrders;
+  if(key==='shiftPayments')shiftPayments=_sbCache.shiftPayments;
+  if(key==='reservations'){reservations=_sbCache.reservations;if(on('reservations'))renderReservations();}
+  if(key==='academies')academies=_sbCache.academies;
+  if(key==='sharedSpacePackages')sharedSpacePackages=_sbCache.sharedSpacePackages;
+  if(on('shifts')){try{renderShiftCards();renderShifts();calcSettlement();}catch(e){}}
+  if(on('clients')){try{renderClients();}catch(e){}}
+  if(on('dashboard')){try{refreshDashboard();}catch(e){}}
+}
+
 </script>
+
+
 
 
 
