@@ -829,17 +829,34 @@
 <div id="page-clients" class="page">
   <div class="page-header flex-between">
     <div><div class="page-title">Client Log</div><div class="page-sub">All registered clients — click a row to expand sessions</div></div>
-    <div style="display:flex;gap:10px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+      <select id="filter-sort" style="width:190px;" title="Sort clients" onchange="renderClients()">
+        <option value="last">Sort: Last visit</option>
+        <option value="visits_desc">Most visits</option>
+        <option value="visits_asc">Fewest visits</option>
+        <option value="spent_desc">Highest total spent</option>
+        <option value="spent_asc">Lowest total spent</option>
+        <option value="name">Name A–Z</option>
+      </select>
+      <select id="filter-period" style="width:150px;" title="Count visits and spending in this period" onchange="renderClients()">
+        <option value="all">All time</option>
+        <option value="month">This month</option>
+        <option value="lastmonth">Last month</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 3 months</option>
+        <option value="year">This year</option>
+      </select>
       <input type="date" id="filter-date" style="width:160px;" onchange="renderClients()">
       <input type="text" id="filter-search" placeholder="Search by name / phone..." style="width:220px;" oninput="renderClients()">
       <button class="btn btn-outline" onclick="clearFilters()">Clear</button>
       <button class="btn btn-outline" onclick="exportClientsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
     </div>
   </div>
+  <div id="clients-summary" style="font-size:13px;color:var(--text2);margin:-4px 0 10px;"></div>
   <div class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Client</th><th>Tier</th><th>Phone</th><th>Visits</th><th>Total Spent</th><th>Last Visit</th><th>Last Room</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Client</th><th>Tier</th><th>Phone</th><th id="cl-th-visits" style="cursor:pointer;" title="Click to sort by visits" onclick="clSortBy('visits')">Visits ↕</th><th id="cl-th-spent" style="cursor:pointer;" title="Click to sort by total spent" onclick="clSortBy('spent')">Total Spent ↕</th><th>Last Visit</th><th>Last Room</th><th>Actions</th></tr></thead>
         <tbody id="clients-tbody"><tr class="empty-row"><td colspan="9">No clients registered yet</td></tr></tbody>
       </table>
     </div>
@@ -11190,12 +11207,39 @@ renderClients=function(){
     return ms;
   });
   if(df){profiles=profiles.filter(function(p){return clients.some(function(c){return c.profileId===p.id&&c.date===df;});});}
-  profiles.sort(function(a,b){var la=getLastVisit(a.id),lb=getLastVisit(b.id);return la>lb?-1:la<lb?1:0;});
+  // visits and spending counted in the chosen period, then sorted
+  var range=clPeriodRange((document.getElementById('filter-period')||{}).value||'all');
+  var stat={};
+  profiles.forEach(function(p){
+    var v=df?clients.filter(function(c){return c.profileId===p.id&&c.date===df;}):getClientVisits(p.id);
+    if(range)v=v.filter(function(c){return c.date>=range[0]&&c.date<=range[1];});
+    stat[p.id]={visits:v,spent:v.reduce(function(s,c){return s+(c.cost||0);},0),last:v.length?v[v.length-1].date:''};
+  });
+  if(range)profiles=profiles.filter(function(p){return stat[p.id].visits.length>0;});
+  var mode=(document.getElementById('filter-sort')||{}).value||'last';
+  profiles.sort(function(a,b){
+    var A=stat[a.id],B=stat[b.id],d=0;
+    if(mode==='visits_desc')d=B.visits.length-A.visits.length||B.spent-A.spent;
+    else if(mode==='visits_asc')d=A.visits.length-B.visits.length||A.spent-B.spent;
+    else if(mode==='spent_desc')d=B.spent-A.spent||B.visits.length-A.visits.length;
+    else if(mode==='spent_asc')d=A.spent-B.spent||A.visits.length-B.visits.length;
+    else if(mode==='name')d=(a.name||'').localeCompare(b.name||'');
+    if(d)return d;
+    var la=range?A.last:getLastVisit(a.id),lb=range?B.last:getLastVisit(b.id);return la>lb?-1:la<lb?1:0;
+  });
+  clMarkHeaders(mode);
+  var sumEl=document.getElementById('clients-summary');
+  if(sumEl){
+    var tv=0,ts=0;profiles.forEach(function(p){tv+=stat[p.id].visits.length;ts+=stat[p.id].spent;});
+    sumEl.innerHTML='<strong>'+profiles.length+'</strong> client'+(profiles.length!==1?'s':'')+' · <strong>'+tv+'</strong> visit'+(tv!==1?'s':'')+' · <strong>'+ts.toLocaleString('en-US')+' LE</strong> spent'
+      +(range?' <span style="color:var(--text3);">('+formatDate(range[0])+' – '+formatDate(range[1])+')</span>':'')
+      +(profiles.length?' · average '+Math.round(ts/profiles.length).toLocaleString('en-US')+' LE per client':'');
+  }
   var tbody=document.getElementById('clients-tbody');
   if(!profiles.length){tbody.innerHTML='<tr class="empty-row"><td colspan="9">No clients found</td></tr>';return;}
   tbody.innerHTML=profiles.map(function(p,i){
-    var visits=df?clients.filter(function(c){return c.profileId===p.id&&c.date===df;}):getClientVisits(p.id);
-    var totalSpent=visits.reduce(function(s,c){return s+(c.cost||0);},0);
+    var visits=stat[p.id].visits;
+    var totalSpent=stat[p.id].spent;
     var lastV=visits.length?visits[visits.length-1]:null;
     return '<tr class="profile-row" onclick="toggleSessions(\''+p.id+'\')">'
       +'<td><span style="color:var(--text3);">'+(i+1)+'</span></td>'
@@ -14645,7 +14689,40 @@ buildNotifications=function(){
 };
 AUDIT_LABELS.academy_day_start='Academy day: started';AUDIT_LABELS.academy_day_end='Academy day: ended';AUDIT_LABELS.academy_drinks_collected='Academy drinks: collected';
 
+// ============================================================
+// CLIENT LOG — sort by visits / total spent, and a period filter
+// ============================================================
+function clPeriodRange(v){
+  var t=today(),y=+t.slice(0,4),m=+t.slice(5,7);
+  var pad=function(n){return String(n).padStart(2,'0');};
+  var minus=function(days){var d=new Date();d.setDate(d.getDate()-days+1);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+  if(v==='month')return [t.slice(0,8)+'01',t];
+  if(v==='lastmonth'){var py=m===1?y-1:y,pm=m===1?12:m-1,last=new Date(py,pm,0).getDate();return [py+'-'+pad(pm)+'-01',py+'-'+pad(pm)+'-'+pad(last)];}
+  if(v==='30')return [minus(30),t];
+  if(v==='90')return [minus(90),t];
+  if(v==='year')return [y+'-01-01',t];
+  return null;
+}
+// Clicking the Visits / Total Spent header: highest first, click again for lowest first.
+function clSortBy(col){
+  var sel=document.getElementById('filter-sort');if(!sel)return;
+  sel.value=sel.value===col+'_desc'?col+'_asc':col+'_desc';
+  renderClients();
+}
+function clMarkHeaders(mode){
+  var v=document.getElementById('cl-th-visits'),sp=document.getElementById('cl-th-spent');
+  if(v)v.textContent='Visits '+(mode==='visits_desc'?'↓':mode==='visits_asc'?'↑':'↕');
+  if(sp)sp.textContent='Total Spent '+(mode==='spent_desc'?'↓':mode==='spent_asc'?'↑':'↕');
+}
+var _clPrevClearFilters=clearFilters;
+clearFilters=function(){
+  var s=document.getElementById('filter-sort'),p=document.getElementById('filter-period');
+  if(s)s.value='last';if(p)p.value='all';
+  _clPrevClearFilters();
+};
+
 </script>
+
 
 
 
