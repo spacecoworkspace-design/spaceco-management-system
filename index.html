@@ -642,13 +642,13 @@
 <div id="page-dashboard" class="page">
   <div class="page-header flex-between">
     <div><div class="page-title">Dashboard</div><div class="page-sub">Space-Co daily overview</div></div>
-    <button class="btn btn-outline" onclick="printMonthlyReport()">🖨 Monthly Report</button>
+    <button class="btn btn-outline admin-only" onclick="printMonthlyReport()">🖨 Monthly Report</button>
   </div>
   <div class="grid-4 mb-16">
     <div class="stat"><div class="stat-label"><span class="stat-icon">👥</span>Today's Clients</div><div class="stat-value money money-green" id="dash-today-clients">3</div><div class="stat-sub">checked in today</div></div>
-    <div class="stat"><div class="stat-label"><span class="stat-icon">💰</span>Today's Revenue</div><div class="stat-value money money-green" id="dash-today-revenue">11330 LE</div><div class="stat-sub">all payments</div></div>
+    <div class="stat admin-only"><div class="stat-label"><span class="stat-icon">💰</span>Today's Revenue</div><div class="stat-value money money-green" id="dash-today-revenue">11330 LE</div><div class="stat-sub">all payments</div></div>
     <div class="stat"><div class="stat-label"><span class="stat-icon">📇</span>Total Clients</div><div class="stat-value" id="dash-total-clients">302</div><div class="stat-sub">unique clients</div></div>
-    <div class="stat"><div class="stat-label"><span class="stat-icon">📊</span>This Month (Net)</div><div class="stat-value money" id="dash-month-rev" title="Cash: 19300 LE + Instapay: 7475 LE − Expenses: 8760 LE" style="color: var(--green);">18015 LE</div><div class="stat-sub">revenue − expenses</div></div>
+    <div class="stat admin-only"><div class="stat-label"><span class="stat-icon">📊</span>This Month (Net)</div><div class="stat-value money" id="dash-month-rev" title="Cash: 19300 LE + Instapay: 7475 LE − Expenses: 8760 LE" style="color: var(--green);">18015 LE</div><div class="stat-sub">revenue − expenses</div></div>
   </div>
   <!-- Needs Attention widget -->
   <div class="card mb-16" id="dash-attention-card" style="display: block; border-color: rgba(224, 85, 85, 0.3);">
@@ -671,7 +671,7 @@
     </div>
   </div>
   <div class="grid-2 mt-16" style="gap:16px;">
-    <div class="card">
+    <div class="card admin-only">
       <div class="card-title">📈 Revenue — Last 7 Days</div>
       <canvas id="chart-revenue" height="0" width="0" style="display: block; box-sizing: border-box; height: 0px; width: 0px;"></canvas>
       <div id="chart-revenue-fallback" style="display:none;text-align:center;padding:24px;color:var(--text3);font-size:12px;">Chart unavailable offline</div>
@@ -860,10 +860,10 @@
       <input type="date" id="filter-date" style="width:160px;" onchange="renderClients()">
       <input type="text" id="filter-search" placeholder="Search by name / phone..." style="width:220px;" oninput="renderClients()">
       <button class="btn btn-outline" onclick="clearFilters()">Clear</button>
-      <button class="btn btn-outline" onclick="exportClientsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+      <button class="btn btn-outline admin-only" onclick="exportClientsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
     </div>
   </div>
-  <div id="clients-summary" style="font-size:13px;color:var(--text2);margin:-4px 0 10px;"></div>
+  <div id="clients-summary" class="admin-only" style="font-size:13px;color:var(--text2);margin:-4px 0 10px;"></div>
   <div class="card">
     <div class="table-wrap">
       <table>
@@ -880,8 +880,8 @@
     <div><div class="page-title">Shift Payments</div><div class="page-sub">Daily financial summary per cashier</div></div>
     <div style="display:flex;gap:10px;align-items:center;">
       <input type="date" id="shift-filter-date" style="width:180px;" onchange="renderShiftCards();renderShifts();calcSettlement();">
-      <button class="btn btn-outline" onclick="printShiftSummary()" style="gap:6px;">🖨 Print Shift Summary</button>
-      <button class="btn btn-outline" onclick="exportShiftsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+      <button class="btn btn-outline admin-only" onclick="printShiftSummary()" style="gap:6px;">🖨 Print Shift Summary</button>
+      <button class="btn btn-outline admin-only" onclick="exportShiftsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
     </div>
   </div>
   <div id="shifts-summary-cards" class="grid-3 mb-16"><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Aya</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">9:00 AM – 4:00 PM</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">100 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">100 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--accent);">100 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Youssef</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">4:00 PM – 11:00 PM</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">11220 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">10 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">10500 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">730 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--teal);">11230 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--pink);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Nour</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">Fri &amp; Sat both shifts</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--pink);">0 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div></div>
@@ -1128,7 +1128,7 @@
     <div class="stat"><div class="stat-label">Total Archived</div><div class="stat-value" id="arch-stat-total">0</div><div class="stat-sub">academies</div></div>
     <div class="stat"><div class="stat-label">Total Sessions</div><div class="stat-value" id="arch-stat-sessions">0</div><div class="stat-sub">logged across all</div></div>
     <div class="stat"><div class="stat-label">Total Hours Sold</div><div class="stat-value" id="arch-stat-hours">0</div><div class="stat-sub">across all packages</div></div>
-    <div class="stat"><div class="stat-label">Total Revenue</div><div class="stat-value money" id="arch-stat-revenue">0 LE</div><div class="stat-sub">from archived academies</div></div>
+    <div class="stat admin-only"><div class="stat-label">Total Revenue</div><div class="stat-value money" id="arch-stat-revenue">0 LE</div><div class="stat-sub">from archived academies</div></div>
   </div>
 
   <div class="card">
@@ -1257,7 +1257,7 @@
       <button class="btn btn-primary" onclick="openModal(&#39;add-expense-modal&#39;)">+ Add Expense</button>
     </div>
   </div>
-  <div class="grid-4 mb-16" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+  <div class="grid-4 mb-16 admin-only" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
     <div class="stat"><div class="stat-label">Total Expenses</div><div class="stat-value money" id="exp-total" style="color:var(--red);">0 LE</div><div class="stat-sub">normal expenses, this month</div></div>
     <div class="stat admin-only" id="exp-invest-card"><div class="stat-label">Investments</div><div class="stat-value money" id="exp-invest" style="color:#8b5cf6;">0 LE</div><div class="stat-sub">paid from the total balance — not in the month's net</div></div>
     <div class="stat"><div class="stat-label">Paid Cash</div><div class="stat-value money" id="exp-cash" style="color:var(--amber);">0 LE</div><div class="stat-sub">cash outflow</div></div>
@@ -1265,7 +1265,7 @@
     <div class="stat"><div class="stat-label">Paid Visa</div><div class="stat-value money" id="exp-visa" style="color:var(--accent);">0 LE</div><div class="stat-sub">visa outflow</div></div>
     <div class="stat"><div class="stat-label">Net Revenue</div><div class="stat-value money" id="exp-net" style="color:var(--green);">0 LE</div><div class="stat-sub">revenue − expenses</div></div>
   </div>
-  <div class="card mb-16"><div class="card-title">By Category</div><div id="exp-by-cat" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;"></div></div>
+  <div class="card mb-16 admin-only"><div class="card-title">By Category</div><div id="exp-by-cat" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;"></div></div>
   <div class="card">
     <div class="card-title flex-between">
       <span>All Expenses</span>
@@ -1320,7 +1320,7 @@
     <div class="stat"><div class="stat-label">Active Packages</div><div class="stat-value" id="sp-stat-active">0</div><div class="stat-sub">clients currently subscribed</div></div>
     <div class="stat"><div class="stat-label">Expiring Soon</div><div class="stat-value" id="sp-stat-expiring">0</div><div class="stat-sub">low days or ≤3 days left</div></div>
     <div class="stat"><div class="stat-label">Sold This Month</div><div class="stat-value" id="sp-stat-sold">0</div><div class="stat-sub">packages purchased</div></div>
-    <div class="stat"><div class="stat-label">Revenue This Month</div><div class="stat-value money" id="sp-stat-revenue">0 LE</div><div class="stat-sub">from packages</div></div>
+    <div class="stat admin-only"><div class="stat-label">Revenue This Month</div><div class="stat-value money" id="sp-stat-revenue">0 LE</div><div class="stat-sub">from packages</div></div>
   </div>
 
   <div class="card">
@@ -14827,6 +14827,7 @@ function mrUniqueClients(list){
 }
 // Staff cards: everyone in the staff list, plus anyone else who handled money that day
 function cashiersWithMoney(byP){
+  if(!isAdmin){var me=staff.find(function(s){return s.name===currentStaffName;});return me?[me]:[];}
   var list=staff.slice(),names={};staff.forEach(function(s){names[s.name]=1;});
   Object.keys(byP||{}).forEach(function(n){
     if(names[n]||!n||n==='undefined')return;
@@ -15198,6 +15199,9 @@ renderClients=function(){
   }
   return r;
 };
+// Totals line (clients, visits, money, tiers) is for the admin only
+var _sumPrevRenderClients=renderClients;
+renderClients=function(){var r=_sumPrevRenderClients.apply(this,arguments);var el=document.getElementById('clients-summary');if(el)el.style.display=isAdmin?'':'none';return r;};
 function clPickTier(t){var s=document.getElementById('filter-tier');if(s){s.value=s.value===t?'':t;renderClients();}}
 var _tierPrevClear=clearFilters;
 clearFilters=function(){var s=document.getElementById('filter-tier');if(s)s.value='';return _tierPrevClear.apply(this,arguments);};
@@ -15413,6 +15417,26 @@ confirmRenew=function(){
   if(tagged)saveData('shiftPayments',shiftPayments);
   return r;
 };
+
+// ============================================================
+// STAFF SEE NO OVERALL MONEY TOTALS — only the admin does.
+// Staff keep everything they need for their own shift (their own card and
+// their own settlement); overall revenue, net, expenses totals, revenue
+// charts and exports are admin only (class "admin-only" in the page).
+// ============================================================
+var _stPrevCalcSettlement=calcSettlement;
+calcSettlement=function(){
+  var sel=document.getElementById('settle-cashier');
+  if(sel){
+    if(!isAdmin&&currentStaffName){
+      if(![].some.call(sel.options,function(o){return o.value===currentStaffName;})){var o=document.createElement('option');o.value=currentStaffName;o.textContent=currentStaffName;sel.appendChild(o);}
+      sel.value=currentStaffName;sel.disabled=true;sel.title='Your own shift';
+    }else{if(sel.disabled)sel.value='all';sel.disabled=false;}
+  }
+  return _stPrevCalcSettlement.apply(this,arguments);
+};
+var _stPrevApplyRole=_applyRoleUI;
+_applyRoleUI=function(){var r=_stPrevApplyRole.apply(this,arguments);try{calcSettlement();renderShiftCards();refreshDashboard();}catch(e){}return r;};
 
 </script>
 
