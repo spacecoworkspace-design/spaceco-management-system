@@ -437,6 +437,8 @@
   /* ── TIER BADGE ── */
   .tier-regular{background:rgba(74,158,255,0.15);color:var(--blue);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
   .tier-vip{background:rgba(212,168,67,0.18);color:var(--amber);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
+  .tier-plus{background:rgba(46,201,126,0.15);color:var(--green);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
+  .tier-prime{background:linear-gradient(135deg,rgba(212,168,67,0.25),rgba(212,168,67,0.12));color:#b8860b;border:1px solid rgba(212,168,67,0.45);border-radius:6px;padding:1px 7px;font-size:10px;font-weight:700;}
   .tier-corporate{background:rgba(30,200,200,0.15);color:var(--teal);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
   /* ── LIVE TIMER ── */
   .live-timer{font-size:11px;color:var(--green);font-weight:600;font-variant-numeric:tabular-nums;}
@@ -837,6 +839,12 @@
         <option value="spent_desc">Highest total spent</option>
         <option value="spent_asc">Lowest total spent</option>
         <option value="name">Name A–Z</option>
+      </select>
+      <select id="filter-tier" style="width:130px;" title="Show one tier" onchange="renderClients()">
+        <option value="">All tiers</option>
+        <option value="prime">Prime (20+)</option>
+        <option value="plus">Plus (10+)</option>
+        <option value="regular">Regular</option>
       </select>
       <select id="filter-period" style="width:150px;" title="Count visits and spending in this period" onchange="renderClients()">
         <option value="all">All time</option>
@@ -11056,7 +11064,7 @@ renderActiveSessions=function(){
       +'<div style="position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid var(--card);animation:pulse 1.5s infinite;"></div>'
       +'</div>'
       +'<div style="flex:1;">'
-      +'<div style="font-size:14px;font-weight:600;">'+s.name+'</div>'
+      +'<div style="font-size:14px;font-weight:600;">'+s.name+(s.academyDay?'':clSessionTierBadge(s))+'</div>'
       +'<div style="font-size:12px;color:var(--text3);">'+s.room+' · In: '+fmt12(s.timeIn)+'</div>'
       +'<div class="live-timer" data-timein="'+(s.timeIn||'')+'">00:00:00</div>'
       +adCardLine(s)
@@ -11096,7 +11104,8 @@ calcCheckoutTotal=function(){
 // ============================================================
 function getTierBadge(tier){
   var t=(tier||'regular').toLowerCase();
-  return '<span class="tier-'+t+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</span>';
+  var label=(typeof TIER_NAMES!=='undefined'&&TIER_NAMES[t])||(t.charAt(0).toUpperCase()+t.slice(1));
+  return '<span class="tier-'+t+'" title="'+(typeof TIER_HELP!=='undefined'?TIER_HELP:'')+'">'+label+'</span>';
 }
 
 // ============================================================
@@ -11108,7 +11117,7 @@ function exportClientsCSV(){
     var visits=getClientVisits(p.id);
     var totalSpent=visits.reduce(function(s,c){return s+(c.cost||0);},0);
     var lastV=visits.length?visits[visits.length-1]:null;
-    rows.push([i+1,p.name,p.tier||'regular',p.phone||'',p.email||'',visits.length,totalSpent,lastV?lastV.date:'',lastV?lastV.room:'']);
+    rows.push([i+1,p.name,TIER_NAMES[clTierOf(p.id)],p.phone||'',p.email||'',visits.length,totalSpent,lastV?lastV.date:'',lastV?lastV.room:'']);
   });
   downloadCSV(rows,'spaceco_clients.csv');
 }
@@ -11224,6 +11233,8 @@ renderClients=function(){
     stat[p.id]={visits:v,spent:v.reduce(function(s,c){return s+(c.cost||0);},0),last:v.length?v[v.length-1].date:''};
   });
   if(range)profiles=profiles.filter(function(p){return stat[p.id].visits.length>0;});
+  var tf=(document.getElementById('filter-tier')||{}).value||'';
+  if(tf)profiles=profiles.filter(function(p){return clTierOf(p.id)===tf;});
   var mode=(document.getElementById('filter-sort')||{}).value||'last';
   profiles.sort(function(a,b){
     var A=stat[a.id],B=stat[b.id],d=0;
@@ -11252,7 +11263,7 @@ renderClients=function(){
     return '<tr class="profile-row" onclick="toggleSessions(\''+p.id+'\')">'
       +'<td><span style="color:var(--text3);">'+(i+1)+'</span></td>'
       +'<td><strong>'+p.name+'</strong></td>'
-      +'<td>'+getTierBadge(p.tier)+'</td>'
+      +'<td>'+getTierBadge(clTierOf(p.id))+'</td>'
       +'<td>'+(p.phone||'-')+'</td>'
       +'<td><span class="badge badge-blue">'+visits.length+' visit'+(visits.length!==1?'s':'')+'</span></td>'
       +'<td class="money money-green">'+totalSpent+' LE</td>'
@@ -15088,6 +15099,63 @@ buildNotifications=function(){if(!_appReady)return [];return _nfPrevBuild.apply(
 })();
 var _dhPrevApplyRole=_applyRoleUI;
 _applyRoleUI=function(){var r=_dhPrevApplyRole.apply(this,arguments);var b=document.getElementById('dh-btn');if(b)b.style.display=isAdmin?'':'none';return r;};
+
+// ============================================================
+// CLIENT TIERS — automatic, from the number of visits (all time)
+//   Regular: under 10 visits · Plus: 10+ visits · Prime: 20+ visits
+// ============================================================
+var TIER_PLUS=10,TIER_PRIME=20;
+var TIER_NAMES={regular:'Regular',plus:'⭐ Plus',prime:'👑 Prime',vip:'VIP',corporate:'Corporate'};
+var TIER_HELP='Automatic: Plus at '+TIER_PLUS+' visits, Prime at '+TIER_PRIME+' visits';
+function clVisitCount(pid){var n=0;(clients||[]).forEach(function(c){if(c.profileId===pid)n++;});return n;}
+function clTierFor(n){return n>=TIER_PRIME?'prime':n>=TIER_PLUS?'plus':'regular';}
+function clTierOf(pid){return clTierFor(clVisitCount(pid));}
+// find the checked-in guest's client (phone first, then name) without creating one
+function clProfileForSession(s){
+  var d=(s.phone||'').replace(/\D/g,'').slice(-10);
+  var p=d.length>=7?(clientProfiles||[]).find(function(x){return (x.phone||'').replace(/\D/g,'').slice(-10)===d;}):null;
+  if(!p){var n=normalizeStr(s.name);p=(clientProfiles||[]).find(function(x){return x.normalizedName===n;});}
+  return p;
+}
+function clSessionTierBadge(s){
+  var p=clProfileForSession(s);if(!p)return '';
+  var n=clVisitCount(p.id),t=clTierFor(n);
+  if(t==='regular')return '';
+  return ' <span style="margin-left:6px;vertical-align:middle;">'+getTierBadge(t)+'</span><span style="font-size:10px;color:var(--text3);margin-left:4px;font-weight:400;">'+n+' visits</span>';
+}
+// Client Log: counts per tier in the summary line
+var _tierPrevRenderClients=renderClients;
+renderClients=function(){
+  var r=_tierPrevRenderClients.apply(this,arguments);
+  var el=document.getElementById('clients-summary');
+  if(el){
+    var c={regular:0,plus:0,prime:0};(clientProfiles||[]).forEach(function(p){c[clTierOf(p.id)]++;});
+    el.insertAdjacentHTML('beforeend','<div style="margin-top:4px;font-size:12px;color:var(--text3);">Tiers (all time): '
+      +'<a href="javascript:void(0)" onclick="clPickTier(\'prime\')" style="color:inherit;">'+getTierBadge('prime')+' '+c.prime+'</a> · '
+      +'<a href="javascript:void(0)" onclick="clPickTier(\'plus\')" style="color:inherit;">'+getTierBadge('plus')+' '+c.plus+'</a> · '
+      +'<a href="javascript:void(0)" onclick="clPickTier(\'regular\')" style="color:inherit;">'+getTierBadge('regular')+' '+c.regular+'</a>'
+      +' <span style="margin-left:6px;">('+TIER_HELP.toLowerCase()+')</span></div>');
+  }
+  return r;
+};
+function clPickTier(t){var s=document.getElementById('filter-tier');if(s){s.value=s.value===t?'':t;renderClients();}}
+var _tierPrevClear=clearFilters;
+clearFilters=function(){var s=document.getElementById('filter-tier');if(s)s.value='';return _tierPrevClear.apply(this,arguments);};
+// Edit Client: the tier is automatic now — show it instead of a manual choice
+var _tierPrevOpenEdit=openEditClient;
+openEditClient=function(pid){
+  var r=_tierPrevOpenEdit.apply(this,arguments);
+  var sel=document.getElementById('edit-client-tier');
+  if(sel){
+    sel.style.display='none';
+    var info=document.getElementById('edit-client-tier-info');
+    if(!info){info=document.createElement('div');info.id='edit-client-tier-info';info.style.cssText='font-size:13px;padding:8px 0;';sel.parentNode.appendChild(info);}
+    var n=clVisitCount(pid),t=clTierFor(n);
+    var next=t==='regular'?(TIER_PLUS-n)+' more visit'+(TIER_PLUS-n===1?'':'s')+' to Plus':t==='plus'?(TIER_PRIME-n)+' more visit'+(TIER_PRIME-n===1?'':'s')+' to Prime':'top tier';
+    info.innerHTML=getTierBadge(t)+' <span style="color:var(--text3);">'+n+' visits · '+next+' · set automatically</span>';
+  }
+  return r;
+};
 
 </script>
 
