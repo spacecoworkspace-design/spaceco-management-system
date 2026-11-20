@@ -437,6 +437,48 @@
   /* ── TIER BADGE ── */
   .tier-regular{background:rgba(74,158,255,0.15);color:var(--blue);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
   .tier-vip{background:rgba(212,168,67,0.18);color:var(--amber);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
+
+  /* ── Monthly Business Report ── */
+  .mb-nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;flex-wrap:wrap;padding:10px 0 12px;background:var(--bg);margin-bottom:6px;}
+  .mb-nav a{font-size:12px;padding:6px 11px;border-radius:999px;border:1px solid var(--border2);color:var(--text2);text-decoration:none;white-space:nowrap;background:var(--card);}
+  .mb-nav a:hover{border-color:var(--accent);color:var(--accent);}
+  .mb-sec{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px;scroll-margin-top:64px;}
+  .mb-sec h2{font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  .mb-sec h2 .mb-num{font-size:11px;font-weight:700;color:var(--accent);background:rgba(108,99,255,0.12);border-radius:6px;padding:3px 7px;letter-spacing:.5px;}
+  .mb-sec .mb-lead{font-size:12px;color:var(--text3);margin-bottom:16px;}
+  .mb-sec h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:20px 0 10px;font-weight:600;}
+  .mb-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+  .mb-kpi{background:var(--bg3);border-radius:var(--radius-sm);padding:14px 16px;}
+  .mb-kpi .l{font-size:11px;color:var(--text3);margin-bottom:6px;}
+  .mb-kpi .v{font-size:21px;font-weight:700;white-space:nowrap;}
+  .mb-kpi .p{font-size:11px;color:var(--text3);margin-top:5px;}
+  .mb-d{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;margin-left:4px;white-space:nowrap;}
+  .mb-up{background:rgba(46,201,126,0.14);color:var(--green);} .mb-down{background:rgba(224,85,85,0.14);color:var(--red);} .mb-flat{background:var(--bg2);color:var(--text3);}
+  .mb-na{color:var(--text3);font-style:italic;font-size:12px;}
+  .mb-t{width:100%;border-collapse:collapse;font-size:13px;}
+  .mb-t th{text-align:left;font-size:11px;color:var(--text3);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px;}
+  .mb-t td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .mb-t td.n,.mb-t th.n{text-align:right;white-space:nowrap;}
+  .mb-t tr.tot td{font-weight:700;border-top:2px solid var(--border2);}
+  .mb-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;} @media(max-width:900px){.mb-grid2{grid-template-columns:1fr;}}
+  .mb-summary{font-size:14px;line-height:1.75;background:var(--bg3);border-radius:var(--radius-sm);padding:14px 16px;margin-top:14px;}
+  .mb-hb{display:flex;align-items:center;gap:8px;font-size:12px;margin:5px 0;} .mb-hb .lb{width:150px;flex-shrink:0;} .mb-hb .tr{flex:1;height:9px;background:var(--bg3);border-radius:5px;overflow:hidden;} .mb-hb .fl{height:9px;border-radius:5px;} .mb-hb .vl{width:110px;text-align:right;white-space:nowrap;}
+  .mb-edit input,.mb-edit select,.mb-edit textarea{font-size:12px;padding:5px 7px;}
+  .mb-heat td{padding:0;width:22px;height:18px;border:1px solid var(--card);}
+  .mb-heat th{font-size:10px;color:var(--text3);font-weight:500;padding:2px 3px;}
+  /* print */
+  .mbp{font-family:'Cairo',sans-serif;color:#111;}
+  .mbp .mb-sec{border:1px solid #ddd;background:#fff;break-inside:auto;padding:14px 16px;margin-bottom:12px;}
+  .mbp .mb-sec h2{break-after:avoid;}
+  .mbp .mb-kpi{background:#f4f5f8;break-inside:avoid;}
+  .mbp .mb-t th,.mbp .mb-t td{border-color:#e3e3e3;}
+  .mbp .mb-kpis{grid-template-columns:repeat(4,1fr);}
+  .mbp .mb-grid2{grid-template-columns:1fr 1fr;}
+  .mbp .mb-summary{background:#f4f5f8;}
+  .mbp .mb-up{background:#e3f6ec;color:#16884f;} .mbp .mb-down{background:#fbe5e5;color:#c0392b;}
+  .mbp .mb-hb .tr{background:#eef0f4;}
+  .mbp tr,.mbp .mb-hb{break-inside:avoid;}
+  @media(max-width:700px){#page-monthlyreport .mb-t{display:block;overflow-x:auto;white-space:nowrap;} #page-monthlyreport .mb-sec{padding:16px 14px;} #page-monthlyreport .mb-hb .lb{width:96px;} #page-monthlyreport .mb-hb{flex-wrap:wrap;} #page-monthlyreport .mb-hb .tr{min-width:120px;} #page-monthlyreport .mb-hb .vl{width:auto;white-space:normal;text-align:left;} #page-monthlyreport .mb-kpi .p .mb-d{margin-left:0;} #page-monthlyreport .mb-kpis{grid-template-columns:1fr 1fr;} #page-monthlyreport .mb-kpi .v{font-size:17px;white-space:normal;} #page-monthlyreport .mb-edit{overflow-x:auto;}}
   .tier-regular,.tier-plus,.tier-prime,.tier-vip,.tier-corporate{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;line-height:1.4;}
   #clients-tbody .badge,#clients-tbody .money{white-space:nowrap;}
   .tier-plus{background:rgba(46,201,126,0.15);color:var(--green);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;}
@@ -603,6 +645,7 @@
       <div class="nav-section">Finance</div>
       <button class="nav-item active" data-page="shifts" onclick="showPage(&#39;shifts&#39;,this)"><span class="nav-icon">⊕</span> Shift Payments</button>
       <button class="nav-item admin-only" data-page="reports" onclick="showPage(&#39;reports&#39;,this)"><span class="nav-icon">📊</span> Reports</button>
+      <button class="nav-item admin-only" data-page="monthlyreport" onclick="showPage(&#39;monthlyreport&#39;,this)"><span class="nav-icon">📑</span> Monthly Report</button>
       <button class="nav-item admin-only" data-page="vault" onclick="showPage(&#39;vault&#39;,this)"><span class="nav-icon">🏦</span> SPACECO VAULT</button>
       <button class="nav-item" data-page="staffdebts" id="nav-staffdebts" onclick="showPage('staffdebts',this);renderStaffDebts();"><span class="nav-icon">🤝</span> Staff Debts <span id="staffdebts-badge" style="display:none;background:var(--amber);color:#1a1305;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;">0</span></button>
       <button class="nav-item" data-page="expenses" onclick="showPage(&#39;expenses&#39;,this);renderExpenses();"><span class="nav-icon">💸</span> Expenses</button>
@@ -642,7 +685,7 @@
 <div id="page-dashboard" class="page">
   <div class="page-header flex-between">
     <div><div class="page-title">Dashboard</div><div class="page-sub">Space-Co daily overview</div></div>
-    <button class="btn btn-outline admin-only" onclick="printMonthlyReport()">🖨 Monthly Report</button>
+    <button class="btn btn-outline admin-only" onclick="showPage('monthlyreport',document.querySelector('.nav-item[data-page=&quot;monthlyreport&quot;]'))">📑 Monthly Report</button>
   </div>
   <div class="grid-4 mb-16">
     <div class="stat"><div class="stat-label"><span class="stat-icon">👥</span>Today's Clients</div><div class="stat-value money money-green" id="dash-today-clients">3</div><div class="stat-sub">checked in today</div></div>
@@ -1584,6 +1627,23 @@
     <div class="card-title">Every academy payment <span style="font-weight:400;color:var(--text3);font-size:12px;">(in the period above)</span></div>
     <div class="table-wrap"><table><thead><tr><th>Date</th><th>Academy</th><th>Amount</th><th>Paid by</th><th>Cashier</th><th>Note</th></tr></thead><tbody id="aa-payments"></tbody></table></div>
   </div>
+</div>
+
+<div id="page-monthlyreport" class="page">
+  <div class="page-header flex-between mb-hdr">
+    <div>
+      <div class="page-title">📑 Monthly Business Report</div>
+      <div class="page-sub" id="mb-sub">How SpaceCo performed this month, compared with the month before</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="mbShift(-1)" title="Previous month">‹</button>
+      <input type="month" id="mb-month" style="width:170px;" onchange="renderMonthlyBiz()">
+      <button class="btn btn-outline btn-sm" onclick="mbShift(1)" title="Next month">›</button>
+      <button class="btn btn-primary" onclick="mbPrint()" style="white-space:nowrap;">⬇ Download PDF</button>
+    </div>
+  </div>
+  <div class="mb-nav" id="mb-nav"></div>
+  <div id="mb-body"></div>
 </div>
 
 <div id="page-reports" class="page">
@@ -15435,6 +15495,404 @@ calcSettlement=function(){
 };
 var _stPrevApplyRole=_applyRoleUI;
 _applyRoleUI=function(){var r=_stPrevApplyRole.apply(this,arguments);try{calcSettlement();renderShiftCards();refreshDashboard();}catch(e){}return r;};
+
+// ============================================================
+// MONTHLY BUSINESS REPORT (admin) — 10 sections, every KPI vs the
+// previous month. Everything is calculated from the real records:
+//   visits (clients), drinks orders, Shift Payments (academy / package /
+//   locker lines, read through spView so merged lines are not counted
+//   twice), expenses, reservations, academies, office attendance.
+// Revenue total = Reports' revenue for the same dates (rooms + drinks +
+// academy / package / locker payments) — nothing counted twice.
+// Things the system does not record are shown as "not recorded", never
+// as 0. Notes the owner adds (incidents, complaints, campaigns, the
+// action plan) are kept per month in kv "monthReport_YYYY-MM".
+// ============================================================
+var MB_SECTIONS=[['exec','Executive Summary'],['fin','Financial Performance'],['cust','Customer Analytics'],['ws','Workspace Performance'],['sales','Additional Sales'],['staff','Employee Performance'],['ops','Operational Performance'],['cx','Customer Experience'],['mkt','Marketing & Growth'],['plan','Next Month\'s Action Plan']];
+var MB_DRINK_GROUPS=[['coffee','Coffee & hot drinks'],['cold','Cold drinks'],['snacks','Snacks'],['printing','Printing'],['otheritems','Stationery & other items'],['unspecified','Drinks & snacks (not itemized)']];
+var MB_EXP_GROUPS=[['Salaries','Salaries'],['Rent','Rent'],['Utilities','Utilities (electricity, internet, water)'],['Supplies','Supplies & purchases'],['Food & Drinks Stock','Food & drinks stock'],['Maintenance','Maintenance'],['Marketing','Marketing'],['Other','Other expenses']];
+var _mbCache={};
+function mbN(x){return parseFloat(x)||0;}
+function mbE(x){return rpEsc(x);}
+function mbLE(n){return n===null||n===undefined||isNaN(n)?'<span class="mb-na">not recorded</span>':Math.round(n).toLocaleString('en-US')+' EGP';}
+function mbNum(n,d){return n===null||n===undefined||isNaN(n)?'<span class="mb-na">—</span>':(d?(Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('en-US'):Math.round(n).toLocaleString('en-US'));}
+function mbPct(n){return n===null||n===undefined||isNaN(n)?'<span class="mb-na">—</span>':(Math.round(n*10)/10)+'%';}
+function mbYm(){var el=document.getElementById('mb-month');var v=el&&el.value;if(!v||!/^\d{4}-\d{2}$/.test(v)){v=today().slice(0,7);if(el)el.value=v;}return v;}
+function mbPrevYm(ym){var y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
+function mbNextYm(ym){var y=+ym.slice(0,4),m=+ym.slice(5,7)+1;if(m>12){m=1;y++;}return y+'-'+String(m).padStart(2,'0');}
+function mbLastDay(ym){var d=new Date(+ym.slice(0,4),+ym.slice(5,7),0);return ym+'-'+String(d.getDate()).padStart(2,'0');}
+function mbLabel(ym){return new Date(ym+'-01T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'});}
+function mbShortLabel(ym){return new Date(ym+'-01T00:00').toLocaleDateString('en-GB',{month:'short'});}
+function mbShift(n){var ym=mbYm();document.getElementById('mb-month').value=n<0?mbPrevYm(ym):mbNextYm(ym);renderMonthlyBiz();}
+// change badge. better: 'up' (higher is good), 'down' (lower is good), null (neutral)
+function mbDelta(cur,prev,better,asPoints){
+  if(cur===null||prev===null||cur===undefined||prev===undefined||isNaN(cur)||isNaN(prev))return '';
+  var diff=cur-prev,txt;
+  if(asPoints)txt=(diff>=0?'+':'')+(Math.round(diff*10)/10)+' pts';
+  else if(prev===0)txt=cur===0?'0%':'new';
+  else txt=(diff>=0?'+':'')+(Math.round(diff/Math.abs(prev)*1000)/10)+'%';
+  var good=better==='up'?diff>0:better==='down'?diff<0:null,flat=Math.abs(diff)<0.0001||(!asPoints&&prev!==0&&Math.abs(diff/prev)<0.005);
+  var cls=flat||good===null?'mb-flat':good?'mb-up':'mb-down';
+  return '<span class="mb-d '+cls+'" title="Previous month: '+(Math.round(prev*10)/10).toLocaleString('en-US')+'">'+(diff>0&&!flat?'▲ ':diff<0&&!flat?'▼ ':'')+txt+'</span>';
+}
+function mbKpi(label,val,cur,prev,better,sub,asPoints){return '<div class="mb-kpi"><div class="l">'+label+'</div><div class="v">'+val+'</div><div class="p">'+(prev!==undefined&&prev!==null&&cur!==null&&cur!==undefined?'prev: '+(asPoints?mbPct(prev):typeof prev==='number'&&/EGP/.test(val)?Math.round(prev).toLocaleString('en-US')+' EGP':mbNum(prev,1))+' '+mbDelta(cur,prev,better,asPoints):'')+(sub?'<div>'+sub+'</div>':'')+'</div></div>';}
+
+// ── product category lookup for drinks & snacks ──
+function mbProdIndex(){
+  var byId={},byName={};(products||[]).forEach(function(p){byId[p.id]=p.category;byName[String(p.display_name||'').trim().toLowerCase()]=p.category;});
+  return {byId:byId,byName:byName};
+}
+function mbGroupOf(cat){return cat==='hot_drinks'?'coffee':cat==='drinks'?'cold':cat==='snacks'?'snacks':cat==='printing'?'printing':(cat==='stationery'||cat==='supplies')?'otheritems':null;}
+
+function mbCompute(ym,upto){
+  var ck=ym+(upto?':'+upto:'');if(_mbCache[ck])return _mbCache[ck];
+  var from=ym+'-01',to=mbLastDay(ym),t=today();
+  if(upto&&upto<+to.slice(8))to=ym+'-'+String(upto).padStart(2,'0');
+  var last=to<t?to:t,future=from>t;
+  var inM=function(d){return d&&d>=from&&d<=to;};
+  var R={ym:ym,from:from,to:to,future:future,days:+to.slice(8),elapsed:future?0:(last<from?0:rpDaysBetween(from,last))};
+  var visits=(clients||[]).filter(function(c){return inM(c.date);});
+  var drinks=(loadData('drinkOrders',[])||[]).filter(function(o){return inM(o.date);});
+  var lines=(loadData('shiftPayments',[])||[]).filter(function(x){return inM(x.date)&&mbN(x.academyPayments)>0;});
+  var exps=(loadData('expenses',[])||[]).filter(function(e){return inM(e.date);});
+  // ── revenue ──
+  var rev={workspace:0,drinks:0,academy:0,shared:0,lockers:0,dg:{},byDay:{},byWeek:[0,0,0,0,0]};
+  MB_DRINK_GROUPS.forEach(function(g){rev.dg[g[0]]=0;});
+  var addDay=function(d,v){rev.byDay[d]=(rev.byDay[d]||0)+v;rev.byWeek[Math.min(4,Math.floor((+d.slice(8)-1)/7))]+=v;};
+  visits.forEach(function(c){var v=mbN(c.cost);rev.workspace+=v;addDay(c.date,v);});
+  var px=mbProdIndex(),qty={};
+  drinks.forEach(function(o){
+    var tot=mbN(o.total);rev.drinks+=tot;addDay(o.date,tot);
+    var items=o.items||[],priced=items.reduce(function(s,i){return s+mbN(i.total);},0);
+    var catOf=function(i){return mbGroupOf(i.category||px.byId[i.productId]||px.byName[String(i.name||'').trim().toLowerCase()]);};
+    if(items.length&&Math.abs(priced-tot)<0.5){items.forEach(function(i){var g=catOf(i)||'unspecified';rev.dg[g]+=mbN(i.total);});}
+    else{var gs=items.map(catOf).filter(function(x,k,a){return a.indexOf(x)===k;});rev.dg[gs.length===1&&gs[0]?gs[0]:'unspecified']+=tot;}
+    items.forEach(function(i){var k=String(i.name||'?').trim();if(!qty[k])qty[k]={name:k,qty:0,total:0,group:catOf(i)||'unspecified'};qty[k].qty+=mbN(i.qty)||1;qty[k].total+=mbN(i.total);});
+  });
+  lines.forEach(function(x){
+    var a=mbN(x.academyPayments),note=x.note||'';
+    if(/shared space/i.test(note))rev.shared+=a;else if(/^locker /i.test(note)&&!x.academyKey)rev.lockers+=a;else rev.academy+=a;
+    addDay(x.date,a);
+  });
+  rev.other=rev.academy+rev.shared+rev.lockers;
+  rev.total=rev.workspace+rev.drinks+rev.other;
+  var rm=rpMetrics(from,to);R.rm=rm;
+  rev.methods=rm.methods;
+  R.rev=rev;
+  // ── expenses ──
+  var ex={total:0,inv:0,byCat:{},byMethod:{cash:0,instapay:0,visa:0,other:0},list:exps};
+  exps.forEach(function(e){
+    var a=mbN(e.amount),inv=(typeof vaultIsInv==='function'?vaultIsInv(e):e.type==='investment');
+    var m=(e.method||e.paidFrom||'').toLowerCase();m=m==='cash'||m==='instapay'||m==='visa'?m:'other';
+    ex.byMethod[m]+=a;
+    if(inv){ex.inv+=a;return;}
+    ex.total+=a;var k=MB_EXP_GROUPS.some(function(g){return g[0]===e.category;})?e.category:'Other';ex.byCat[k]=(ex.byCat[k]||0)+a;
+  });
+  R.exp=ex;
+  R.profit=rev.total-ex.total;R.margin=rev.total?R.profit/rev.total*100:null;
+  // ── customers ──
+  var key=function(c){return c.profileId||String(c.name||'').trim().toLowerCase();};
+  var firstSeen={};(clients||[]).forEach(function(c){var k=key(c);if(!k||!c.date)return;if(!firstSeen[k]||c.date<firstSeen[k])firstSeen[k]=c.date;});
+  var per={};visits.forEach(function(c){var k=key(c);if(!k)return;var p=per[k]||(per[k]={key:k,name:c.name||'',pid:c.profileId,visits:0,spend:0});p.visits++;p.spend+=mbN(c.cost);});
+  var uniq=Object.keys(per),newC=uniq.filter(function(k){return firstSeen[k]>=from;}).length;
+  var pf=mbPrevYm(ym)+'-01',pt=mbLastDay(mbPrevYm(ym)),prevSet={};(clients||[]).forEach(function(c){if(c.date>=pf&&c.date<=pt){var k=key(c);if(k)prevSet[k]=1;}});
+  var prevN=Object.keys(prevSet).length,kept=Object.keys(prevSet).filter(function(k){return per[k];}).length;
+  var byDayC={};visits.forEach(function(c){byDayC[c.date]=(byDayC[c.date]||0)+1;});
+  var weekC=[0,0,0,0,0];visits.forEach(function(c){weekC[Math.min(4,Math.floor((+c.date.slice(8)-1)/7))]++;});
+  var freq={'1 visit':0,'2–3 visits':0,'4–9 visits':0,'10+ visits':0};uniq.forEach(function(k){var v=per[k].visits;freq[v>=10?'10+ visits':v>=4?'4–9 visits':v>=2?'2–3 visits':'1 visit']++;});
+  R.cust={visits:visits.length,unique:uniq.length,newC:newC,returning:uniq.length-newC,retention:prevN?kept/prevN*100:null,keptFromPrev:kept,prevUnique:prevN,
+    avgVisits:uniq.length?visits.length/uniq.length:null,avgSpend:uniq.length?rev.workspace/uniq.length:null,
+    top:uniq.map(function(k){return per[k];}).sort(function(a,b){return b.visits-a.visits||b.spend-a.spend;}).slice(0,10),freq:freq,byDay:byDayC,byWeek:weekC};
+  // ── workspace ──
+  var rooms=ROOM_VISIT_ROOMS.filter(function(r){return r.key!=='sharedSpace';});
+  var openDays=[];for(var d=from;d<=last&&!future;d=rpAddDays(d,1))openDays.push(d);
+  var openH=openDays.reduce(function(s,ds){var o=getOpenHours(ds);return s+Math.max(0,(timeToMin(o.end)-timeToMin(o.start))/60);},0);
+  var occ={};rooms.forEach(function(r){occ[r.key]=0;});var sharedSeatH=0,stays=[];
+  visits.forEach(function(c){
+    var h=mbN(c.hours);if(h>0&&h<24)stays.push(h);
+    if(occ[c.roomKey]!==undefined)occ[c.roomKey]+=Math.min(h,24);
+    if(c.roomKey==='sharedSpace')sharedSeatH+=(parseInt(c.guests,10)||1)*Math.min(h,24);
+    (c.roomVisits||[]).forEach(function(v){if(occ[v.roomKey]!==undefined&&v.timeIn&&v.timeOut)occ[v.roomKey]+=rvxMinutes?rvxMinutes(v.timeIn,v.timeOut)/60:0;});
+  });
+  var acH=0;Object.keys(academies||{}).forEach(function(k){var ac=academies[k];if(ac.packageType==='days')return;var all=(ac.sessions||[]).slice();(ac.packages||[]).forEach(function(p){all=all.concat(p.sessions||[]);});all.forEach(function(x){if(x&&inM(x.date))acH+=mbN(x.duration);});});
+  var seats=mbN((loadData('mbSettings',{})||{}).sharedSeats)||null;
+  var resv=(reservations||[]).filter(function(r){return inM(r.date);});
+  var cancelled=(loadData('recycleBin',[])||[]).filter(function(x){return x.type==='reservation'&&x.data&&inM(x.data.date);}).length;
+  R.ws={rooms:rooms.map(function(r){var avail=openH;return {key:r.key,name:r.name,occ:occ[r.key],avail:avail,pct:avail?occ[r.key]/avail*100:null};}),
+    privOcc:rooms.reduce(function(s,r){return s+occ[r.key];},0),privAvail:openH*rooms.length,openH:openH,openDays:openDays.length,
+    sharedSeatH:sharedSeatH,seats:seats,sharedPct:seats&&openH?sharedSeatH/(seats*openH)*100:null,
+    avgStay:stays.length?stays.reduce(function(a,b){return a+b;},0)/stays.length:null,academyH:acH,heat:rm.heat,peak:rm.peak,
+    book:{total:resv.length,honored:resv.filter(function(r){return r.status==='checked_in'||r.status==='arrived'||r.status==='completed';}).length,
+      noShow:resv.filter(function(r){return r.status==='no-show'||r.status==='no_show';}).length,
+      pending:resv.filter(function(r){return !r.status||r.status==='upcoming'||r.status==='pending';}).length,
+      cancelled:cancelled,online:resv.filter(function(r){return r.source==='online';}).length,
+      academy:resv.filter(function(r){return r.academyKey;}).length}};
+  R.ws.privPct=R.ws.privAvail?R.ws.privOcc/R.ws.privAvail*100:null;
+  // weekday totals for busiest / quietest days
+  var wdName=['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'],wdV=[0,0,0,0,0,0,0],wdN=[0,0,0,0,0,0,0];
+  openDays.forEach(function(ds){var i=rpDayIdx(ds);wdN[i]++;wdV[i]+=(byDayC[ds]||0);});
+  R.ws.weekdays=wdName.map(function(n,i){return {name:n,avg:wdN[i]?wdV[i]/wdN[i]:null};});
+  var hrs=[];for(var h=8;h<=23;h++){var sum=0;for(var w=0;w<7;w++)sum+=(rm.heat&&rm.heat[w]?rm.heat[w][h]:0)*(wdN[w]||0);hrs.push({h:h,avg:R.elapsed?sum/R.elapsed:0});}
+  R.ws.hours=hrs;
+  // ── additional sales ──
+  var stockBuy=exps.filter(function(e){return e.category==='Food & Drinks Stock'&&!(typeof vaultIsInv==='function'&&vaultIsInv(e));}).reduce(function(s,e){return s+mbN(e.amount);},0);
+  R.sales={orders:drinks.length,total:rev.drinks,dg:rev.dg,products:Object.keys(qty).map(function(k){return qty[k];}).sort(function(a,b){return b.total-a.total||b.qty-a.qty;}),
+    stockBuy:stockBuy,attach:visits.length?drinks.length/visits.length*100:null,avgOrder:drinks.length?rev.drinks/drinks.length:null,
+    low:(products||[]).filter(function(p){return p.is_active&&p.inventory_mode==='retail'&&mbN(p.min_stock)>0&&mbN(p.stock_quantity)<mbN(p.min_stock);}).map(function(p){return {name:p.display_name,stock:mbN(p.stock_quantity),min:mbN(p.min_stock)};})};
+  // ── staff ──
+  var office=(typeof attStaff==='function'?attStaff(true):[]).map(function(st){var o=attMonthStats(st,ym);var due=o.counted-o.leave;return {name:st.name,role:st.role||'',start:st.start,end:st.end,present:o.present,absent:o.absent,leave:o.leave,notRecorded:o.notRecorded,late:o.late,lateMin:o.lateMin,overMin:o.overMin,netMin:o.netMin,noCheckout:o.noCheckout,due:due,compliance:due>0?Math.min(100,o.present/due*100):null};}).filter(function(x){return x.present||x.absent||x.leave||x.notRecorded;});
+  var cash=staff.map(function(st){var v=visits.filter(function(c){return c.cashier===st.name;}),dk=drinks.filter(function(o){return o.cashier===st.name;}),rt=v.filter(function(c){return c.rating;});
+    return {name:st.name,shift:st.shift,checkouts:v.length,rooms:v.reduce(function(s,c){return s+mbN(c.cost);},0),drinks:dk.reduce(function(s,o){return s+mbN(o.total);},0),pkgs:lines.filter(function(x){return x.cashier===st.name;}).reduce(function(s,x){return s+mbN(x.academyPayments);},0),rating:rt.length?rt.reduce(function(s,c){return s+mbN(c.rating);},0)/rt.length:null,ratings:rt.length};});
+  R.staff={office:office,cashiers:cash};
+  // ── operations ──
+  var opDays=Object.keys(byDayC).length;
+  var issues=[];try{issues=(typeof dhIssues==='function'?dhIssues():[]).filter(function(i){return inM(i.date);});}catch(e){}
+  R.ops={opDays:opDays,closedDays:Math.max(0,R.elapsed-opDays),avgPerDay:opDays?visits.length/opDays:null,
+    maint:exps.filter(function(e){return e.category==='Maintenance';}),
+    voided:(loadData('recycleBin',[])||[]).filter(function(x){return x.type==='cancelled_checkin'&&x.deletedAt&&inM(x.deletedAt.slice(0,10));}).length,
+    dataIssues:issues.length};
+  // ── customer experience (checkout ratings) ──
+  var rated=visits.filter(function(c){return mbN(c.rating)>0;});
+  R.cx={rated:rated.length,avg:rated.length?rated.reduce(function(s,c){return s+mbN(c.rating);},0)/rated.length:null,pos:rated.filter(function(c){return c.rating>=4;}).length,neg:rated.filter(function(c){return c.rating<=2;}).length,
+    comments:visits.filter(function(c){return c.feedback&&String(c.feedback).trim();}).map(function(c){return {date:c.date,name:c.name,rating:c.rating,text:c.feedback};})};
+  // ── marketing ──
+  var online=resv.filter(function(r){return r.source==='online';});
+  var preq=(loadData('packageRequests',[])||[]).filter(function(p){return p.createdAt&&inM(String(p.createdAt).slice(0,10));});
+  R.mkt={newC:newC,mktExp:ex.byCat.Marketing||0,online:online.length,onlineHonored:online.filter(function(r){return r.status==='checked_in'||r.status==='arrived';}).length,pkgReq:preq.length};
+  R.notes=mbNotes(ym);R.upto=upto||null;
+  _mbCache[ck]=R;
+  return R;
+}
+
+// ── owner notes per month ──
+function mbNotes(ym){var n=loadData('monthReport_'+ym,null);n=(n&&typeof n==='object')?n:{};['opsLog','complaints','campaigns'].forEach(function(k){if(!Array.isArray(n[k]))n[k]=[];});if(!n.plan||typeof n.plan!=='object')n.plan={};if(!Array.isArray(n.plan.items))n.plan.items=[];if(!n.plan.objectives)n.plan.objectives={};if(!n.google)n.google={};return n;}
+function mbSaveNotes(ym,n){saveData('monthReport_'+ym,n);delete _mbCache[ym];}
+var MB_LIST_FIELDS={
+  opsLog:[['date','Date','date'],['type','Type',['Maintenance','Equipment','Internet / Wi-Fi','Cleanliness','Supplies','Incident','Service interruption','Opening / closing','Note']],['desc','Description','text'],['status','Status',['Open','Resolved']],['resolution','Resolution','text']],
+  complaints:[['date','Date','date'],['kind','Type',['Complaint','Suggestion','Positive feedback']],['desc','Details','text'],['status','Status',['Pending','Resolved']],['resolution','Resolution','text']],
+  campaigns:[['date','Date','date'],['type','Type',['Social media post','Campaign','Promotion','Event','Community activity','Referral']],['name','Name','text'],['cost','Cost (EGP)','number'],['reach','Attendance / reach','number'],['result','Result','text']],
+  plan:[['area','Area',['Business','Financial','Customers','Marketing','Operations','Purchase','Maintenance']],['action','Action','text'],['owner','Responsible','owner'],['deadline','Deadline','date'],['budget','Budget (EGP)','number'],['status','Status',['Not started','In progress','Done']]]
+};
+function mbList(ym,list){var n=mbNotes(ym);return list==='plan'?n.plan.items:n[list];}
+function mbAddRow(list){var ym=mbYm(),n=mbNotes(ym),row={};MB_LIST_FIELDS[list].forEach(function(f){row[f[0]]=Array.isArray(f[2])?f[2][0]:(f[2]==='date'?today():'');});(list==='plan'?n.plan.items:n[list]).push(row);mbSaveNotes(ym,n);renderMonthlyBiz(list);}
+function mbSetField(list,i,field,val){var ym=mbYm(),n=mbNotes(ym),arr=list==='plan'?n.plan.items:n[list];if(!arr[i])return;arr[i][field]=val;mbSaveNotes(ym,n);}
+function mbDelRow(list,i){if(!confirm('Remove this line?'))return;var ym=mbYm(),n=mbNotes(ym),arr=list==='plan'?n.plan.items:n[list];arr.splice(i,1);mbSaveNotes(ym,n);renderMonthlyBiz(list);}
+function mbSetObj(path,val){var ym=mbYm(),n=mbNotes(ym),p=path.split('.');var o=n;for(var i=0;i<p.length-1;i++){o[p[i]]=o[p[i]]||{};o=o[p[i]];}o[p[p.length-1]]=val;mbSaveNotes(ym,n);}
+function mbSetSeats(v){var s=loadData('mbSettings',{})||{};s.sharedSeats=parseInt(v,10)||null;saveData('mbSettings',s);_mbCache={};renderMonthlyBiz('ws');}
+function mbListHtml(list,rows,pm){
+  var f=MB_LIST_FIELDS[list];
+  if(pm){if(!rows.length)return '<div class="mb-na">Nothing recorded for this month.</div>';
+    return '<table class="mb-t"><thead><tr>'+f.map(function(x){return '<th>'+x[1]+'</th>';}).join('')+'</tr></thead><tbody>'+rows.map(function(r){return '<tr>'+f.map(function(x){var v=r[x[0]];return '<td>'+(x[2]==='date'&&v?formatDate(v):x[2]==='number'&&v!==''&&v!==undefined?Math.round(mbN(v)).toLocaleString('en-US'):mbE(v||'—'))+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';}
+  var owners=staff.map(function(s){return s.name;}).concat((typeof attStaff==='function'?attStaff():[]).map(function(s){return s.name;})).filter(function(x,i,a){return x&&a.indexOf(x)===i;});
+  return '<div class="mb-edit"><table class="mb-t"><thead><tr>'+f.map(function(x){return '<th>'+x[1]+'</th>';}).join('')+'<th></th></tr></thead><tbody>'
+    +(rows.length?rows.map(function(r,i){return '<tr>'+f.map(function(x){
+      var v=r[x[0]]===undefined?'':r[x[0]],on='onchange="mbSetField(\''+list+'\','+i+',\''+x[0]+'\',this.value)"';
+      if(Array.isArray(x[2]))return '<td><select '+on+'>'+x[2].map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>';}).join('')+'</select></td>';
+      if(x[2]==='owner')return '<td><select '+on+'><option value="">—</option>'+owners.map(function(o){return '<option'+(o===v?' selected':'')+'>'+mbE(o)+'</option>';}).join('')+'</select></td>';
+      return '<td><input type="'+(x[2]==='number'?'number':x[2]==='date'?'date':'text')+'" value="'+mbE(v)+'" '+on+' style="'+(x[2]==='text'?'min-width:160px;':'width:'+(x[2]==='date'?'140px':'100px'))+'"></td>';
+    }).join('')+'<td><button class="btn btn-danger btn-sm" onclick="mbDelRow(\''+list+'\','+i+')">✕</button></td></tr>';}).join(''):'<tr><td colspan="'+(f.length+1)+'" class="mb-na">Nothing recorded yet.</td></tr>')
+    +'</tbody></table><button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="mbAddRow(\''+list+'\')">+ Add</button></div>';
+}
+
+// ── charts (inline SVG / CSS so they print) ──
+function mbBarsDaily(R,P,field){
+  var days=R.days,cur=[],prev=[],max=0;
+  for(var d=1;d<=days;d++){var ds=R.ym+'-'+String(d).padStart(2,'0');var v=field==='rev'?(R.rev.byDay[ds]||0):(R.cust.byDay[ds]||0);cur.push(v);
+    var pds=P.ym+'-'+String(d).padStart(2,'0');var pv=d<=P.days?(field==='rev'?(P.rev.byDay[pds]||0):(P.cust.byDay[pds]||0)):null;prev.push(pv);max=Math.max(max,v,pv||0);}
+  if(!max)return '<div class="mb-na">No activity recorded this month.</div>';
+  var W=760,H=170,pad=24,bw=(W-pad*2)/days;
+  var bars=cur.map(function(v,i){var h=v/max*(H-30);return '<rect x="'+(pad+i*bw+1)+'" y="'+(H-12-h)+'" width="'+Math.max(1,bw-2)+'" height="'+h+'" rx="2" fill="var(--accent,#6c63ff)"><title>'+(i+1)+': '+Math.round(v).toLocaleString('en-US')+'</title></rect>';}).join('');
+  var line=prev.map(function(v,i){return v===null?null:(pad+i*bw+bw/2)+','+(H-12-v/max*(H-30));}).filter(Boolean).join(' ');
+  var labels=cur.map(function(v,i){return (i%5===0||i===days-1)?'<text x="'+(pad+i*bw+bw/2)+'" y="'+(H-1)+'" font-size="9" text-anchor="middle" fill="#888">'+(i+1)+'</text>':'';}).join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+bars+(line?'<polyline points="'+line+'" fill="none" stroke="#d4a843" stroke-width="2" stroke-dasharray="4 3"><title>previous month</title></polyline>':'')+labels+'</svg>'
+    +'<div style="font-size:11px;color:var(--text3);"><span style="display:inline-block;width:10px;height:10px;background:#6c63ff;border-radius:2px;"></span> '+mbLabel(R.ym)+' &nbsp; <span style="display:inline-block;width:14px;border-top:2px dashed #d4a843;vertical-align:middle;"></span> '+mbLabel(P.ym)+' (same day of month)</div>';
+}
+function mbHBars(rows,fmt){
+  var max=rows.reduce(function(m,r){return Math.max(m,r.v||0);},0);
+  if(!max)return '<div class="mb-na">Nothing recorded this month.</div>';
+  var cols=['#6c63ff','#1ab8b8','#d4a843','#2ec97e','#e0559b','#4a9eff','#f08c3a','#8b5cf6'];
+  return rows.map(function(r,i){return '<div class="mb-hb"><div class="lb">'+r.l+'</div><div class="tr"><div class="fl" style="width:'+Math.max(1,(r.v||0)/max*100)+'%;background:'+cols[i%cols.length]+';"></div></div><div class="vl">'+(fmt?fmt(r.v):Math.round(r.v).toLocaleString('en-US'))+(r.x||'')+'</div></div>';}).join('');
+}
+function mbTrend(field,ym,n){
+  var ms=[],y=ym;for(var i=0;i<n;i++){ms.unshift(y);y=mbPrevYm(y);}
+  var rows=ms.map(function(m){var R=mbCompute(m);return {m:m,v:field==='profit'?R.profit:field==='rev'?R.rev.total:field==='exp'?R.exp.total:R.cust.unique};});
+  var max=rows.reduce(function(a,r){return Math.max(a,Math.abs(r.v));},0);if(!max)return '<div class="mb-na">No history yet.</div>';
+  var W=360,H=120,bw=W/rows.length;
+  return '<svg viewBox="0 0 '+W+' '+(H+18)+'" style="width:100%;height:auto;">'+rows.map(function(r,i){var h=Math.abs(r.v)/max*(H-14);var neg=r.v<0;return '<rect x="'+(i*bw+6)+'" y="'+(H-h)+'" width="'+(bw-12)+'" height="'+h+'" rx="3" fill="'+(r.m===ym?(neg?'#e05555':'#6c63ff'):(neg?'#f3b0b0':'#c9c6fb'))+'"><title>'+mbLabel(r.m)+': '+Math.round(r.v).toLocaleString('en-US')+'</title></rect><text x="'+(i*bw+bw/2)+'" y="'+(H+13)+'" font-size="10" text-anchor="middle" fill="#888">'+mbShortLabel(r.m)+'</text>';}).join('')+'</svg>';
+}
+
+// ── the report ──
+function mbReportHtml(ym,pm){
+  var R=mbCompute(ym),part=!R.future&&R.elapsed<R.days?R.elapsed:null,P=mbCompute(mbPrevYm(ym),part),N=R.notes,L=mbLabel(ym)+(part?' (1–'+part+')':''),PL=mbLabel(P.ym)+(part?' (1–'+Math.min(part,+P.to.slice(8))+')':'');
+  var h='',sec=function(id,i,title,lead,body){return '<div class="mb-sec" id="mb-'+id+'"><h2><span class="mb-num">'+String(i).padStart(2,'0')+'</span>'+title+'</h2><div class="mb-lead">'+lead+'</div>'+body+'</div>';};
+  var row=function(label,cur,prev,better,fmt,note){fmt=fmt||mbLE;return '<tr><td>'+label+(note?'<div style="font-size:10px;color:var(--text3);">'+note+'</div>':'')+'</td><td class="n">'+fmt(cur)+'</td><td class="n">'+(prev===null||prev===undefined?'<span class="mb-na">—</span>':fmt(prev))+'</td><td class="n">'+mbDelta(cur,prev,better)+'</td></tr>';};
+  var thead='<thead><tr><th></th><th class="n">'+L+'</th><th class="n">'+PL+'</th><th class="n">Change</th></tr></thead>';
+  if(R.future)return '<div class="mb-sec"><div class="mb-na" style="font-size:14px;">'+L+' has not started yet.</div></div>';
+  // 01 executive summary
+  var e='<div class="mb-kpis">'
+    +mbKpi('Total revenue',mbLE(R.rev.total),R.rev.total,P.rev.total,'up')
+    +mbKpi('Total expenses',mbLE(R.exp.total),R.exp.total,P.exp.total,'down')
+    +mbKpi('Net profit',mbLE(R.profit),R.profit,P.profit,'up',R.margin!==null?'margin '+mbPct(R.margin):'')
+    +mbKpi('Customers served (visits)',mbNum(R.cust.visits),R.cust.visits,P.cust.visits,'up')
+    +mbKpi('Unique customers',mbNum(R.cust.unique),R.cust.unique,P.cust.unique,'up')
+    +mbKpi('New customers',mbNum(R.cust.newC),R.cust.newC,P.cust.newC,'up')
+    +mbKpi('Returning customers',mbNum(R.cust.returning),R.cust.returning,P.cust.returning,'up')
+    +mbKpi('Operating days',mbNum(R.ops.opDays),R.ops.opDays,P.ops.opDays,null,R.elapsed<R.days?R.elapsed+' of '+R.days+' days so far':'')
+    +'</div>';
+  var parts=[],dr=P.rev.total?(R.rev.total-P.rev.total)/P.rev.total*100:null;
+  if(R.rev.total||R.cust.visits){
+    parts.push('In <strong>'+L+'</strong> SpaceCo earned <strong>'+mbLE(R.rev.total)+'</strong>'+(dr!==null?' ('+(dr>=0?'up ':'down ')+Math.abs(Math.round(dr*10)/10)+'% on '+PL+')':'')+' from <strong>'+R.cust.visits+'</strong> visits by <strong>'+R.cust.unique+'</strong> customers, '+R.cust.newC+' of them new.');
+    var src=[['room visits',R.rev.workspace],['drinks & snacks',R.rev.drinks],['academy packages',R.rev.academy],['Shared Space packages',R.rev.shared],['lockers',R.rev.lockers]].filter(function(x){return x[1]>0;}).sort(function(a,b){return b[1]-a[1];});
+    if(src.length)parts.push('The biggest source of income was '+src[0][0]+' ('+Math.round(src[0][1]/R.rev.total*100)+'%)'+(src[1]?', followed by '+src[1][0]+' ('+Math.round(src[1][1]/R.rev.total*100)+'%)':'')+'.');
+    parts.push('Expenses were <strong>'+mbLE(R.exp.total)+'</strong>, leaving a net '+(R.profit>=0?'profit':'loss')+' of <strong>'+mbLE(Math.abs(R.profit))+'</strong>'+(R.margin!==null?' (margin '+mbPct(R.margin)+')':'')+'.');
+    var bd=R.ws.weekdays.filter(function(w){return w.avg!==null;}).sort(function(a,b){return b.avg-a.avg;});
+    if(bd.length&&bd[0].avg>0)parts.push(bd[0].name+' was the busiest day of the week (about '+mbNum(bd[0].avg,1)+' visits on average).');
+    if(R.cust.retention!==null)parts.push(mbPct(R.cust.retention)+' of last month\'s customers came back this month.');
+    if(part)parts.push('<em>The month is still running — figures cover '+R.elapsed+' of '+R.days+' days, so every comparison uses the same days of '+mbLabel(P.ym)+'.</em>');
+  }else parts.push('No activity has been recorded for '+L+'.');
+  h+=sec('exec',1,'Executive Summary',L+' compared with '+PL+' · generated '+new Date().toLocaleString('en-GB'),e+'<div class="mb-summary">'+parts.join(' ')+'</div>'+(pm?'':'<div class="mb-grid2" style="margin-top:16px;"><div><h3>Revenue — last 6 months</h3>'+mbTrend('rev',ym,6)+'</div><div><h3>Net profit — last 6 months</h3>'+mbTrend('profit',ym,6)+'</div></div>'));
+  // 02 financial
+  var f='<h3>Revenue</h3><table class="mb-t">'+thead+'<tbody>'
+    +row('Workspace (room visits)',R.rev.workspace,P.rev.workspace,'up')
+    +MB_DRINK_GROUPS.map(function(g){return (R.rev.dg[g[0]]||P.rev.dg[g[0]])?row(g[1],R.rev.dg[g[0]],P.rev.dg[g[0]],'up'):'';}).join('')
+    +row('Academy packages',R.rev.academy,P.rev.academy,'up')
+    +row('Shared Space packages',R.rev.shared,P.rev.shared,'up')
+    +(R.rev.lockers||P.rev.lockers?row('Lockers',R.rev.lockers,P.rev.lockers,'up'):'')
+    +'<tr class="tot"><td>Total revenue</td><td class="n">'+mbLE(R.rev.total)+'</td><td class="n">'+mbLE(P.rev.total)+'</td><td class="n">'+mbDelta(R.rev.total,P.rev.total,'up')+'</td></tr></tbody></table>'
+    +'<div class="mb-grid2"><div><h3>Revenue by day</h3>'+mbBarsDaily(R,P,'rev')+'</div><div><h3>Revenue by week</h3>'+mbHBars(R.rev.byWeek.map(function(v,i){return {l:'Week '+(i+1)+' ('+(i*7+1)+'–'+Math.min(R.days,i*7+7)+')',v:v};}).filter(function(x,i){return i*7<R.days;}),mbLE)
+    +'<h3>Revenue by payment method</h3>'+mbHBars([['Cash','cash'],['Instapay','instapay'],['Visa','visa'],['Other / Bank','other']].map(function(m){return {l:m[0],v:R.rev.methods[m[1]]||0,x:' '+mbDelta(R.rev.methods[m[1]]||0,P.rev.methods[m[1]]||0,'up')};}).filter(function(x){return x.v||x.x;}),mbLE)+'</div></div>'
+    +'<h3>Expenses</h3><table class="mb-t">'+thead+'<tbody>'
+    +MB_EXP_GROUPS.map(function(g){var c=R.exp.byCat[g[0]]||0,p=P.exp.byCat[g[0]]||0;return row(g[1],c,p,'down');}).join('')
+    +'<tr class="tot"><td>Total expenses</td><td class="n">'+mbLE(R.exp.total)+'</td><td class="n">'+mbLE(P.exp.total)+'</td><td class="n">'+mbDelta(R.exp.total,P.exp.total,'down')+'</td></tr>'
+    +(R.exp.inv||P.exp.inv?row('Investments (not in profit)',R.exp.inv,P.exp.inv,null):'')+'</tbody></table>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:6px;">Electricity and internet are recorded together as "Utilities", so they cannot be shown separately.</div>'
+    +'<h3>Financial analysis</h3><table class="mb-t">'+thead+'<tbody>'
+    +row('Net profit',R.profit,P.profit,'up')
+    +'<tr><td>Profit margin</td><td class="n">'+mbPct(R.margin)+'</td><td class="n">'+mbPct(P.margin)+'</td><td class="n">'+mbDelta(R.margin,P.margin,'up',true)+'</td></tr></tbody></table>'
+    +'<div class="mb-grid2"><div><h3>Revenue vs expenses</h3>'+mbHBars([{l:'Revenue',v:R.rev.total},{l:'Expenses',v:R.exp.total},{l:R.profit>=0?'Profit':'Loss',v:Math.abs(R.profit)}],mbLE)+'</div>'
+    +'<div><h3>Cash flow by payment method</h3><table class="mb-t"><thead><tr><th></th><th class="n">In</th><th class="n">Out</th><th class="n">Net</th></tr></thead><tbody>'
+    +[['Cash','cash'],['Instapay','instapay'],['Visa','visa'],['Other / Bank','other']].map(function(m){var i=R.rev.methods[m[1]]||0,o=R.exp.byMethod[m[1]]||0;return (i||o)?'<tr><td>'+m[0]+'</td><td class="n">'+mbLE(i)+'</td><td class="n">'+mbLE(o)+'</td><td class="n" style="color:'+(i-o>=0?'var(--green)':'var(--red)')+';">'+mbLE(i-o)+'</td></tr>':'';}).join('')
+    +'</tbody></table><div style="font-size:11px;color:var(--text3);margin-top:4px;">Money in = payments collected; money out = expenses and investments paid, by how they were paid.</div></div></div>';
+  var owedDr=(typeof adTabs==='function'?adTabs():[]).filter(function(x){return x.status==='owed';}),owedLk=(loadData('lockerBookings',[])||[]).filter(function(b){return !b.cancelled&&typeof lkDue==='function'&&lkDue(b)>0;});
+  f+='<h3>Outstanding payments (as of today)</h3><table class="mb-t"><tbody><tr><td>Academy drinks not yet paid</td><td class="n">'+mbLE(owedDr.reduce(function(s,x){return s+mbN(x.total);},0))+'</td></tr><tr><td>Locker rent not yet collected</td><td class="n">'+mbLE(owedLk.reduce(function(s,b){return s+lkDue(b);},0))+'</td></tr></tbody></table><div style="font-size:11px;color:var(--text3);margin-top:4px;">These are amounts owed, not revenue collected; they are not part of the totals above.</div>';
+  h+=sec('fin',2,'Financial Performance','Revenue is what was charged and paid in '+L+'. Expenses are the costs recorded for the same dates.',f);
+  // 03 customers
+  var c='<div class="mb-kpis">'
+    +mbKpi('Customer visits',mbNum(R.cust.visits),R.cust.visits,P.cust.visits,'up')
+    +mbKpi('Unique customers',mbNum(R.cust.unique),R.cust.unique,P.cust.unique,'up')
+    +mbKpi('New customers',mbNum(R.cust.newC),R.cust.newC,P.cust.newC,'up')
+    +mbKpi('Returning customers',mbNum(R.cust.returning),R.cust.returning,P.cust.returning,'up')
+    +mbKpi('Retention',mbPct(R.cust.retention),R.cust.retention,P.cust.retention,'up',R.cust.prevUnique?R.cust.keptFromPrev+' of '+R.cust.prevUnique+' from '+PL:'',true)
+    +mbKpi('Avg visits per customer',mbNum(R.cust.avgVisits,1),R.cust.avgVisits,P.cust.avgVisits,'up')
+    +mbKpi('Avg room spend per customer',mbLE(R.cust.avgSpend),R.cust.avgSpend,P.cust.avgSpend,'up')
+    +mbKpi('How customers found SpaceCo','<span class="mb-na" style="font-size:13px;">not recorded</span>')
+    +'</div><div class="mb-grid2"><div><h3>Customers per day</h3>'+mbBarsDaily(R,P,'cust')+'</div><div><h3>Customers per week</h3>'+mbHBars(R.cust.byWeek.map(function(v,i){return {l:'Week '+(i+1),v:v,x:' '+mbDelta(v,P.cust.byWeek[i],'up')};}).filter(function(x,i){return i*7<R.days;}))
+    +'<h3>Visit frequency</h3>'+mbHBars(Object.keys(R.cust.freq).map(function(k){return {l:k,v:R.cust.freq[k],x:' customers'};}))+'</div></div>'
+    +'<h3>Most frequent customers</h3>'+(R.cust.top.length?'<table class="mb-t"><thead><tr><th>#</th><th>Customer</th><th>Tier</th><th class="n">Visits</th><th class="n">Room spend</th></tr></thead><tbody>'+R.cust.top.map(function(p,i){return '<tr><td>'+(i+1)+'</td><td>'+mbE(p.name)+'</td><td>'+(p.pid&&typeof clTierOf==='function'?getTierBadge(clTierOf(p.pid)):'')+'</td><td class="n">'+p.visits+'</td><td class="n">'+mbLE(p.spend)+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No customers this month.</div>');
+  h+=sec('cust',3,'Customer Analytics','A customer is counted once per client profile. New = first visit ever in '+L+'. Retention = share of '+PL+'\'s customers who came back.',c);
+  // 04 workspace
+  var W=R.ws,PW=P.ws;
+  var wsb='<div class="mb-kpis">'
+    +mbKpi('Private rooms occupancy',mbPct(W.privPct),W.privPct,PW.privPct,'up',mbNum(W.privOcc)+' of '+mbNum(W.privAvail)+' room-hours',true)
+    +mbKpi('Shared Space occupancy',W.seats?mbPct(W.sharedPct):'<span class="mb-na" style="font-size:13px;">needs seat count</span>',W.sharedPct,PW.sharedPct,'up',mbNum(W.sharedSeatH)+' seat-hours used',true)
+    +mbKpi('Available seat-hours',W.seats?mbNum(W.seats*W.openH):'<span class="mb-na" style="font-size:13px;">needs seat count</span>',null,null,null,W.seats?W.seats+' seats × '+mbNum(W.openH)+' open hours':'')
+    +mbKpi('Average stay',W.avgStay!==null?mbNum(W.avgStay,1)+' h':'<span class="mb-na">—</span>',W.avgStay,PW.avgStay,null)
+    +mbKpi('Academy session hours',mbNum(W.academyH,1)+' h',W.academyH,PW.academyH,'up','logged in academy session logs')
+    +'</div>'
+    +(pm?'':'<div style="font-size:12px;margin-top:10px;">Shared Space seats: <input type="number" min="1" value="'+(W.seats||'')+'" style="width:80px;" onchange="mbSetSeats(this.value)"> <span style="color:var(--text3);">Enter how many seats Shared Space has to calculate its occupancy.</span></div>')
+    +'<h3>Room occupancy (guest visits and room visits)</h3>'+mbHBars(W.rooms.map(function(r){return {l:r.name,v:r.pct||0,x:' · '+mbNum(r.occ,1)+' h'};}),function(v){return mbPct(v);})
+    +'<div style="font-size:11px;color:var(--text3);">Available hours = opening hours ('+OPEN_START_WEEKDAY+'–'+OPEN_END+', Fridays from '+OPEN_START_FRIDAY+') × '+W.openDays+' days. Academy sessions are counted separately because their logs do not say which room was used.</div>'
+    +'<div class="mb-grid2"><div><h3>Busiest and quietest days</h3>'+mbHBars(W.weekdays.filter(function(w){return w.avg!==null;}).sort(function(a,b){return b.avg-a.avg;}).map(function(w){return {l:w.name,v:w.avg};}),function(v){return mbNum(v,1)+' visits/day';})+'</div>'
+    +'<div><h3>Busiest and quietest hours</h3>'+mbHBars(W.hours.filter(function(x){return x.h>=9&&x.h<=23;}).map(function(x){return {l:(x.h%12||12)+(x.h<12?' AM':' PM'),v:x.avg};}),function(v){return mbNum(v,1)+' people';})+'</div></div>'
+    +'<h3>Bookings</h3><table class="mb-t">'+thead+'<tbody>'
+    +row('Reservations',W.book.total,PW.book.total,'up',mbNum)+row('Came (checked in)',W.book.honored,PW.book.honored,'up',mbNum)+row('No-shows',W.book.noShow,PW.book.noShow,'down',mbNum)+row('Cancelled',W.book.cancelled,PW.book.cancelled,'down',mbNum)+row('Still upcoming / not marked',W.book.pending,PW.book.pending,null,mbNum)+row('Online bookings',W.book.online,PW.book.online,'up',mbNum)+row('Academy bookings',W.book.academy,PW.book.academy,null,mbNum)
+    +'</tbody></table>';
+  h+=sec('ws',4,'Workspace Performance','Occupancy uses actual check-in/check-out hours against opening hours. Nothing is estimated.',wsb);
+  // 05 additional sales
+  var S=R.sales,PS=P.sales;
+  var sb='<div class="mb-kpis">'
+    +mbKpi('Additional sales',mbLE(S.total),S.total,PS.total,'up')
+    +mbKpi('Orders',mbNum(S.orders),S.orders,PS.orders,'up')
+    +mbKpi('Average order',mbLE(S.avgOrder),S.avgOrder,PS.avgOrder,'up')
+    +mbKpi('Orders per 100 visits',mbNum(S.attach,0),S.attach,PS.attach,'up')
+    +mbKpi('Stock purchases (expenses)',mbLE(S.stockBuy),S.stockBuy,PS.stockBuy,'down','Food & drinks stock')
+    +mbKpi('Cost of goods sold','<span class="mb-na" style="font-size:13px;">not recorded</span>',null,null,null,'products have no cost price')
+    +'</div><div class="mb-grid2"><div><h3>By category</h3>'+mbHBars(MB_DRINK_GROUPS.map(function(g){return {l:g[1],v:S.dg[g[0]],x:' '+mbDelta(S.dg[g[0]],PS.dg[g[0]],'up')};}).filter(function(x){return x.v;}),mbLE)
+    +'<div style="font-size:11px;color:var(--text3);margin-top:6px;">Sales minus stock purchases: <strong>'+mbLE(S.total-S.stockBuy)+'</strong> — a rough guide only, because stock bought this month is not the same as stock sold.</div></div>'
+    +'<div><h3>Products running low (now)</h3>'+(S.low.length?'<table class="mb-t"><thead><tr><th>Product</th><th class="n">In stock</th><th class="n">Minimum</th></tr></thead><tbody>'+S.low.map(function(p){return '<tr><td>'+mbE(p.name)+'</td><td class="n" style="color:var(--red);">'+p.stock+'</td><td class="n">'+p.min+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No product is below its minimum stock.</div>')+'</div></div>'
+    +'<h3>Products sold</h3>'+(S.products.length?'<table class="mb-t"><thead><tr><th>Product</th><th>Category</th><th class="n">Qty</th><th class="n">Sales</th></tr></thead><tbody>'+S.products.slice(0,pm?25:40).map(function(p){var g=MB_DRINK_GROUPS.find(function(x){return x[0]===p.group;});return '<tr><td>'+mbE(p.name)+'</td><td>'+(g?g[1]:'')+'</td><td class="n">'+mbNum(p.qty)+'</td><td class="n">'+(p.total?mbLE(p.total):'<span class="mb-na">—</span>')+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No sales this month.</div>');
+  h+=sec('sales',5,'Additional Sales','Drinks, snacks, printing and other items — kept separate from workspace revenue so nothing is counted twice.',sb);
+  // 06 staff
+  var st='<h3>Front desk (shifts)</h3><table class="mb-t"><thead><tr><th>Cashier</th><th>Shift</th><th class="n">Checkouts</th><th class="n">Room revenue</th><th class="n">Drinks sold</th><th class="n">Packages taken</th><th class="n">Avg rating</th></tr></thead><tbody>'
+    +R.staff.cashiers.map(function(x){var p=P.staff.cashiers.find(function(y){return y.name===x.name;})||{};return '<tr><td><strong>'+mbE(x.name)+'</strong></td><td style="font-size:11px;">'+mbE(x.shift||'')+'</td><td class="n">'+x.checkouts+' '+mbDelta(x.checkouts,p.checkouts,'up')+'</td><td class="n">'+mbLE(x.rooms)+'</td><td class="n">'+mbLE(x.drinks)+'</td><td class="n">'+mbLE(x.pkgs)+'</td><td class="n">'+(x.rating!==null?mbNum(x.rating,1)+' ★ ('+x.ratings+')':'<span class="mb-na">—</span>')+'</td></tr>';}).join('')+'</tbody></table>';
+  if(R.staff.office.length){
+    st+='<h3>Attendance (Office Attendance)</h3><table class="mb-t"><thead><tr><th>Person</th><th class="n">Days worked</th><th class="n">Hours</th><th class="n">Late</th><th class="n">Absent</th><th class="n">Leave</th><th class="n">Overtime</th><th class="n">Not recorded</th><th class="n">Attendance</th></tr></thead><tbody>'
+      +R.staff.office.map(function(x){return '<tr><td><strong>'+mbE(x.name)+'</strong>'+(x.role?'<div style="font-size:10px;color:var(--text3);">'+mbE(x.role)+'</div>':'')+'</td><td class="n">'+x.present+'</td><td class="n">'+attFmtHM(x.netMin)+'</td><td class="n">'+x.late+(x.late?' ('+attFmtMin(x.lateMin)+')':'')+'</td><td class="n">'+x.absent+'</td><td class="n">'+x.leave+'</td><td class="n">'+attFmtHM(x.overMin)+'</td><td class="n">'+x.notRecorded+'</td><td class="n">'+mbPct(x.compliance)+'</td></tr>';}).join('');
+    var tot=R.staff.office.reduce(function(a,x){a.p+=x.present;a.m+=x.netMin;a.l+=x.late;a.a+=x.absent;a.o+=x.overMin;a.d+=x.due;return a;},{p:0,m:0,l:0,a:0,o:0,d:0});
+    st+='<tr class="tot"><td>Team</td><td class="n">'+tot.p+'</td><td class="n">'+attFmtHM(tot.m)+'</td><td class="n">'+tot.l+'</td><td class="n">'+tot.a+'</td><td></td><td class="n">'+attFmtHM(tot.o)+'</td><td></td><td class="n">'+mbPct(tot.d?Math.min(100,tot.p/tot.d*100):null)+'</td></tr></tbody></table>';
+  }else st+='<h3>Attendance</h3><div class="mb-na">No attendance recorded for '+L+' in Office Attendance.</div>';
+  st+='<div style="font-size:11px;color:var(--text3);margin-top:6px;">Incidents and tasks per employee are not recorded in the system — add them in Operational Performance below.</div>';
+  h+=sec('staff',6,'Employee Performance','Front desk work from checkouts and payments; attendance from Office Attendance (shift times as configured there).',st);
+  // 07 operations
+  var O=R.ops,PO=P.ops;
+  var ob='<div class="mb-kpis">'+mbKpi('Operating days',mbNum(O.opDays),O.opDays,PO.opDays,null)+mbKpi('Days with no visits',mbNum(O.closedDays),O.closedDays,PO.closedDays,'down')+mbKpi('Visits per operating day',mbNum(O.avgPerDay,1),O.avgPerDay,PO.avgPerDay,'up')+mbKpi('Maintenance spend',mbLE(R.exp.byCat.Maintenance||0),R.exp.byCat.Maintenance||0,P.exp.byCat.Maintenance||0,'down')+mbKpi('Check-ins cancelled',mbNum(O.voided),O.voided,PO.voided,'down')+mbKpi('Data check issues',mbNum(O.dataIssues),O.dataIssues,null,'down','records needing attention')+'</div>'
+    +'<h3>Maintenance expenses</h3>'+(O.maint.length?'<table class="mb-t"><thead><tr><th>Date</th><th>Description</th><th class="n">Amount</th></tr></thead><tbody>'+O.maint.map(function(e){return '<tr><td>'+formatDate(e.date)+'</td><td>'+mbE(e.desc||e.note||'')+'</td><td class="n">'+mbLE(mbN(e.amount))+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No maintenance expenses this month.</div>')
+    +'<h3>Operations log — incidents, internet, cleanliness, equipment, supplies</h3>'+mbListHtml('opsLog',N.opsLog,pm)
+    +(N.opsLog.length?'<div style="font-size:12px;margin-top:6px;">Open issues: <strong>'+N.opsLog.filter(function(x){return x.status!=='Resolved';}).length+'</strong> · resolved: '+N.opsLog.filter(function(x){return x.status==='Resolved';}).length+'</div>':'');
+  h+=sec('ops',7,'Operational Performance','Opening/closing checks, equipment, Wi-Fi and incidents are not recorded automatically — log them here and they appear in the report.',ob);
+  // 08 customer experience
+  var X=R.cx,PX=P.cx,cmp=N.complaints,pc=P.notes.complaints;
+  var cb='<div class="mb-kpis">'+mbKpi('Average rating (checkout)',X.avg!==null?mbNum(X.avg,1)+' ★':'<span class="mb-na" style="font-size:13px;">no ratings</span>',X.avg,PX.avg,'up',X.rated+' rating'+(X.rated===1?'':'s'))
+    +mbKpi('Positive ratings (4–5★)',mbNum(X.pos),X.pos,PX.pos,'up')+mbKpi('Negative ratings (1–2★)',mbNum(X.neg),X.neg,PX.neg,'down')
+    +mbKpi('Complaints',mbNum(cmp.filter(function(x){return x.kind==='Complaint';}).length),cmp.filter(function(x){return x.kind==='Complaint';}).length,pc.filter(function(x){return x.kind==='Complaint';}).length,'down',cmp.filter(function(x){return x.kind==='Complaint'&&x.status!=='Resolved';}).length+' pending')
+    +mbKpi('Google rating',N.google&&N.google.rating?mbNum(mbN(N.google.rating),1)+' ★':'<span class="mb-na" style="font-size:13px;">not recorded</span>',N.google&&N.google.rating?mbN(N.google.rating):null,P.notes.google&&P.notes.google.rating?mbN(P.notes.google.rating):null,'up',N.google&&N.google.count?N.google.count+' reviews':'')+'</div>'
+    +(pm?'':'<div class="mb-edit" style="font-size:12px;margin-top:10px;">Google rating this month: <input type="number" step="0.1" min="0" max="5" value="'+mbE(N.google.rating||'')+'" style="width:70px;" onchange="mbSetObj(\'google.rating\',this.value);renderMonthlyBiz(\'cx\')"> from <input type="number" min="0" value="'+mbE(N.google.count||'')+'" style="width:80px;" onchange="mbSetObj(\'google.count\',this.value);renderMonthlyBiz(\'cx\')"> reviews</div>')
+    +'<h3>Comments left at checkout</h3>'+(X.comments.length?'<table class="mb-t"><tbody>'+X.comments.map(function(c){return '<tr><td style="white-space:nowrap;">'+formatDate(c.date)+'</td><td>'+mbE(c.name)+'</td><td>'+(c.rating?c.rating+' ★':'')+'</td><td>'+mbE(c.text)+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No written comments this month.</div>')
+    +'<h3>Complaints, suggestions and feedback</h3>'+mbListHtml('complaints',cmp,pm);
+  h+=sec('cx',8,'Customer Experience','Ratings come from the checkout screen. Complaints and Google reviews are recorded here by hand.',cb);
+  // 09 marketing
+  var M=R.mkt,PM=P.mkt;
+  var mb='<div class="mb-kpis">'+mbKpi('New customers',mbNum(M.newC),M.newC,PM.newC,'up')+mbKpi('Marketing spend',mbLE(M.mktExp),M.mktExp,PM.mktExp,null)+mbKpi('Cost per new customer',M.newC&&M.mktExp?mbLE(M.mktExp/M.newC):'<span class="mb-na">—</span>',M.newC&&M.mktExp?M.mktExp/M.newC:null,PM.newC&&PM.mktExp?PM.mktExp/PM.newC:null,'down')
+    +mbKpi('Online bookings',mbNum(M.online),M.online,PM.online,'up',M.online?M.onlineHonored+' came ('+mbPct(M.onlineHonored/M.online*100)+')':'')+mbKpi('Package requests (online)',mbNum(M.pkgReq),M.pkgReq,PM.pkgReq,'up')
+    +mbKpi('Social media / website','<span class="mb-na" style="font-size:13px;">not connected</span>')+'</div>'
+    +'<h3>Campaigns, promotions, events and referrals</h3>'+mbListHtml('campaigns',N.campaigns,pm)
+    +(N.campaigns.length?'<div style="font-size:12px;margin-top:6px;">Total campaign cost: <strong>'+mbLE(N.campaigns.reduce(function(s,x){return s+mbN(x.cost);},0))+'</strong> · total attendance / reach: <strong>'+mbNum(N.campaigns.reduce(function(s,x){return s+mbN(x.reach);},0))+'</strong></div>':'');
+  h+=sec('mkt',9,'Marketing & Growth','Only what the system records — no outside platform numbers are guessed.',mb);
+  // 10 action plan
+  var NX=mbLabel(mbNextYm(ym)),ob2=N.plan.objectives||{};
+  var objF=[['business','Business objectives'],['financial','Financial objectives (e.g. revenue target)'],['customers','Customer growth objectives'],['budget','Budget for next month']];
+  var pb='<div class="mb-grid2">'+objF.map(function(o){return '<div><h3>'+o[1]+'</h3>'+(pm?'<div style="font-size:13px;white-space:pre-wrap;">'+(ob2[o[0]]?mbE(ob2[o[0]]):'<span class="mb-na">—</span>')+'</div>':'<textarea rows="3" style="width:100%;" onchange="mbSetObj(\'plan.objectives.'+o[0]+'\',this.value)">'+mbE(ob2[o[0]]||'')+'</textarea>')+'</div>';}).join('')+'</div>'
+    +'<h3>Action items for '+NX+'</h3>'+mbListHtml('plan',N.plan.items,pm)
+    +(N.plan.items.length?'<div style="font-size:12px;margin-top:6px;">'+N.plan.items.filter(function(x){return x.status==='Done';}).length+' of '+N.plan.items.length+' done · total budget <strong>'+mbLE(N.plan.items.reduce(function(s,x){return s+mbN(x.budget);},0))+'</strong></div>':'');
+  var prevPlan=P.notes.plan.items||[];
+  if(prevPlan.length)pb+='<h3>Last month\'s plan — how it went</h3><table class="mb-t"><thead><tr><th>Action</th><th>Responsible</th><th>Deadline</th><th>Status</th></tr></thead><tbody>'+prevPlan.map(function(x){return '<tr><td>'+mbE(x.action||'')+'</td><td>'+mbE(x.owner||'')+'</td><td>'+(x.deadline?formatDate(x.deadline):'')+'</td><td>'+mbE(x.status||'')+'</td></tr>';}).join('')+'</tbody></table>';
+  h+=sec('plan',10,'Next Month\'s Action Plan','Goals and action items for '+NX+'. Only the admin can edit them.',pb);
+  return h;
+}
+function renderMonthlyBiz(focus){
+  var page=document.getElementById('page-monthlyreport');if(!page)return;
+  var body=document.getElementById('mb-body'),nav=document.getElementById('mb-nav');
+  if(!can('view_reports')){nav.innerHTML='';body.innerHTML='<div class="alert alert-danger">You do not have access to this report.</div>';return;}
+  _mbCache={};
+  var ym=mbYm();
+  var R0=mbCompute(ym),pt=!R0.future&&R0.elapsed<R0.days?R0.elapsed:null;
+  document.getElementById('mb-sub').textContent=mbLabel(ym)+' compared with '+mbLabel(mbPrevYm(ym))+(pt?' — same days (1–'+pt+') while the month is running':'');
+  nav.innerHTML=MB_SECTIONS.map(function(x,i){return '<a href="javascript:void(0)" onclick="document.getElementById(\'mb-'+x[0]+'\').scrollIntoView({behavior:\'smooth\'})">'+String(i+1).padStart(2,'0')+' '+x[1]+'</a>';}).join('');
+  var y=window.scrollY;
+  body.innerHTML=mbReportHtml(ym,false);
+  if(focus){var el=document.getElementById('mb-'+(focus==='opsLog'?'ops':focus==='complaints'?'cx':focus==='campaigns'?'mkt':focus));if(el)window.scrollTo(0,y);}
+}
+function mbPrint(){
+  var ym=mbYm(),pa=document.getElementById('print-area');
+  _mbCache={};
+  pa.innerHTML='<div class="mbp">'+printHeader('Monthly Business Report — '+mbLabel(ym))
+    +'<div style="text-align:center;font-size:12px;color:#666;margin:-8px 0 14px;">Compared with '+mbLabel(mbPrevYm(ym))+' · generated '+new Date().toLocaleString('en-GB')+'</div>'
+    +mbReportHtml(ym,true)+'</div>';
+  setTimeout(function(){window.print();},300);
+}
+PAGE_TO_CATEGORY.monthlyreport='finance';
+var _mbPrevShowPage=showPage;
+showPage=function(id,btn){var r=_mbPrevShowPage.apply(this,arguments);if(id==='monthlyreport'){try{renderMonthlyBiz();}catch(e){console.warn(e);document.getElementById('mb-body').innerHTML='<div class="alert alert-danger">The report could not be built: '+mbE(e.message)+'</div>';}}return r;};
 
 </script>
 
