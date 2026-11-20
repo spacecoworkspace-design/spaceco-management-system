@@ -4,9 +4,9 @@
 // Runs on a schedule (see ../../migrations/20260812000000_grace_period_cron.sql,
 // every minute via pg_cron + pg_net) so the auto-cancel timer keeps working even
 // if every staff device is closed. index.html only ever *reads* the fields this
-// function writes (no_show_grace_deadline, grace_extensions_used, status,
+// function writes (no_show_grace_deadline, graceExtensionsUsed, status,
 // whatsappNoShowPending) to render the countdown/pulsing UI — it never flips
-// status to 'no_show' on its own, which avoids two staff devices racing to do
+// status to 'no-show' on its own, which avoids two staff devices racing to do
 // the same write.
 //
 // Data model note: this project doesn't use normalized tables for reservations —
@@ -32,18 +32,18 @@ interface Reservation {
   date: string;       // YYYY-MM-DD
   from: string;        // HH:MM
   to: string;
-  status?: string;      // 'pending' | 'upcoming' | 'checked_in' | 'no_show'
+  status?: string;      // 'pending' | 'upcoming' | 'arrived' | 'no-show'
   source?: string;      // 'online' when submitted through book.html
   academyKey?: string | null;
   no_show_grace_deadline?: string; // ISO timestamp
-  grace_extensions_used?: number;
+  graceExtensionsUsed?: number;
   whatsappNoShowPending?: boolean;
   autoNoShow?: boolean;
   [key: string]: unknown;
 }
 
 interface Academy {
-  enforce_no_show_rule?: boolean;
+  enforceNoShowRule?: boolean;
   [key: string]: unknown;
 }
 
@@ -88,7 +88,20 @@ function normalizeStr(s: string | undefined | null): string {
   return (s || '').trim().toLowerCase();
 }
 
+// Only the database scheduler (service key) may run this. The gateway has already
+// checked the token's signature (verify_jwt), so its role claim can be trusted.
+function callerRole(req: Request): string {
+  try {
+    const t = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    const p = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(p + '='.repeat((4 - p.length % 4) % 4))).role || '';
+  } catch { return ''; }
+}
+
 Deno.serve(async (_req) => {
+  if (callerRole(_req) !== 'service_role') {
+    return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
   try {
     const [reservations, academies, clientProfiles] = await Promise.all([
       kvGet<Reservation[]>('reservations', []),
@@ -113,9 +126,9 @@ Deno.serve(async (_req) => {
       if (r.status !== 'upcoming') continue;
       if (!r.no_show_grace_deadline) continue;
 
-      // Academy sessions with enforce_no_show_rule === false hold the room regardless —
+      // Academy sessions with enforceNoShowRule === false hold the room regardless —
       // skip grace-period tracking entirely, matching index.html's isAcademyNoShowExempt().
-      if (r.academyKey && academies[r.academyKey]?.enforce_no_show_rule === false) continue;
+      if (r.academyKey && academies[r.academyKey]?.enforceNoShowRule === false) continue;
 
       const start = new Date(`${r.date}T${r.from}:00`).getTime();
       if (now < start) continue; // not started yet
@@ -123,13 +136,11 @@ Deno.serve(async (_req) => {
       const deadline = new Date(r.no_show_grace_deadline).getTime();
 
       if (now >= deadline) {
-        r.status = 'no_show';
+        r.status = 'no-show';
         r.autoNoShow = true;
         // The client (index.html) surfaces a "Notify" button for this — a background
         // job can't open a wa.me link in anyone's browser, so it can only flag it.
-        // Applies to any reservation with a phone on file, not just online ones —
-        // staff-created and recurring bookings can carry a phone number too now.
-        if (r.phone) r.whatsappNoShowPending = true;
+        if (r.source === 'online' && r.phone) r.whatsappNoShowPending = true;
         reservationsChanged = true;
         autoNoShows.push(r);
       }

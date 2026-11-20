@@ -1,8 +1,9 @@
+// RETIRED one-off script (run once on 2026-08-13). Client details removed from this public copy.
 // ONE-TIME DATA FIX — 2026-08-13 (rewritten after the first dry run showed
 // the real cause was worse than initially assumed)
 //
 // Investigated further after the first dry run reported canonicalProfile:
-// null. The client "Ahmed Tawila" (phone 01001722443) doesn't just have a
+// null. The client "<CLIENT_NAME>" (phone <CLIENT_PHONE>) doesn't just have a
 // second profile under a misspelled name ("Ahmed twela") -- the ORIGINAL
 // profile (id p1785609116611_epg1q18nsv) is missing from clientProfiles
 // entirely (checked all 345 entries directly by id, name, and phone: not
@@ -40,8 +41,8 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // longer exists in clientProfiles. The two 0-value junk check-ins were
 // filed under this second, also-nonexistent id and the misspelled name.
 const CANONICAL_ID = 'p1785609116611_epg1q18nsv';
-const CANONICAL_NAME = 'Ahmed Tawila';
-const CANONICAL_PHONE = '01001722443';
+const CANONICAL_NAME = '<CLIENT_NAME>';
+const CANONICAL_PHONE = '<CLIENT_PHONE>';
 const ORPHAN_DUPLICATE_ID = 'p1786391576520_wymsghuqhp';
 const DUPLICATE_NAME = 'Ahmed twela';
 
