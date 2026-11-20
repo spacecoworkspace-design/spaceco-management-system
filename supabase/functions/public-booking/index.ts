@@ -58,7 +58,11 @@ function addDays(d: string, n: number) {
 const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const isTime = (t: unknown): t is string => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d + 'T00:00:00Z'));
-const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
+// Customer text is shown inside the staff app, so it must never carry HTML or script:
+// control characters and < > " ' ` & \ are removed.
+const clean = (s: unknown, max: number) =>
+  String(s ?? '').replace(/[\u0000-\u001f\u007f<>"'`&\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+const safeId = (s: unknown) => String(s ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
 const cleanPhone = (s: unknown) => String(s ?? '').replace(/[^\d+]/g, '').slice(0, 20);
 
 type R = { date?: string; room?: string; from?: string; to?: string; status?: string };
@@ -125,7 +129,7 @@ Deno.serve(async (req) => {
       const lines = Array.isArray(b.lines) ? b.lines.slice(0, 20) : [];
       if (!lines.length) return json({ error: 'Please add at least one room/schedule to your request.' }, 400);
       const okLines = lines.map((l: Record<string, unknown>) => ({
-        id: clean(l.id, 60), room: String(l.room || ''),
+        id: safeId(l.id), room: String(l.room || ''),
         weekdays: Array.isArray(l.weekdays) ? l.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).slice(0, 7) : [],
         from: l.from, to: l.to,
         dates: Array.isArray(l.dates) ? l.dates.filter(isDate).slice(0, 31) : [],
@@ -133,7 +137,7 @@ Deno.serve(async (req) => {
       if (okLines.some((l) => !ROOMS.includes(l.room) || !isTime(l.from) || !isTime(l.to) || !l.weekdays.length)) return json({ error: 'Invalid schedule.' }, 400);
       const reqObj = {
         id: 'pkg_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6),
-        client: name, phone, month: clean(b.month, 7), monthLabel: clean(b.monthLabel, 40),
+        client: name, phone, month: /^\d{4}-\d{2}$/.test(String(b.month)) ? String(b.month) : '', monthLabel: clean(b.monthLabel, 40),
         lines: okLines, notes, createdAt: new Date().toISOString(), status: 'pending', fee: null,
       };
       const list = await getKey('packageRequests');
