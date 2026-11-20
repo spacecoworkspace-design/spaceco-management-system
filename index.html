@@ -2107,7 +2107,8 @@
     </div>
     <!-- Tab: Security -->
     <div class="tab-content" id="tab-security">
-      <div class="form-group"><label>New Admin Password</label><input type="password" id="new-admin-pw" placeholder="Enter new password"></div>
+      <div class="form-group"><label>Current Admin Password</label><input type="password" id="current-admin-pw" placeholder="Enter current password" autocomplete="current-password"></div>
+      <div class="form-group"><label>New Admin Password</label><input type="password" id="new-admin-pw" placeholder="At least 8 characters" autocomplete="new-password"></div>
       <div class="form-group"><label>Confirm Password</label><input type="password" id="confirm-admin-pw" placeholder="Confirm new password"></div>
       <button class="btn btn-amber btn-full" onclick="changeAdminPass()">Change Password</button>
     </div>
@@ -2793,7 +2794,7 @@ function initData(){
     room3:{first:320,extra:120},
     room4:{first:370,extra:180}
   });
-  adminPass=loadData('adminPass','1234');
+  adminPass=apLockedValue();
   drinkOrders=loadData('drinkOrders',[]);
   recycleBin=loadData('recycleBin',[]);
   documentLibrary=loadData('documentLibrary',[]);
@@ -15875,6 +15876,117 @@ function mbPrint(){
 PAGE_TO_CATEGORY.monthlyreport='finance';
 var _mbPrevShowPage=showPage;
 showPage=function(id,btn){var r=_mbPrevShowPage.apply(this,arguments);if(id==='monthlyreport'){try{renderMonthlyBiz();}catch(e){console.warn(e);document.getElementById('mb-body').innerHTML='<div class="alert alert-danger">The report could not be built: '+mbE(e.message)+'</div>';}}return r;};
+
+// ============================================================
+// ADMIN PASSWORD — stored only as a salted PBKDF2 hash in kv 'adminAuth'.
+// No default password; the plain password is never saved anywhere.
+// ============================================================
+var AP_ITER=210000;
+function apLockedValue(){
+  // A random value nobody can type, so any old plain comparison always fails.
+  var a=new Uint8Array(24);try{crypto.getRandomValues(a);}catch(e){for(var i=0;i<a.length;i++)a[i]=Math.floor(Math.random()*256);}
+  return 'locked:'+Array.prototype.map.call(a,function(b){return ('0'+b.toString(16)).slice(-2);}).join('');
+}
+adminPass=apLockedValue();
+try{localStorage.removeItem('spaceco_adminPass');}catch(e){}
+try{delete _sbCache.adminPass;}catch(e){}
+
+function apB64(buf){var b=new Uint8Array(buf),s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);}
+function apUnB64(t){var s=atob(t),b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b;}
+async function apDerive(pw,saltBytes,iter){
+  var key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+  var bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:saltBytes,iterations:iter},key,256);
+  return apB64(bits);
+}
+// The saved record: fresh from the database, or this device's copy when offline.
+async function apRecord(){
+  try{
+    var r=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.adminAuth&select=value',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    if(r.ok){
+      var rows=await r.json();
+      if(Array.isArray(rows)&&rows.length&&rows[0].value){var rec=JSON.parse(rows[0].value);_sbCache.adminAuth=rec;return rec;}
+      return null;
+    }
+  }catch(e){}
+  if(_sbCache.adminAuth)return _sbCache.adminAuth;
+  throw new Error('offline');
+}
+// 'ok' | 'wrong' | 'unset' | 'locked' | 'error'
+var _apFails=0,_apLockUntil=0;
+async function apVerify(pw){
+  if(Date.now()<_apLockUntil)return 'locked';
+  var rec;
+  try{rec=await apRecord();}catch(e){return 'error';}
+  if(!rec||!rec.hash||!rec.salt)return 'unset';
+  var h;
+  try{h=await apDerive(pw||'',apUnB64(rec.salt),rec.iter||AP_ITER);}catch(e){console.warn(e);return 'error';}
+  var a=h,b=rec.hash,diff=a.length^b.length;
+  for(var i=0;i<Math.min(a.length,b.length);i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+  if(diff===0){_apFails=0;return 'ok';}
+  _apFails++;
+  if(_apFails>=5){_apLockUntil=Date.now()+30000;_apFails=0;}
+  return 'wrong';
+}
+function apMessage(res){
+  return res==='unset'?'The admin password has not been set up yet.'
+    :res==='locked'?'Too many wrong tries. Please wait 30 seconds.'
+    :res==='error'?'Could not check the password (no connection?). Please try again.'
+    :'Incorrect password. Please try again.';
+}
+// Run an existing admin check once with the verified password, then lock again.
+function apWithPass(pw,fn){adminPass=pw;try{return fn();}finally{adminPass=apLockedValue();}}
+
+var _apPrevDoLogin=doLogin;
+var _apBusy=false;
+doLogin=async function(){
+  if(_pendingRole!=='admin')return _apPrevDoLogin.apply(this,arguments);
+  if(_apBusy)return;
+  var inp=document.getElementById('login-admin-pass'),err=document.getElementById('login-pass-error');
+  var pw=inp?inp.value:'';
+  _apBusy=true;
+  try{
+    var res=await apVerify(pw);
+    if(res==='ok'){var self=this,args=arguments;apWithPass(pw,function(){_apPrevDoLogin.apply(self,args);});}
+    else{if(err){err.textContent=apMessage(res);err.style.display='block';}if(inp){inp.value='';inp.focus();}}
+  }finally{_apBusy=false;}
+};
+
+var _apPrevCheckAdminPass=checkAdminPass;
+checkAdminPass=async function(){
+  if(_apBusy)return;
+  var inp=document.getElementById('admin-pw-input'),err=document.getElementById('admin-pw-error');
+  var pw=inp?inp.value:'';
+  _apBusy=true;
+  try{
+    var res=await apVerify(pw);
+    if(res==='ok'){apWithPass(pw,function(){_apPrevCheckAdminPass();});}
+    else{if(err){err.textContent=apMessage(res);err.style.display='block';}if(inp){inp.value='';inp.focus();}}
+  }finally{_apBusy=false;}
+};
+
+async function apMakeRecord(pw){
+  var salt=new Uint8Array(16);crypto.getRandomValues(salt);
+  return {v:1,alg:'PBKDF2-SHA256',iter:AP_ITER,salt:apB64(salt),hash:await apDerive(pw,salt,AP_ITER),setAt:new Date().toISOString()};
+}
+changeAdminPass=async function(){
+  if(!isAdmin){showToast('Only Admin can change the password',true);return;}
+  var cur=document.getElementById('current-admin-pw'),np=document.getElementById('new-admin-pw'),cp=document.getElementById('confirm-admin-pw');
+  var c=cur?cur.value:'',n=np.value,k=cp.value;
+  if(!c){showToast('Please enter the current password',true);return;}
+  if(!n){showToast('Please enter a new password',true);return;}
+  if(n.length<8){showToast('The new password must be at least 8 characters',true);return;}
+  if(/^(1234|12345678|admin|password|spaceco)/i.test(n)){showToast('Please choose a less obvious password',true);return;}
+  if(n!==k){showToast('Passwords do not match',true);return;}
+  var res=await apVerify(c);
+  if(res!=='ok'){showToast(res==='wrong'?'The current password is incorrect':apMessage(res),true);return;}
+  var rec=await apMakeRecord(n);
+  var ok=await mgWrite('adminAuth',rec);
+  var back=ok?await apRecord():null;
+  if(!ok||!back||back.hash!==rec.hash){showToast('The new password was NOT saved. Please try again.',true);return;}
+  if(cur)cur.value='';np.value='';cp.value='';
+  try{auditLog('password_changed','The shared admin password was changed');}catch(e){}
+  showToast('Password changed! Use the new password on every device.');
+};
 
 </script>
 
