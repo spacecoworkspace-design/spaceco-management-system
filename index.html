@@ -16228,6 +16228,45 @@ openAdminLogin=function(){
   showToast('Only the owner\u2019s admin account can open this',true);
 };
 
+
+// ============================================================
+// SAFE SAVING — a save updates the record in place and only creates it when it
+// does not exist yet. Nothing is ever deleted first, so a failed or interrupted
+// save can never make a record disappear. Returns true only when the database
+// confirmed the save.
+// ============================================================
+async function kvSafeWrite(key,val){
+  var h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  var body=JSON.stringify({value:JSON.stringify(val)});
+  var u=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key)+'&select=key',{method:'PATCH',headers:Object.assign({Prefer:'return=representation'},h),body:body});
+  if(!u.ok)return false;
+  var rows=[];try{rows=await u.json();}catch(e){}
+  if(Array.isArray(rows)&&rows.length)return true;
+  var p=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv',{method:'POST',headers:Object.assign({Prefer:'return=minimal'},h),body:JSON.stringify({key:key,value:JSON.stringify(val)})});
+  return p.ok;
+}
+mgWrite=async function(key,val){
+  _sbCache[key]=val;
+  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
+  var ss=document.getElementById('sync-status');
+  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
+  var ok=false;
+  try{ok=await kvSafeWrite(key,val);}catch(e){console.warn('save failed',key,e);}
+  if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
+  return ok;
+};
+// keys that are not merged (the older save path) use the same safe writer
+_mgPrevSbSet=async function(key,val){
+  _sbCache[key]=val;
+  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
+  var ss=document.getElementById('sync-status');
+  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
+  var ok=false;
+  try{ok=await kvSafeWrite(key,val);}catch(e){console.warn('sbSet error',key,e);}
+  if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
+  return ok;
+};
+
 // ---------- Staff accounts (Admin Panel → Security) ----------
 var _acUsers={};
 function acTempPassword(){

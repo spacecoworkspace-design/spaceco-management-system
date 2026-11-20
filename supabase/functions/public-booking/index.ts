@@ -39,13 +39,21 @@ async function getKey(key: string): Promise<unknown[]> {
   }
   return [];
 }
+// Update in place; create only if missing. Never deletes first, so a failed
+// write can never make the record disappear.
 async function putKey(key: string, val: unknown) {
-  const d = await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE', headers: H });
+  const u = await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv?key=eq.${encodeURIComponent(key)}&select=key`, {
+    method: 'PATCH', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ value: JSON.stringify(val) }),
+  });
+  if (!u.ok) throw new Error('write failed');
+  const rows = await u.json().catch(() => []);
+  if (Array.isArray(rows) && rows.length) return;
   const p = await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv`, {
     method: 'POST', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ key, value: JSON.stringify(val) }),
   });
-  if (!d.ok || !p.ok) throw new Error('write failed');
+  if (!p.ok) throw new Error('write failed');
 }
 
 // Cairo calendar date, whatever the server's own time zone is.

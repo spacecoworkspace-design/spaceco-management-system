@@ -66,12 +66,16 @@ async function kvGet<T>(key: string, fallback: T): Promise<T> {
 }
 
 async function kvSet(key: string, value: unknown): Promise<void> {
-  // Same delete-then-insert pattern sbSet() uses client-side — kept identical
-  // rather than switching to upsert, so behavior matches exactly.
-  await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv?key=eq.${encodeURIComponent(key)}`, {
-    method: 'DELETE',
-    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+  // Update in place; create only if missing. Never deletes first, so a failed
+  // write can never make the record disappear.
+  const u = await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv?key=eq.${encodeURIComponent(key)}&select=key`, {
+    method: 'PATCH',
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ value: JSON.stringify(value) }),
   });
+  if (!u.ok) throw new Error('kvSet failed for ' + key);
+  const rows = await u.json().catch(() => []);
+  if (Array.isArray(rows) && rows.length) return;
   await fetch(`${SUPABASE_URL}/rest/v1/spaceco_kv`, {
     method: 'POST',
     headers: {
