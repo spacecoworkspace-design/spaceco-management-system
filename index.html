@@ -15508,7 +15508,7 @@ _applyRoleUI=function(){var r=_stPrevApplyRole.apply(this,arguments);try{calcSet
 // as 0. Notes the owner adds (incidents, complaints, campaigns, the
 // action plan) are kept per month in kv "monthReport_YYYY-MM".
 // ============================================================
-var MB_SECTIONS=[['exec','Executive Summary'],['fin','Financial Performance'],['cust','Customer Analytics'],['ws','Workspace Performance'],['sales','Additional Sales'],['staff','Employee Performance'],['ops','Operational Performance'],['cx','Customer Experience'],['mkt','Marketing & Growth'],['plan','Next Month\'s Action Plan']];
+var MB_SECTIONS=[['exec','Executive Summary'],['fin','Financial Performance'],['cust','Customer Analytics'],['ws','Workspace Performance'],['sales','Additional Sales'],['staff','Employee Performance'],['ops','Operational Performance'],['plan','Next Month\'s Action Plan']];
 var MB_DRINK_GROUPS=[['coffee','Coffee & hot drinks'],['cold','Cold drinks'],['snacks','Snacks'],['printing','Printing'],['otheritems','Stationery & other items'],['unspecified','Drinks & snacks (not itemized)']];
 var MB_EXP_GROUPS=[['Salaries','Salaries'],['Rent','Rent'],['Utilities','Utilities (electricity, internet, water)'],['Supplies','Supplies & purchases'],['Food & Drinks Stock','Food & drinks stock'],['Maintenance','Maintenance'],['Marketing','Marketing'],['Other','Other expenses']];
 var _mbCache={};
@@ -15840,24 +15840,6 @@ function mbReportHtml(ym,pm){
     +'<h3>Operations log — incidents, internet, cleanliness, equipment, supplies</h3>'+mbListHtml('opsLog',N.opsLog,pm)
     +(N.opsLog.length?'<div style="font-size:12px;margin-top:6px;">Open issues: <strong>'+N.opsLog.filter(function(x){return x.status!=='Resolved';}).length+'</strong> · resolved: '+N.opsLog.filter(function(x){return x.status==='Resolved';}).length+'</div>':'');
   h+=sec('ops',7,'Operational Performance','Opening/closing checks, equipment, Wi-Fi and incidents are not recorded automatically — log them here and they appear in the report.',ob);
-  // 08 customer experience
-  var X=R.cx,PX=P.cx,cmp=N.complaints,pc=P.notes.complaints;
-  var cb='<div class="mb-kpis">'+mbKpi('Average rating (checkout)',X.avg!==null?mbNum(X.avg,1)+' ★':'<span class="mb-na" style="font-size:13px;">no ratings</span>',X.avg,PX.avg,'up',X.rated+' rating'+(X.rated===1?'':'s'))
-    +mbKpi('Positive ratings (4–5★)',mbNum(X.pos),X.pos,PX.pos,'up')+mbKpi('Negative ratings (1–2★)',mbNum(X.neg),X.neg,PX.neg,'down')
-    +mbKpi('Complaints',mbNum(cmp.filter(function(x){return x.kind==='Complaint';}).length),cmp.filter(function(x){return x.kind==='Complaint';}).length,pc.filter(function(x){return x.kind==='Complaint';}).length,'down',cmp.filter(function(x){return x.kind==='Complaint'&&x.status!=='Resolved';}).length+' pending')
-    +mbKpi('Google rating',N.google&&N.google.rating?mbNum(mbN(N.google.rating),1)+' ★':'<span class="mb-na" style="font-size:13px;">not recorded</span>',N.google&&N.google.rating?mbN(N.google.rating):null,P.notes.google&&P.notes.google.rating?mbN(P.notes.google.rating):null,'up',N.google&&N.google.count?N.google.count+' reviews':'')+'</div>'
-    +(pm?'':'<div class="mb-edit" style="font-size:12px;margin-top:10px;">Google rating this month: <input type="number" step="0.1" min="0" max="5" value="'+mbE(N.google.rating||'')+'" style="width:70px;" onchange="mbSetObj(\'google.rating\',this.value);renderMonthlyBiz(\'cx\')"> from <input type="number" min="0" value="'+mbE(N.google.count||'')+'" style="width:80px;" onchange="mbSetObj(\'google.count\',this.value);renderMonthlyBiz(\'cx\')"> reviews</div>')
-    +'<h3>Comments left at checkout</h3>'+(X.comments.length?'<table class="mb-t"><tbody>'+X.comments.map(function(c){return '<tr><td style="white-space:nowrap;">'+formatDate(c.date)+'</td><td>'+mbE(c.name)+'</td><td>'+(c.rating?c.rating+' ★':'')+'</td><td>'+mbE(c.text)+'</td></tr>';}).join('')+'</tbody></table>':'<div class="mb-na">No written comments this month.</div>')
-    +'<h3>Complaints, suggestions and feedback</h3>'+mbListHtml('complaints',cmp,pm);
-  h+=sec('cx',8,'Customer Experience','Ratings come from the checkout screen. Complaints and Google reviews are recorded here by hand.',cb);
-  // 09 marketing
-  var M=R.mkt,PM=P.mkt;
-  var mb='<div class="mb-kpis">'+mbKpi('New customers',mbNum(M.newC),M.newC,PM.newC,'up')+mbKpi('Marketing spend',mbLE(M.mktExp),M.mktExp,PM.mktExp,null)+mbKpi('Cost per new customer',M.newC&&M.mktExp?mbLE(M.mktExp/M.newC):'<span class="mb-na">—</span>',M.newC&&M.mktExp?M.mktExp/M.newC:null,PM.newC&&PM.mktExp?PM.mktExp/PM.newC:null,'down')
-    +mbKpi('Online bookings',mbNum(M.online),M.online,PM.online,'up',M.online?M.onlineHonored+' came ('+mbPct(M.onlineHonored/M.online*100)+')':'')+mbKpi('Package requests (online)',mbNum(M.pkgReq),M.pkgReq,PM.pkgReq,'up')
-    +mbKpi('Social media / website','<span class="mb-na" style="font-size:13px;">not connected</span>')+'</div>'
-    +'<h3>Campaigns, promotions, events and referrals</h3>'+mbListHtml('campaigns',N.campaigns,pm)
-    +(N.campaigns.length?'<div style="font-size:12px;margin-top:6px;">Total campaign cost: <strong>'+mbLE(N.campaigns.reduce(function(s,x){return s+mbN(x.cost);},0))+'</strong> · total attendance / reach: <strong>'+mbNum(N.campaigns.reduce(function(s,x){return s+mbN(x.reach);},0))+'</strong></div>':'');
-  h+=sec('mkt',9,'Marketing & Growth','Only what the system records — no outside platform numbers are guessed.',mb);
   // 10 action plan
   var NX=mbLabel(mbNextYm(ym)),ob2=N.plan.objectives||{};
   var objF=[['business','Business objectives'],['financial','Financial objectives (e.g. revenue target)'],['customers','Customer growth objectives'],['budget','Budget for next month']];
@@ -15866,7 +15848,7 @@ function mbReportHtml(ym,pm){
     +(N.plan.items.length?'<div style="font-size:12px;margin-top:6px;">'+N.plan.items.filter(function(x){return x.status==='Done';}).length+' of '+N.plan.items.length+' done · total budget <strong>'+mbLE(N.plan.items.reduce(function(s,x){return s+mbN(x.budget);},0))+'</strong></div>':'');
   var prevPlan=P.notes.plan.items||[];
   if(prevPlan.length)pb+='<h3>Last month\'s plan — how it went</h3><table class="mb-t"><thead><tr><th>Action</th><th>Responsible</th><th>Deadline</th><th>Status</th></tr></thead><tbody>'+prevPlan.map(function(x){return '<tr><td>'+mbE(x.action||'')+'</td><td>'+mbE(x.owner||'')+'</td><td>'+(x.deadline?formatDate(x.deadline):'')+'</td><td>'+mbE(x.status||'')+'</td></tr>';}).join('')+'</tbody></table>';
-  h+=sec('plan',10,'Next Month\'s Action Plan','Goals and action items for '+NX+'. Only the admin can edit them.',pb);
+  h+=sec('plan',8,'Next Month\'s Action Plan','Goals and action items for '+NX+'. Only the admin can edit them.',pb);
   return h;
 }
 function renderMonthlyBiz(focus){
