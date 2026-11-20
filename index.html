@@ -880,8 +880,8 @@
     <div><div class="page-title">Shift Payments</div><div class="page-sub">Daily financial summary per cashier</div></div>
     <div style="display:flex;gap:10px;align-items:center;">
       <input type="date" id="shift-filter-date" style="width:180px;" onchange="renderShiftCards();renderShifts();calcSettlement();">
-      <button class="btn btn-outline admin-only" onclick="printShiftSummary()" style="gap:6px;">🖨 Print Shift Summary</button>
-      <button class="btn btn-outline admin-only" onclick="exportShiftsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+      <button class="btn btn-outline" onclick="printShiftSummary()" style="gap:6px;">🖨 Print Shift Summary</button>
+      <button class="btn btn-outline" onclick="exportShiftsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
     </div>
   </div>
   <div id="shifts-summary-cards" class="grid-3 mb-16"><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Aya</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">9:00 AM – 4:00 PM</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">100 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">100 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--accent);">100 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Youssef</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">4:00 PM – 11:00 PM</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">11220 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">10 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">10500 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">730 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--teal);">11230 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div><div class="stat"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--pink);flex-shrink:0;"></div><div style="font-size:13px;font-weight:600;">Nour</div><div style="font-size:11px;color:var(--text3);margin-left:auto;">Fri &amp; Sat both shifts</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">🚪 Rooms</span><span class="money" style="font-size:12px;color:var(--amber);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">☕ Drinks &amp; Snacks</span><span class="money" style="font-size:12px;color:var(--teal);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">💵 Cash</span><span class="money" style="font-size:12px;color:var(--green);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:11px;color:var(--text3);">📱 Instapay</span><span class="money" style="font-size:12px;color:var(--blue);">0 LE</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-top:2px;"><span style="font-size:12px;font-weight:600;color:var(--text2);">Grand Total</span><span class="money" style="font-size:16px;color:var(--pink);">0 LE</span></div><div class="stat-sub" style="margin-top:2px;">09/07/2026</div></div></div>
@@ -5416,7 +5416,7 @@ function refreshDashboard(){
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
-    dashStaff.innerHTML=cashiersWithMoney(byP).map(function(s){
+    dashStaff.innerHTML=cashiersWithMoney(byP,true).map(function(s){
       var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
       var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
@@ -11813,7 +11813,7 @@ refreshDashboard=function(){
   });
   var dashStaff=document.getElementById('dash-staff-cards');
   if(dashStaff){
-    dashStaff.innerHTML=cashiersWithMoney(byP).map(function(s){
+    dashStaff.innerHTML=cashiersWithMoney(byP,true).map(function(s){
       var p=byP[s.name]||{cash:0,instapay:0,visa:0,other:0};
       var total=p.cash+p.instapay+p.visa+p.other;
       return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;">'
@@ -14826,8 +14826,8 @@ function mrUniqueClients(list){
   return Object.keys(seen).length;
 }
 // Staff cards: everyone in the staff list, plus anyone else who handled money that day
-function cashiersWithMoney(byP){
-  if(!isAdmin){var me=staff.find(function(s){return s.name===currentStaffName;});return me?[me]:[];}
+function cashiersWithMoney(byP,dashboardOnly){
+  if(dashboardOnly&&!isAdmin){var me=staff.find(function(s){return s.name===currentStaffName;});return me?[me]:[];}
   var list=staff.slice(),names={};staff.forEach(function(s){names[s.name]=1;});
   Object.keys(byP||{}).forEach(function(n){
     if(names[n]||!n||n==='undefined')return;
@@ -15428,10 +15428,8 @@ var _stPrevCalcSettlement=calcSettlement;
 calcSettlement=function(){
   var sel=document.getElementById('settle-cashier');
   if(sel){
-    if(!isAdmin&&currentStaffName){
-      if(![].some.call(sel.options,function(o){return o.value===currentStaffName;})){var o=document.createElement('option');o.value=currentStaffName;o.textContent=currentStaffName;sel.appendChild(o);}
-      sel.value=currentStaffName;sel.disabled=true;sel.title='Your own shift';
-    }else{if(sel.disabled)sel.value='all';sel.disabled=false;}
+    // Shift Payments stays the same for everyone (all cashiers, All Cashiers settlement)
+    if(sel.disabled){sel.value='all';sel.disabled=false;}
   }
   return _stPrevCalcSettlement.apply(this,arguments);
 };
