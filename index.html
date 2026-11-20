@@ -598,7 +598,8 @@
         <div class="user-dropdown-header">Signed in as <span id="logged-in-label"></span></div>
         <div class="user-dropdown-divider"></div>
         <button class="user-dropdown-item" onclick="openAdminLogin()">🔐 Admin Panel</button>
-        <button class="user-dropdown-item" onclick="logoutToLogin()" style="color:var(--red);">Logout</button>
+        <button class="user-dropdown-item" onclick="acOpenPasswordModal(false)">🔑 Change my password</button>
+        <button class="user-dropdown-item" onclick="logoutToLogin()" style="color:var(--red);">Sign out</button>
       </div>
     </div>
   </div>
@@ -2107,10 +2108,8 @@
     </div>
     <!-- Tab: Security -->
     <div class="tab-content" id="tab-security">
-      <div class="form-group"><label>Current Admin Password</label><input type="password" id="current-admin-pw" placeholder="Enter current password" autocomplete="current-password"></div>
-      <div class="form-group"><label>New Admin Password</label><input type="password" id="new-admin-pw" placeholder="At least 8 characters" autocomplete="new-password"></div>
-      <div class="form-group"><label>Confirm Password</label><input type="password" id="confirm-admin-pw" placeholder="Confirm new password"></div>
-      <button class="btn btn-amber btn-full" onclick="changeAdminPass()">Change Password</button>
+      <button class="btn btn-amber btn-full" onclick="acOpenPasswordModal(false)">🔑 Change my password</button>
+      <div id="ac-staff-section" style="margin-top:22px;"></div>
     </div>
   </div>
 </div>
@@ -15987,6 +15986,342 @@ changeAdminPass=async function(){
   try{auditLog('password_changed','The shared admin password was changed');}catch(e){}
   showToast('Password changed! Use the new password on every device.');
 };
+
+// ============================================================
+// ACCOUNTS — everyone signs in with their own account every time the app is
+// opened (the session lives only in this tab: closing it signs out; a refresh
+// keeps you in). Admin = the account Supabase marks role 'admin'.
+// Server side: supabase/functions/staff-accounts.
+// ============================================================
+var AC_KEY='spaceco_session', AC_MAX_AGE_H=14;
+var _acSession=null, _acRawFetch=_mgRawFetch, _acRefreshing=null, _acLastPw=null;
+function acEsc(t){return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function acLoad(){try{var x=JSON.parse(sessionStorage.getItem(AC_KEY)||'null');if(!x||!x.access_token)return null;if(Date.now()-(x.signedInAt||0)>AC_MAX_AGE_H*3600000)return null;return x;}catch(e){return null;}}
+function acSave(x){_acSession=x;try{if(x)sessionStorage.setItem(AC_KEY,JSON.stringify(x));else sessionStorage.removeItem(AC_KEY);}catch(e){}}
+function acNorm(d,prev){return {access_token:d.access_token,refresh_token:d.refresh_token,expires_at:d.expires_at||Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user||(prev&&prev.user),signedInAt:(prev&&prev.signedInAt)||Date.now()};}
+function acMeta(){return (_acSession&&_acSession.user&&_acSession.user.app_metadata)||{};}
+
+async function acPasswordGrant(email,password){
+  var r=await _acRawFetch(SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})});
+  var d={};try{d=await r.json();}catch(e){}
+  if(r.ok&&d.access_token)return {ok:true,session:acNorm(d,null)};
+  var m=String(d.error_description||d.msg||d.message||d.error||'');
+  return {ok:false,status:r.status,banned:/banned/i.test(m),msg:m};
+}
+// A valid access token for this tab, refreshing it shortly before it runs out.
+async function acToken(){
+  var x=_acSession;if(!x)return null;
+  if(x.expires_at*1000-Date.now()>60000)return x.access_token;
+  if(!_acRefreshing)_acRefreshing=(async function(){
+    try{
+      var r=await _acRawFetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:x.refresh_token})});
+      if(r.ok){acSave(acNorm(await r.json(),x));}
+      else if(r.status>=400&&r.status<500){acSave(null);acExpired();}
+    }catch(e){}finally{_acRefreshing=null;}
+  })();
+  await _acRefreshing;
+  return _acSession?_acSession.access_token:null;
+}
+function acExpired(){
+  if(!_appReady)return;
+  showToast('Your sign-in has ended. Please sign in again.',true);
+  setTimeout(function(){location.reload();},2500);
+}
+// Every database / server-function call carries the signed-in user's token.
+_mgRawFetch=async function(url,opt){
+  var u=typeof url==='string'?url:(url&&url.url)||'';
+  if(u.indexOf(SUPABASE_URL+'/rest/v1/')===0||u.indexOf(SUPABASE_URL+'/functions/v1/staff-accounts')===0){
+    var t=await acToken();
+    if(t){
+      opt=Object.assign({},opt||{});
+      var h=opt.headers;
+      if(typeof Headers!=='undefined'&&h instanceof Headers){h=new Headers(h);h.set('Authorization','Bearer '+t);}
+      else{h=Object.assign({},h||{});delete h.authorization;h.Authorization='Bearer '+t;}
+      opt.headers=h;
+    }
+  }
+  return _acRawFetch(url,opt);
+};
+async function acCall(action,data){
+  var r=await _mgRawFetch(SUPABASE_URL+'/functions/v1/staff-accounts',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({action:action},data||{}))});
+  var d={};try{d=await r.json();}catch(e){}
+  return {ok:r.ok,status:r.status,body:d};
+}
+
+// ---------- sign-in screen ----------
+function acLoginBox(){
+  var box=document.querySelector('#login-screen .login-box');
+  var logo=document.getElementById('login-logo');
+  box.innerHTML='';if(logo)box.appendChild(logo);
+  var sub=document.createElement('span');sub.className='logo-sub';sub.textContent='Management System';box.appendChild(sub);
+  var body=document.createElement('div');body.id='ac-login-body';body.style.marginTop='14px';box.appendChild(body);
+  return body;
+}
+function acSignInScreen(){
+  return new Promise(function(resolve){
+    var scr=document.getElementById('login-screen');scr.style.display='flex';
+    var body=acLoginBox();
+    var staff=null;
+    function finish(sess,pw){_acLastPw=pw;sess.signedInAt=Date.now();acSave(sess);try{sessionStorage.removeItem('spaceco_login_logged');}catch(e){}resolve();}
+    function errBox(){return '<div id="ac-err" class="login-err" style="display:none;"></div>';}
+    function showErr(t){var e=document.getElementById('ac-err');if(e){e.textContent=t;e.style.display='block';}}
+    function failMsg(r){return r.banned?'This account is disabled. Please contact the owner.':r.status===429?'Too many tries. Please wait a few minutes and try again.':r.status===400||r.status===401?'Wrong password. Please try again.':'Could not sign in (no connection?). Please try again.';}
+    function home(){
+      var h='<div style="font-size:13px;color:var(--text3);margin-bottom:14px;">Who is signing in?</div>';
+      if(staff===null)h+='<div style="font-size:13px;color:var(--text3);margin-bottom:12px;">Loading names…</div>';
+      else (staff||[]).forEach(function(p,i){h+='<button class="btn btn-primary btn-full btn-lg" style="margin-bottom:10px;" data-i="'+i+'">💼 '+acEsc(p.name)+'</button>';});
+      if(staff&&!staff.length)h+='<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">No staff accounts yet — the owner adds them in Admin Panel → Security.</div>';
+      h+='<button class="btn btn-amber btn-full btn-lg" id="ac-owner-btn">🔑 Owner / Admin</button>'+errBox();
+      body.innerHTML=h;
+      body.querySelectorAll('button[data-i]').forEach(function(b){b.onclick=function(){staffForm(staff[+b.getAttribute('data-i')]);};});
+      document.getElementById('ac-owner-btn').onclick=ownerForm;
+    }
+    function form(title,withEmail,onSubmit){
+      body.innerHTML='<div style="font-size:15px;font-weight:600;margin-bottom:14px;">'+title+'</div>'
+        +(withEmail?'<input type="email" id="ac-email" placeholder="Email" autocomplete="username" style="width:100%;margin-bottom:10px;">':'')
+        +'<input type="password" id="ac-pw" placeholder="Password" autocomplete="current-password" style="width:100%;margin-bottom:10px;">'
+        +'<button class="btn btn-amber btn-full" id="ac-go">Sign in</button>'
+        +'<button class="btn btn-outline btn-full" id="ac-back" style="margin-top:8px;">← Back</button>'+errBox();
+      var go=document.getElementById('ac-go'),pw=document.getElementById('ac-pw');
+      var run=async function(){
+        if(go.disabled)return;
+        var email=withEmail?document.getElementById('ac-email').value.trim():null;
+        if((withEmail&&!email)||!pw.value){showErr('Please fill in '+(withEmail?'your email and ':'')+'the password.');return;}
+        go.disabled=true;go.textContent='Signing in…';
+        try{await onSubmit(email,pw.value);}finally{go.disabled=false;go.textContent='Sign in';}
+      };
+      go.onclick=run;
+      body.querySelectorAll('input').forEach(function(i){i.onkeydown=function(e){if(e.key==='Enter')run();};});
+      document.getElementById('ac-back').onclick=home;
+      setTimeout(function(){(withEmail?document.getElementById('ac-email'):pw).focus();},50);
+    }
+    function staffForm(p){
+      form('💼 '+acEsc(p.name),false,async function(_e,pw){
+        var r=await acPasswordGrant(p.email,pw);
+        if(r.ok)return finish(r.session,pw);
+        showErr(failMsg(r));document.getElementById('ac-pw').value='';
+      });
+    }
+    function ownerForm(){
+      form('🔑 Owner / Admin',true,async function(email,pw){
+        var r=await acPasswordGrant(email,pw);
+        if(r.ok)return finish(r.session,pw);
+        showErr(r.status===400||r.status===401?'Wrong email or password. Please try again.':failMsg(r));document.getElementById('ac-pw').value='';
+      });
+    }
+    home();
+    acCall('names').then(function(r){staff=r.ok&&r.body&&Array.isArray(r.body.staff)?r.body.staff:[];if(!r.ok)staff=[];if(document.getElementById('ac-owner-btn'))home();})
+      .catch(function(){staff=[];if(document.getElementById('ac-owner-btn'))home();showErr('Could not load the staff names (no connection?). Refresh to try again.');});
+  });
+}
+
+// ---------- change password (forced on first sign-in, or any time) ----------
+function acPasswordModal(forced){
+  return new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.id='ac-pw-modal';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+    var knowCur=forced&&_acLastPw;
+    ov.innerHTML='<div class="login-box" style="max-width:100%;text-align:left;">'
+      +'<div style="font-size:16px;font-weight:700;margin-bottom:6px;">'+(forced?'Choose your own password':'Change my password')+'</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">'+(forced?'You signed in with a temporary password. Choose your own now — only you will know it.':'At least 8 characters. Only you will know it.')+'</div>'
+      +(knowCur?'':'<div class="form-group"><label>Current password</label><input type="password" id="ac-cur" autocomplete="current-password"></div>')
+      +'<div class="form-group"><label>New password</label><input type="password" id="ac-new" autocomplete="new-password" placeholder="At least 8 characters"></div>'
+      +'<div class="form-group"><label>New password again</label><input type="password" id="ac-new2" autocomplete="new-password"></div>'
+      +'<div id="ac-pw-err" class="login-err"></div>'
+      +'<button class="btn btn-amber btn-full" id="ac-pw-save" style="margin-top:10px;">Save password</button>'
+      +(forced?'':'<button class="btn btn-outline btn-full" id="ac-pw-cancel" style="margin-top:8px;">Cancel</button>')
+      +'</div>';
+    document.body.appendChild(ov);
+    var err=function(t){var e=document.getElementById('ac-pw-err');e.textContent=t;e.style.display='block';};
+    var close=function(ok){ov.remove();resolve(ok);};
+    if(!forced)document.getElementById('ac-pw-cancel').onclick=function(){close(false);};
+    var btn=document.getElementById('ac-pw-save');
+    btn.onclick=async function(){
+      if(btn.disabled)return;
+      var cur=knowCur?_acLastPw:document.getElementById('ac-cur').value;
+      var n=document.getElementById('ac-new').value,n2=document.getElementById('ac-new2').value;
+      if(!cur){err('Please enter your current password.');return;}
+      if(n.length<8){err('The new password must be at least 8 characters.');return;}
+      if(n!==n2){err('The two new passwords do not match.');return;}
+      if(n===cur){err('The new password must be different from the current one.');return;}
+      btn.disabled=true;btn.textContent='Saving…';
+      try{
+        var r=await acCall('set-own-password',{current:cur,password:n});
+        if(!r.ok){err((r.body&&r.body.error)||'The password was not changed. Please try again.');return;}
+        // sign in again with the new password so this tab has a fresh token
+        var g=await acPasswordGrant(_acSession.user.email,n);
+        if(g.ok){g.session.signedInAt=_acSession.signedInAt;acSave(g.session);}
+        else{var m=acMeta();m.must_change=false;acSave(_acSession);}
+        _acLastPw=null;
+        try{if(_appReady)auditLog('password_changed',forced?'Chose their own password (first sign-in)':'Changed their own password');}catch(e){}
+        if(_appReady)showToast('Password changed ✓');
+        close(true);
+      }catch(e){err('The password was not changed (no connection?). Please try again.');}
+      finally{if(document.getElementById('ac-pw-save')){btn.disabled=false;btn.textContent='Save password';}}
+    };
+    setTimeout(function(){var f=document.getElementById(knowCur?'ac-new':'ac-cur');if(f)f.focus();},50);
+  });
+}
+function acOpenPasswordModal(forced){
+  if(typeof closeUserMenu==='function')try{closeUserMenu();}catch(e){}
+  var dd=document.getElementById('user-dropdown');if(dd)dd.classList.remove('open');
+  return acPasswordModal(!!forced);
+}
+
+// ---------- boot: sign in first, then load the data ----------
+function acApplyAccount(){
+  var m=acMeta();
+  currentUser=_acSession.user;
+  isAdmin=m.role==='admin';
+  currentRole=isAdmin?'admin':'cashier';
+  currentStaffName=m.name||(_acSession.user&&_acSession.user.email)||'Staff';
+  _applyRoleUI();
+  var label=(isAdmin?'🔑 ':'💼 ')+currentStaffName+(isAdmin?' (Admin)':'');
+  var el=document.getElementById('logged-in-label');if(el)el.textContent=label;
+  var dn=document.getElementById('user-display-name');if(dn)dn.textContent=currentStaffName;
+  var av=document.getElementById('user-avatar-initial');if(av)av.textContent=(currentStaffName||'?').charAt(0).toUpperCase();
+  try{
+    if(!sessionStorage.getItem('spaceco_login_logged')){sessionStorage.setItem('spaceco_login_logged','1');auditLog('login','Signed in'+(isAdmin?' as Admin':''));}
+  }catch(e){}
+}
+var _acPrevBoot=bootApp;
+bootApp=async function(){
+  _acSession=acLoad();
+  if(_acSession&&!(await acToken()))_acSession=null;
+  if(!_acSession){acSave(null);await acSignInScreen();}
+  var lb=document.getElementById('ac-login-body');if(lb)lb.innerHTML='<div style="font-size:13px;color:var(--text3);">Signed in as '+acEsc(acMeta().name||'')+'…</div>';
+  document.getElementById('login-screen').style.display='flex';
+  if(acMeta().must_change)await acPasswordModal(true);
+  _acLastPw=null;
+  var r=await _acPrevBoot.apply(this,arguments);
+  acApplyAccount();
+  return r;
+};
+
+// ---------- sign out ----------
+logoutToLogin=async function(){
+  try{var dd=document.getElementById('user-dropdown');if(dd)dd.classList.remove('open');}catch(e){}
+  showToast('Signing out…');
+  // let any save that is still running finish first (max 5 seconds)
+  try{await Promise.race([Promise.all(Object.keys(_mgQueue).map(function(k){return _mgQueue[k];})),new Promise(function(r){setTimeout(r,5000);})]);}catch(e){}
+  try{auditLog('logout','Signed out');}catch(e){}
+  var t=_acSession&&_acSession.access_token;
+  if(t){try{await _acRawFetch(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+t}});}catch(e){}}
+  acSave(null);
+  // remove this device's copies of SpaceCo data, so the next person sees nothing until they sign in
+  try{var ks=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('spaceco_')===0)ks.push(k);}ks.forEach(function(k){localStorage.removeItem(k);});}catch(e){}
+  try{sessionStorage.clear();}catch(e){}
+  location.reload();
+};
+
+// The old shared admin password is retired: admin is whoever signs in with the admin account.
+var _acPrevToggleUserMenu=toggleUserMenu;
+toggleUserMenu=function(){
+  var r=_acPrevToggleUserMenu.apply(this,arguments);
+  var l=document.getElementById('logged-in-label');
+  if(l&&_acSession)l.textContent=(isAdmin?'🔑 ':'💼 ')+currentStaffName+(isAdmin?' (Admin)':'');
+  return r;
+};
+openAdminLogin=function(){
+  if(isAdmin){openAdminPanel();return;}
+  showToast('Only the owner\u2019s admin account can open this',true);
+};
+
+// ---------- Staff accounts (Admin Panel → Security) ----------
+var _acUsers={};
+function acTempPassword(){
+  var words=['Space','Desk','Room','Coffee','Study','Focus','Cairo','Nile'];
+  var a=new Uint32Array(2);crypto.getRandomValues(a);
+  return words[a[0]%words.length]+'-'+String(1000+(a[1]%9000));
+}
+function acWhen(t){if(!t)return 'never';var d=new Date(t);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+async function acRenderStaff(){
+  var el=document.getElementById('ac-staff-section');if(!el)return;
+  if(!isAdmin){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-weight:700;font-size:15px;margin-bottom:4px;">👥 Staff accounts</div><div style="font-size:12px;color:var(--text3);">Loading…</div>';
+  var r=await acCall('list');
+  if(!r.ok){el.innerHTML='<div style="font-weight:700;font-size:15px;margin-bottom:4px;">👥 Staff accounts</div><div class="alert alert-danger">'+acEsc((r.body&&r.body.error)||'Could not load the accounts.')+'</div>';return;}
+  _acUsers={};(r.body.users||[]).forEach(function(u){_acUsers[u.id]=u;});
+  var users=(r.body.users||[]).slice().sort(function(a,b){return (b.role==='admin')-(a.role==='admin')||a.name.localeCompare(b.name);});
+  var have={};users.forEach(function(u){have[u.name.toLowerCase()]=1;});
+  var names=(staff||[]).map(function(x){return x.name;}).filter(function(n){return n&&!have[n.toLowerCase()];});
+  var h='<div style="font-weight:700;font-size:15px;margin-bottom:4px;">👥 Staff accounts</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Each person has their own password that only they know. A new or reset account gets a temporary password, and they must choose their own when they sign in.</div>';
+  users.forEach(function(u){
+    var st=u.disabled?'<span class="badge" style="background:var(--red-bg);color:var(--red);">Disabled</span>'
+      :u.mustChange?'<span class="badge" style="background:var(--amber-bg,rgba(212,168,67,.15));color:var(--amber);">Waiting for first sign-in</span>'
+      :'<span class="badge" style="background:var(--green-bg,rgba(52,216,139,.12));color:var(--green,#34d88b);">Active</span>';
+    h+='<div class="card" style="padding:12px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;">'
+      +'<div><div style="font-weight:600;">'+(u.role==='admin'?'🔑 ':'💼 ')+acEsc(u.name)+(u.isMe?' <span style="font-size:11px;color:var(--text3);">(you)</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+(u.role==='admin'?'Admin · ':'')+'last sign-in '+acWhen(u.lastSignIn)+'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+st
+      +(u.role==='admin'?'':'<button class="btn btn-outline btn-sm" onclick="acReset(\''+u.id+'\')">Reset password</button>'
+        +(u.disabled?'<button class="btn btn-outline btn-sm" onclick="acSetEnabled(\''+u.id+'\',true)">Enable</button>'
+          :'<button class="btn btn-danger btn-sm" onclick="acSetEnabled(\''+u.id+'\',false)">Disable</button>'))
+      +'</div></div>';
+  });
+  h+='<div class="card" style="padding:12px;margin-top:12px;">'
+    +'<div style="font-weight:600;margin-bottom:8px;">➕ Add a staff account</div>'
+    +'<div class="form-group"><label>Name (must match the staff list)</label>'
+    +(names.length?'<select id="ac-new-name">'+names.map(function(n){return '<option>'+acEsc(n)+'</option>';}).join('')+'<option value="__other">Other…</option></select>':'')
+    +'<input type="text" id="ac-new-name-other" placeholder="Name" style="margin-top:6px;'+(names.length?'display:none;':'')+'"></div>'
+    +'<div class="form-group"><label>Temporary password (tell them; they change it at first sign-in)</label>'
+    +'<div style="display:flex;gap:6px;"><input type="text" id="ac-new-pw" value="'+acTempPassword()+'" style="flex:1;"><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'ac-new-pw\').value=acTempPassword()">New</button></div></div>'
+    +'<button class="btn btn-primary btn-full" id="ac-create-btn" onclick="acCreate()">Create account</button></div>';
+  el.innerHTML=h;
+  var sel=document.getElementById('ac-new-name');
+  if(sel)sel.onchange=function(){document.getElementById('ac-new-name-other').style.display=sel.value==='__other'?'':'none';};
+}
+async function acCreate(){
+  var sel=document.getElementById('ac-new-name'),other=document.getElementById('ac-new-name-other');
+  var name=(sel&&sel.value!=='__other'?sel.value:other.value).trim();
+  var pw=document.getElementById('ac-new-pw').value.trim();
+  if(!name){showToast('Please enter a name',true);return;}
+  if(pw.length<8){showToast('The temporary password must be at least 8 characters',true);return;}
+  var b=document.getElementById('ac-create-btn');b.disabled=true;b.textContent='Creating…';
+  var r=await acCall('create',{name:name,password:pw});
+  b.disabled=false;b.textContent='Create account';
+  if(!r.ok){showToast((r.body&&r.body.error)||'Could not create the account',true);return;}
+  try{auditLog('staff_account','Created a sign-in account for '+name);}catch(e){}
+  acShowTemp(name,pw,'Account created');
+  acRenderStaff();
+}
+async function acReset(id){
+  var name=(_acUsers[id]&&_acUsers[id].name)||'this person';
+  var pw=acTempPassword();
+  if(!confirm('Reset '+name+'\u2019s password?\n\nTheir new temporary password will be: '+pw+'\n\nThey must choose their own password when they next sign in.'))return;
+  var r=await acCall('reset',{userId:id,password:pw});
+  if(!r.ok){showToast((r.body&&r.body.error)||'Could not reset the password',true);return;}
+  try{auditLog('staff_account','Reset the password of '+name);}catch(e){}
+  acShowTemp(name,pw,'Password reset');
+  acRenderStaff();
+}
+async function acSetEnabled(id,on){
+  if(!on&&!confirm('Disable this account? They will not be able to sign in until you enable it again.'))return;
+  var r=await acCall(on?'enable':'disable',{userId:id});
+  if(!r.ok){showToast((r.body&&r.body.error)||'Could not change the account',true);return;}
+  try{auditLog('staff_account',(on?'Enabled':'Disabled')+' a sign-in account');}catch(e){}
+  showToast(on?'Account enabled':'Account disabled — they can no longer sign in');
+  acRenderStaff();
+}
+function acShowTemp(name,pw,title){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML='<div class="login-box" style="max-width:100%;"><div style="font-size:16px;font-weight:700;margin-bottom:8px;">'+acEsc(title)+'</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">Give '+acEsc(name)+' this temporary password. They will choose their own when they sign in.</div>'
+    +'<div style="font-family:monospace;font-size:22px;font-weight:700;padding:12px;border:1px dashed var(--border2);border-radius:8px;margin-bottom:14px;user-select:all;">'+acEsc(pw)+'</div>'
+    +'<button class="btn btn-amber btn-full">Done</button></div>';
+  ov.querySelector('button').onclick=function(){ov.remove();};
+  document.body.appendChild(ov);
+}
+var _acPrevOpenAdminPanel=openAdminPanel;
+openAdminPanel=function(){
+  var r=_acPrevOpenAdminPanel.apply(this,arguments);
+  document.querySelectorAll('#admin-panel-modal [onclick*="logoutAdmin"]').forEach(function(b){b.style.display='none';});
+  acRenderStaff();return r;
+};
+logoutAdmin=function(){closeModal('admin-panel-modal');};
 
 </script>
 

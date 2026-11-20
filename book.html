@@ -191,6 +191,23 @@ function formatWeekdaysShort(arr){
   return arr.slice().sort().map(function(d){return PKG_WEEKDAY_LABELS[d];}).join(', ');
 }
 
+// Everything goes through the public-booking server function: it returns busy
+// times only (never other customers' details) and adds one request at a time.
+async function pbCall(action, data){
+  var res = await fetch(SUPABASE_URL+'/functions/v1/public-booking', {
+    method:'POST',
+    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body: JSON.stringify(Object.assign({action:action}, data||{}))
+  });
+  var body = {};
+  try{ body = await res.json(); }catch(e){}
+  return {ok: res.ok, status: res.status, body: body};
+}
+async function pbAvailability(){
+  var r = await pbCall('availability');
+  if(!r.ok) throw new Error('availability failed');
+  return [r.body.reservations || [], r.body.blocks || []];
+}
 async function sbFetchKey(key){
   try{
     var res = await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?key=eq.'+encodeURIComponent(key)+'&select=value', {
@@ -200,17 +217,6 @@ async function sbFetchKey(key){
     if(rows && rows.length && rows[0].value!==null) return JSON.parse(rows[0].value);
   }catch(e){ console.warn('fetch error',key,e); }
   return null;
-}
-async function sbWriteKey(key, val){
-  await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?key=eq.'+encodeURIComponent(key), {
-    method:'DELETE',
-    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-  });
-  await fetch(SUPABASE_URL+'/rest/v1/'+TABLE, {
-    method:'POST',
-    headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body: JSON.stringify({key:key, value: JSON.stringify(val)})
-  });
 }
 
 function getBusyRanges(dateStr, room, reservations, blocks){
@@ -230,7 +236,8 @@ function rangeIsFree(startMin, endMin, busyRanges){
 }
 
 async function init(){
-  var res = await Promise.all([sbFetchKey('reservations'), sbFetchKey('roomBlocks')]);
+  var res = [[], []];
+  try{ res = await pbAvailability(); }catch(e){ console.warn('availability load failed', e); }
   state.reservations = res[0] || [];
   state.blocks = res[1] || [];
   render();
@@ -246,7 +253,7 @@ function startLiveSync(){
   _liveSyncTimer = setInterval(async function(){
     if(state.mode!=='single' || state.submitted || state.submitting || state.selectedStart !== null) return;
     try{
-      var res = await Promise.all([sbFetchKey('reservations'), sbFetchKey('roomBlocks')]);
+      var res = await pbAvailability();
       state.reservations = res[0] || [];
       state.blocks = res[1] || [];
       render();
@@ -509,10 +516,14 @@ async function submitPackageRequest(){
   };
 
   try{
-    var fresh = await sbFetchKey('packageRequests');
-    var list = fresh || [];
-    list.push(reqObj);
-    await sbWriteKey('packageRequests', list);
+    var pr = await pbCall('package', {name:reqObj.client, phone:reqObj.phone, notes:reqObj.notes, month:reqObj.month, monthLabel:reqObj.monthLabel, lines:reqObj.lines});
+    if(!pr.ok){
+      if(waWindow) waWindow.close();
+      state.pkgSubmitting=false;
+      state._pkgError=(pr.body && pr.body.error) || 'Something went wrong submitting your request. Please try again.';
+      render(); return;
+    }
+    if(pr.body && pr.body.request) reqObj = pr.body.request;
 
     var msg = buildPackageRequestMessage(reqObj);
     var num = formatPhoneForWhatsApp('01033104912');
@@ -604,40 +615,22 @@ async function submitBooking(){
   }catch(e){ console.warn('validate-booking-window check failed, proceeding on client-side check only',e); }
   state._error=null; state.submitting=true; render();
 
-  var fresh = await sbFetchKey('reservations');
-  var reservations = fresh || [];
-  var freshBlocks = await sbFetchKey('roomBlocks');
-  var blocks = freshBlocks || [];
-  var busy = getBusyRanges(state.date, state.room, reservations, blocks);
   var start=state.selectedStart, end=start+state.duration;
-
-  if(!rangeIsFree(start, end, busy)){
-    state.submitting=false;
-    state._error='Sorry, this slot was just taken. Please pick another time.';
-    state.reservations = reservations;
-    state.blocks = blocks;
-    state.selectedStart=null;
-    render(); return;
-  }
-
-  var newRes = {
-    id: 'ol_'+Date.now()+'_'+Math.random().toString(36).substr(2,6),
-    client: name,
-    phone: phone,
-    room: state.room,
-    date: state.date,
-    from: minToTime(start),
-    to: minToTime(end),
-    notes: notes,
-    created_by: 'online',
-    source: 'online',
-    status: 'pending'
-  };
-  reservations.push(newRes);
-
   try{
-    await sbWriteKey('reservations', reservations);
-    state.reservations = reservations;
+    var r = await pbCall('book', {name:name, phone:phone, room:state.room, date:state.date, from:minToTime(start), to:minToTime(end), notes:notes});
+    if(!r.ok){
+      state.submitting=false;
+      if(r.status===409){
+        state._error='Sorry, this slot was just taken. Please pick another time.';
+        state.selectedStart=null;
+        try{ var av = await pbAvailability(); state.reservations=av[0]; state.blocks=av[1]; }catch(e2){}
+      } else if(r.body && r.body.error==='window'){
+        state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(r.body.maxDate||maxBookingDateStr())+'.';
+      } else {
+        state._error=(r.body && r.body.error) || 'Something went wrong submitting your request. Please try again.';
+      }
+      render(); return;
+    }
     state.submitting=false;
     state.submitted=true;
     render();
