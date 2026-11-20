@@ -16177,7 +16177,7 @@ function acApplyAccount(){
   currentRole=isAdmin?'admin':'cashier';
   currentStaffName=m.name||(_acSession.user&&_acSession.user.email)||'Staff';
   _applyRoleUI();
-  var label=(isAdmin?'🔑 ':'💼 ')+currentStaffName+(isAdmin?' (Admin)':'');
+  var label='👤 '+currentStaffName;
   var el=document.getElementById('logged-in-label');if(el)el.textContent=label;
   var dn=document.getElementById('user-display-name');if(dn)dn.textContent=currentStaffName;
   var av=document.getElementById('user-avatar-initial');if(av)av.textContent=(currentStaffName||'?').charAt(0).toUpperCase();
@@ -16220,7 +16220,7 @@ var _acPrevToggleUserMenu=toggleUserMenu;
 toggleUserMenu=function(){
   var r=_acPrevToggleUserMenu.apply(this,arguments);
   var l=document.getElementById('logged-in-label');
-  if(l&&_acSession)l.textContent=(isAdmin?'🔑 ':'💼 ')+currentStaffName+(isAdmin?' (Admin)':'');
+  if(l&&_acSession)l.textContent='👤 '+currentStaffName;
   return r;
 };
 openAdminLogin=function(){
@@ -16256,7 +16256,7 @@ async function acRenderStaff(){
       +'<div><div style="font-weight:600;">'+(u.role==='admin'?'🔑 ':'💼 ')+acEsc(u.name)+(u.isMe?' <span style="font-size:11px;color:var(--text3);">(you)</span>':'')+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+(u.role==='admin'?'Admin · ':'')+'last sign-in '+acWhen(u.lastSignIn)+'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+st
-      +(u.role==='admin'?'':'<button class="btn btn-outline btn-sm" onclick="acReset(\''+u.id+'\')">Reset password</button>'
+      +(u.isMe?'':'<button class="btn btn-outline btn-sm" onclick="acReset(\''+u.id+'\')">Reset password</button>'
         +(u.disabled?'<button class="btn btn-outline btn-sm" onclick="acSetEnabled(\''+u.id+'\',true)">Enable</button>'
           :'<button class="btn btn-danger btn-sm" onclick="acSetEnabled(\''+u.id+'\',false)">Disable</button>'))
       +'</div></div>';

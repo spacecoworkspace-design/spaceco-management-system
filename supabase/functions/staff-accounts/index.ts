@@ -1,12 +1,13 @@
 // staff-accounts
 //
 // Staff sign-in accounts for the SpaceCo management system.
-// - Public (anyone):    'names'  -> the staff names shown on the sign-in screen, with the
-//                                   internal sign-in address for each (never a real inbox).
+// - Public (anyone):    'names'  -> the names shown on the sign-in screen (every account that
+//                                   signs in by name, staff or admin alike), with the internal
+//                                   sign-in address for each (never a real inbox).
 // - Any signed-in user: 'set-own-password' {current, password} -> checks the current
 //                                   password, sets the new one, clears "must change".
 // - Admin only:         'list', 'create' {name, password}, 'reset' {userId, password},
-//                       'disable' {userId}, 'enable' {userId}
+//                       'disable' {userId}, 'enable' {userId}  (any account except your own)
 //
 // Passwords are never stored or logged here; Supabase Auth keeps only a hash.
 // Admin = app_metadata.role === 'admin' (set by the owner with SQL; users cannot change it).
@@ -81,7 +82,8 @@ Deno.serve(async (req) => {
     if (action === 'names') {
       const users = await allUsers();
       const staff = users
-        .filter((u) => u.app_metadata?.role === 'staff' && !isBanned(u) && nameOf(u))
+        // everyone who signs in by name (internal address), staff or admin alike
+        .filter((u) => u.email.endsWith('@' + STAFF_DOMAIN) && !isBanned(u) && nameOf(u))
         .map((u) => ({ name: nameOf(u), email: u.email }))
         .sort((a, b) => a.name.localeCompare(b.name));
       return json({ staff });
@@ -139,7 +141,6 @@ Deno.serve(async (req) => {
     const ur = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { headers: adminHeaders });
     if (!ur.ok) return json({ error: 'Unknown account.' }, 404);
     const target: U = await ur.json();
-    if (target.app_metadata?.role === 'admin') return json({ error: 'Admin accounts cannot be changed here.' }, 403);
 
     if (action === 'reset') {
       const bad = checkPassword(body.password);
