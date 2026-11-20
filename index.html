@@ -16173,7 +16173,7 @@ function acOpenPasswordModal(forced){
 function acApplyAccount(){
   var m=acMeta();
   currentUser=_acSession.user;
-  isAdmin=m.role==='admin';
+  isAdmin=m.role==='admin'||m.role==='owner';
   currentRole=isAdmin?'admin':'cashier';
   currentStaffName=m.name||(_acSession.user&&_acSession.user.email)||'Staff';
   _applyRoleUI();
@@ -16243,7 +16243,9 @@ async function acRenderStaff(){
   var r=await acCall('list');
   if(!r.ok){el.innerHTML='<div style="font-weight:700;font-size:15px;margin-bottom:4px;">👥 Staff accounts</div><div class="alert alert-danger">'+acEsc((r.body&&r.body.error)||'Could not load the accounts.')+'</div>';return;}
   _acUsers={};(r.body.users||[]).forEach(function(u){_acUsers[u.id]=u;});
-  var users=(r.body.users||[]).slice().sort(function(a,b){return (b.role==='admin')-(a.role==='admin')||a.name.localeCompare(b.name);});
+  var rank=function(x){return x==='owner'?2:x==='admin'?1:0;};
+  var myRole=acMeta().role;
+  var users=(r.body.users||[]).slice().sort(function(a,b){return rank(b.role)-rank(a.role)||a.name.localeCompare(b.name);});
   var have={};users.forEach(function(u){have[u.name.toLowerCase()]=1;});
   var names=(staff||[]).map(function(x){return x.name;}).filter(function(n){return n&&!have[n.toLowerCase()];});
   var h='<div style="font-weight:700;font-size:15px;margin-bottom:4px;">👥 Staff accounts</div>'
@@ -16253,10 +16255,10 @@ async function acRenderStaff(){
       :u.mustChange?'<span class="badge" style="background:var(--amber-bg,rgba(212,168,67,.15));color:var(--amber);">Waiting for first sign-in</span>'
       :'<span class="badge" style="background:var(--green-bg,rgba(52,216,139,.12));color:var(--green,#34d88b);">Active</span>';
     h+='<div class="card" style="padding:12px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;">'
-      +'<div><div style="font-weight:600;">'+(u.role==='admin'?'🔑 ':'💼 ')+acEsc(u.name)+(u.isMe?' <span style="font-size:11px;color:var(--text3);">(you)</span>':'')+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+(u.role==='admin'?'Admin · ':'')+'last sign-in '+acWhen(u.lastSignIn)+'</div></div>'
+      +'<div><div style="font-weight:600;">'+(u.role==='owner'?'👑 ':u.role==='admin'?'🔑 ':'💼 ')+acEsc(u.name)+(u.isMe?' <span style="font-size:11px;color:var(--text3);">(you)</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+(u.role==='owner'?'Owner · ':u.role==='admin'?'Admin · ':'')+'last sign-in '+acWhen(u.lastSignIn)+'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+st
-      +(u.isMe?'':'<button class="btn btn-outline btn-sm" onclick="acReset(\''+u.id+'\')">Reset password</button>'
+      +(u.isMe||(u.role==='owner'&&myRole!=='owner')?'':'<button class="btn btn-outline btn-sm" onclick="acReset(\''+u.id+'\')">Reset password</button>'
         +(u.disabled?'<button class="btn btn-outline btn-sm" onclick="acSetEnabled(\''+u.id+'\',true)">Enable</button>'
           :'<button class="btn btn-danger btn-sm" onclick="acSetEnabled(\''+u.id+'\',false)">Disable</button>'))
       +'</div></div>';

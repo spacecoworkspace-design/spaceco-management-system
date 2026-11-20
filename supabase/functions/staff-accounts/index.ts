@@ -10,7 +10,10 @@
 //                       'disable' {userId}, 'enable' {userId}  (any account except your own)
 //
 // Passwords are never stored or logged here; Supabase Auth keeps only a hash.
-// Admin = app_metadata.role === 'admin' (set by the owner with SQL; users cannot change it).
+// Roles (app_metadata.role, set with SQL; users cannot change it):
+//   'owner' - everything an admin can do; only an owner can reset/disable an owner.
+//   'admin' - full access to the app and to staff accounts.
+//   'staff' - cashier.
 //
 // Deploy: supabase functions deploy staff-accounts
 
@@ -45,6 +48,8 @@ async function allUsers(): Promise<U[]> {
 }
 const isBanned = (u: U) => !!u.banned_until && new Date(u.banned_until).getTime() > Date.now();
 const nameOf = (u: U) => String(u.app_metadata?.name || '');
+const roleOf = (u: U) => String(u.app_metadata?.role || '');
+const isManager = (u: U) => roleOf(u) === 'admin' || roleOf(u) === 'owner';
 
 async function updateUser(id: string, body: Record<string, unknown>) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: 'PUT', headers: adminHeaders, body: JSON.stringify(body) });
@@ -106,7 +111,7 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    if (me.app_metadata?.role !== 'admin') return json({ error: 'Admin only.' }, 403);
+    if (!isManager(me)) return json({ error: 'Admin only.' }, 403);
 
     if (action === 'list') {
       const users = await allUsers();
@@ -141,6 +146,7 @@ Deno.serve(async (req) => {
     const ur = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { headers: adminHeaders });
     if (!ur.ok) return json({ error: 'Unknown account.' }, 404);
     const target: U = await ur.json();
+    if (roleOf(target) === 'owner' && roleOf(me) !== 'owner') return json({ error: 'Only the owner can change the owner\u2019s account.' }, 403);
 
     if (action === 'reset') {
       const bad = checkPassword(body.password);
