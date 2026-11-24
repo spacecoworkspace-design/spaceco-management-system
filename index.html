@@ -13,8 +13,8 @@
 <link rel="icon" href="./icon-512.png" sizes="512x512">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <title>Space-Co Management System</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="window._chartLoadFailed=true;"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css">
+<script src="vendor/chart.umd.min.js" onerror="window._chartLoadFailed=true;"></script>
+<link rel="stylesheet" href="vendor/tabler/tabler-icons.min.css">
 <script src="./Space-Co Management System_files/supabase.js.download"></script><style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
   :root {
@@ -7169,7 +7169,7 @@ function confirmUploadDocument(){
 // printout came out blank/errored. Instead each PDF page is rasterized to an
 // image (pdf.js, loaded on first use) and printed through #print-area — the
 // same path every other printout in the app uses.
-var PDFJS_BASE='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+var PDFJS_BASE='vendor/pdfjs/';
 var _pdfjsPromise=null;
 var _docPrintBusy=false;
 
@@ -12527,7 +12527,7 @@ function rpExport(){
   renderReports();
   if(typeof XLSX!=='undefined'){rpSaveWorkbook();return;}
   var sc=document.createElement('script');
-  sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.src='vendor/xlsx.full.min.js';
   sc.onload=function(){rpSaveWorkbook();};
   sc.onerror=function(){   // offline: fall back to a CSV the same Excel can open
     var s=rpSheets(),rows=[];
@@ -13661,7 +13661,7 @@ function vaultExportReport(){
   if(!vaultGuard())return;
   vaultRenderReports();
   if(typeof XLSX!=='undefined'){vaultSaveWorkbook();return;}
-  var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  var sc=document.createElement('script');sc.src='vendor/xlsx.full.min.js';
   sc.onload=function(){vaultSaveWorkbook();};
   sc.onerror=function(){var sh=vaultReportSheets(),rows=[];Object.keys(sh).forEach(function(n){rows.push([n]);sh[n].forEach(function(x){rows.push(x);});rows.push([]);});downloadCSV(rows,'spaceco_vault_'+window._vaultRep.range.from+'_to_'+window._vaultRep.range.to+'.csv');showToast('Excel tool could not load — saved as CSV instead',true);};
   document.head.appendChild(sc);
@@ -13990,7 +13990,7 @@ function attExportMonth(){
   if(!isAdmin)return;attRenderMonthly();
   var save=function(){var sh=attMonthSheets(),wb=XLSX.utils.book_new();Object.keys(sh).forEach(function(n){XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sh[n]),n.slice(0,31));});XLSX.writeFile(wb,'office_attendance_'+window._attMonth.ym+'.xlsx');showToast('Excel file saved ✓');};
   if(typeof XLSX!=='undefined'){save();return;}
-  var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=save;
+  var sc=document.createElement('script');sc.src='vendor/xlsx.full.min.js';sc.onload=save;
   sc.onerror=function(){var sh=attMonthSheets(),rows=[];Object.keys(sh).forEach(function(n){rows.push([n]);sh[n].forEach(function(x){rows.push(x);});rows.push([]);});downloadCSV(rows,'office_attendance_'+window._attMonth.ym+'.csv');showToast('Excel tool could not load — saved as CSV instead',true);};
   document.head.appendChild(sc);
 }

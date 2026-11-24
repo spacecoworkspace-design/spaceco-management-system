@@ -87,21 +87,28 @@
   .spin{display:inline-block;width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:12px;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .footer-note{text-align:center;font-size:11px;color:var(--text3);margin-top:20px;}
+  .lang-toggle{position:fixed;top:16px;left:16px;min-width:40px;height:40px;padding:0 10px;border-radius:20px;background:var(--card);border:1px solid var(--border2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:700;font-family:'Cairo','Sora',sans-serif;z-index:50;}
+  .lang-toggle:hover{border-color:var(--accent);}
+  [dir="rtl"] body{font-family:'Cairo','Sora',sans-serif;}
+  [dir="rtl"] .card-title{letter-spacing:0;}
+  [dir="rtl"] .legend-dot{margin-right:0;margin-left:5px;}
+  [dir="rtl"] input[type=tel]{direction:ltr;text-align:right;}
 </style>
 </head>
 <body>
 <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle light and dark mode">🌙</button>
+<button class="lang-toggle" id="lang-toggle-btn" onclick="toggleLang()" aria-label="التبديل إلى العربية">ع</button>
 <div class="wrap">
   <header>
     <a href="https://spacecoworkspace-design.github.io/spaceco-website/" aria-label="Back to SpaceCo Workspace website"><img class="logo-img" id="logo-img" src="data:image/png;base64,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" alt="SpaceCo Workspace"></a>
-    <div class="tagline">Book a room online — we'll confirm shortly</div>
+    <div class="tagline" data-i18n="Book a room online — we'll confirm shortly">Book a room online — we'll confirm shortly</div>
   </header>
 
   <div id="app">
-    <div class="loading"><div class="spin"></div><div>Loading availability…</div></div>
+    <div class="loading"><div class="spin"></div><div data-i18n="Loading availability…">Loading availability…</div></div>
   </div>
 </div>
-<div style="text-align:center;font-size:12px;color:var(--text3);margin:24px 0 32px;">Questions? <a href="https://wa.me/201033104912" target="_blank" rel="noopener" style="color:var(--accent);">WhatsApp SpaceCo</a></div>
+<div style="text-align:center;font-size:12px;color:var(--text3);margin:24px 0 32px;"><span data-i18n="Questions?">Questions?</span> <a href="https://wa.me/201033104912" target="_blank" rel="noopener" style="color:var(--accent);" data-i18n="WhatsApp SpaceCo">WhatsApp SpaceCo</a></div>
 
 <script>
 const SUPABASE_URL = 'https://vfevpvfaeiwltixgdmln.supabase.co';
@@ -109,6 +116,139 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const ROOM_LIST = ['Room 4 Persons (1)','Room 4 Persons (2)','Room 6 Persons','Room 8 Persons','Class Room','Shared Space','Drawing Room'];
 const OPEN_START_WEEKDAY='09:00', OPEN_END='23:00', OPEN_START_FRIDAY='11:00';
+
+// ── Language: English / Arabic ─────────────────────────────────────────────
+// Visitors switch with the button at the top. Everything sent to SpaceCo staff
+// (room names, WhatsApp text, month label) stays in English on purpose.
+var AR = {
+  "Book a room online — we'll confirm shortly": "احجز غرفتك أونلاين — وسنؤكد الحجز قريبًا",
+  "Loading availability…": "جارٍ تحميل المواعيد المتاحة…",
+  "Questions?": "عندك سؤال؟",
+  "WhatsApp SpaceCo": "كلّم SpaceCo على واتساب",
+  "🗓️ Single Booking": "🗓️ حجز مرة واحدة",
+  "📦 Monthly Package": "📦 باقة شهرية",
+  "We couldn’t load room availability. Please check your connection and try again.": "تعذّر تحميل مواعيد الغرف. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.",
+  "Try again": "حاول مرة أخرى",
+  "Or {link} to book.": "أو {link} للحجز.",
+  "message us on WhatsApp": "راسلنا على واتساب",
+  "Choose a date": "اختر التاريخ",
+  "Open {a} – {b} on this date": "مفتوح من {a} إلى {b} في هذا اليوم",
+  "Available times — {room}": "المواعيد المتاحة — {room}",
+  "Available": "متاح",
+  "Booked": "محجوز",
+  "No more times today — please pick another date.": "لا توجد مواعيد أخرى اليوم — من فضلك اختر يومًا آخر.",
+  "Earlier times today have passed.": "المواعيد السابقة اليوم انتهت.",
+  "The time you picked was just booked. Please choose another time.": "الموعد الذي اخترته تم حجزه للتو. من فضلك اختر موعدًا آخر.",
+  "Your details": "بياناتك",
+  "Full name *": "الاسم بالكامل *",
+  "e.g. Nour Ahmed": "مثال: نور أحمد",
+  "Phone number *": "رقم الموبايل *",
+  "e.g. 01012345678": "مثال: 01012345678",
+  "Start time": "وقت البداية",
+  "Duration": "المدة",
+  "Notes (optional)": "ملاحظات (اختياري)",
+  "Anything staff should know": "أي شيء تحب أن يعرفه فريق العمل",
+  "You're requesting {room} on {date}, {a} – {b}. This will be sent to SpaceCo staff for confirmation.": "أنت تطلب {room} يوم {date}، من {a} إلى {b}. سيُرسل الطلب لفريق SpaceCo للتأكيد.",
+  "Submitting…": "جارٍ الإرسال…",
+  "Request this slot": "اطلب هذا الموعد",
+  "Request submitted!": "تم إرسال الطلب!",
+  "Thanks{name}. We've received your request for {room} on {date} from {a} to {b}.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.": "شكرًا{name}. استلمنا طلبك لـ {room} يوم {date} من {a} إلى {b}.<br><br>سيتواصل معك فريق SpaceCo قريبًا للتأكيد. الموعد محجوز مبدئيًا حتى ذلك الحين.",
+  "Questions? WhatsApp us": "عندك سؤال؟ كلّمنا على واتساب",
+  "Book another slot": "احجز موعدًا آخر",
+  "Monthly package request": "طلب باقة شهرية",
+  "Requesting for {month} (next month only — that's the maximum in advance). Add one or more rooms/schedules below, then submit. Nothing is held until SpaceCo prices your request and you confirm on WhatsApp — so it's first come, first served.": "الطلب لشهر {month} (الشهر القادم فقط — وهو أقصى مدة للحجز المسبق). أضف غرفة أو أكثر ومواعيدها بالأسفل ثم أرسل الطلب. لا يُحجز أي شيء قبل أن تحدد SpaceCo السعر وتؤكد أنت على واتساب — والأولوية لمن يؤكد أولًا.",
+  "Add a schedule": "أضف موعدًا ثابتًا",
+  "Room *": "الغرفة *",
+  "Select room": "اختر الغرفة",
+  "Which days of the week? *": "أي أيام في الأسبوع؟ *",
+  "From *": "من *",
+  "To *": "إلى *",
+  "+ Add to request": "+ أضف إلى الطلب",
+  "Your schedules ({n})": "مواعيدك ({n})",
+  "⚠ {n} of these already look taken": "⚠ {n} منها تبدو محجوزة بالفعل",
+  "Remove": "حذف",
+  "Send package request": "أرسل طلب الباقة",
+  "Add at least one schedule above first.": "أضف موعدًا واحدًا على الأقل بالأعلى أولًا.",
+  "Please choose a room.": "من فضلك اختر الغرفة.",
+  "Please choose at least one day of the week.": "من فضلك اختر يومًا واحدًا على الأقل من الأسبوع.",
+  "Please set a from and to time.": "من فضلك حدد وقت البداية والنهاية.",
+  "End time must be after start time.": "يجب أن يكون وقت النهاية بعد وقت البداية.",
+  "Friday opens at 11:00 AM — please adjust the start time or remove Friday from this schedule.": "يوم الجمعة نفتح الساعة 11:00 ص — من فضلك عدّل وقت البداية أو احذف الجمعة من هذا الموعد.",
+  "Please add at least one room/schedule to your request.": "من فضلك أضف غرفة وموعدًا واحدًا على الأقل لطلبك.",
+  "Please enter your name and phone number.": "من فضلك اكتب اسمك ورقم موبايلك.",
+  "Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).": "من فضلك اكتب رقم موبايل صحيح، مثال: 01012345678 (أو + كود الدولة للأرقام خارج مصر).",
+  "Something went wrong submitting your request. Please try again.": "حدث خطأ أثناء إرسال طلبك. من فضلك حاول مرة أخرى.",
+  "Something went wrong. Please try again.": "حدث خطأ. من فضلك حاول مرة أخرى.",
+  "Thanks{name}! We're calculating fees for your request with SpaceCo Management — we'll follow up on WhatsApp shortly with the price.<br><br>Your slots aren't held yet — once you confirm the price on WhatsApp and we accept, we'll book everything and send you a confirmation.": "شكرًا{name}! نحسب الآن تكلفة طلبك مع إدارة SpaceCo — وسنرسل لك السعر على واتساب قريبًا.<br><br>المواعيد غير محجوزة بعد — بعد تأكيدك للسعر على واتساب وموافقتنا، سنحجز كل شيء ونرسل لك التأكيد.",
+  "Your request is saved with SpaceCo. If WhatsApp didn’t open, tap below to send us the details.": "طلبك محفوظ لدى SpaceCo. إذا لم يفتح واتساب، اضغط بالأسفل لإرسال التفاصيل.",
+  "Send on WhatsApp": "أرسل على واتساب",
+  "Start another request": "ابدأ طلبًا جديدًا",
+  "Bookings can only be made up to {n} days in advance. Please select a date before {date}.": "يمكن الحجز حتى {n} يومًا مقدمًا فقط. من فضلك اختر تاريخًا قبل {date}.",
+  "Sorry, this slot was just taken. Please pick another time.": "عذرًا، هذا الموعد تم حجزه للتو. من فضلك اختر وقتًا آخر.",
+  "Too many requests from this device. Please try again later or message us on WhatsApp.": "طلبات كثيرة من هذا الجهاز. من فضلك حاول لاحقًا أو راسلنا على واتساب.",
+  "You already have requests waiting. We will contact you on WhatsApp.": "لديك طلبات قيد الانتظار بالفعل. سنتواصل معك على واتساب.",
+  "You already have several requests waiting. We will contact you on WhatsApp.": "لديك عدة طلبات قيد الانتظار بالفعل. سنتواصل معك على واتساب.",
+  "That time has already passed. Please pick a later time.": "هذا الوقت مضى بالفعل. من فضلك اختر وقتًا لاحقًا.",
+  "Outside opening hours.": "خارج مواعيد العمل.",
+  "Invalid date or time.": "التاريخ أو الوقت غير صحيح.",
+  "Invalid schedule.": "الموعد غير صحيح.",
+  "Unknown room.": "الغرفة غير معروفة.",
+  "Toggle light and dark mode": "تبديل الوضع الفاتح والداكن",
+  "Room 4 Persons (1)": "غرفة 4 أشخاص (1)",
+  "Room 4 Persons (2)": "غرفة 4 أشخاص (2)",
+  "Room 6 Persons": "غرفة 6 أشخاص",
+  "Room 8 Persons": "غرفة 8 أشخاص",
+  "Class Room": "الفصل الدراسي",
+  "Shared Space": "المساحة المشتركة",
+  "Drawing Room": "غرفة الرسم"
+};
+var PKG_WEEKDAY_LABELS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+var LANG = 'en';
+function isAr(){ return LANG==='ar'; }
+// Translate a fixed English text; fill {placeholders} after translating.
+function T(en, vars){
+  var s = (isAr() && Object.prototype.hasOwnProperty.call(AR, en)) ? AR[en] : en;
+  if(vars) s = s.replace(/\{(\w+)\}/g, function(m,k){ return vars[k]!==undefined ? vars[k] : m; });
+  return s;
+}
+function roomLabel(r){ return T(r); }
+function hoursLabel(n){
+  if(!isAr()) return n===1 ? '1 hour' : n+' hours';
+  if(n===1) return 'ساعة واحدة';
+  if(n===2) return 'ساعتان';
+  return n + (n<=10 ? ' ساعات' : ' ساعة');
+}
+function sessionsIn(n, month){
+  if(!isAr()) return n+' session'+(n!==1?'s':'')+' in '+month;
+  var w = n===1 ? 'جلسة واحدة' : n===2 ? 'جلستان' : n+(n<=10?' جلسات':' جلسة');
+  return w+' في '+month;
+}
+function applyLang(lang){
+  LANG = lang==='ar' ? 'ar' : 'en';
+  var root = document.documentElement;
+  root.setAttribute('lang', LANG);
+  root.setAttribute('dir', isAr() ? 'rtl' : 'ltr');
+  var b = document.getElementById('lang-toggle-btn');
+  if(b){ b.textContent = isAr() ? 'EN' : 'ع'; b.setAttribute('aria-label', isAr() ? 'Switch to English' : 'التبديل إلى العربية'); }
+  var tb = document.getElementById('theme-toggle-btn'); if(tb) tb.setAttribute('aria-label', T('Toggle light and dark mode'));
+  document.querySelectorAll('[data-i18n]').forEach(function(el){ el.textContent = T(el.getAttribute('data-i18n')); });
+  try{ localStorage.setItem('spaceco-lang', LANG); }catch(e){}
+}
+function toggleLang(){
+  // Messages already on screen were written in the old language; drop them.
+  ['name','phone','notes'].forEach(function(k){ var el=document.getElementById('f-'+k); if(el) state['_'+k]=el.value; });
+  ['name','phone','notes'].forEach(function(k){ var el=document.getElementById('pkg-'+k); if(el) state['_pkg'+k.charAt(0).toUpperCase()+k.slice(1)]=el.value; });
+  state._error=null; state._dateError=null; state._syncMsg=null; state._pkgError=null;
+  applyLang(isAr() ? 'en' : 'ar');
+  if(document.getElementById('app').querySelector('.loading')) return;
+  render();
+}
+(function(){
+  var saved=null;
+  try{ var q=(location.search.match(/[?&]lang=(ar|en)\b/)||[])[1]; saved = q || localStorage.getItem('spaceco-lang'); }catch(e){}
+  if(!saved){ saved = /^ar\b/i.test((navigator.languages&&navigator.languages[0])||navigator.language||'') ? 'ar' : 'en'; }
+  LANG = saved==='ar' ? 'ar' : 'en';
+})();
 
 var state = {
   mode: 'single',
@@ -125,29 +265,41 @@ var state = {
   pkgSubmitted: false
 };
 
+// SpaceCo is in Cairo: "today" and "now" follow Cairo time, not the visitor's
+// device clock (a phone set to another country would otherwise offer the wrong day).
+function cairoNow(){
+  try{
+    var p={}; new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})
+      .formatToParts(new Date()).forEach(function(x){p[x.type]=x.value;});
+    return {y:+p.year, m:+p.month, d:+p.day, h:(+p.hour)%24, min:+p.minute};
+  }catch(e){ var n=new Date(); return {y:n.getFullYear(), m:n.getMonth()+1, d:n.getDate(), h:n.getHours(), min:n.getMinutes()}; }
+}
+function ymdStr(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function addDaysStr(dateStr,n){
+  var t=new Date(dateStr+'T12:00:00Z'); t.setUTCDate(t.getUTCDate()+n);
+  return t.toISOString().slice(0,10);
+}
 function todayStr(){
-  var d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var c=cairoNow(); return ymdStr(c.y,c.m,c.d);
 }
 // Website bookings can only be made up to 90 days (3 months) out — staff booking
 // internally (index.html) has no such limit, this only applies to the public widget.
 var BOOKING_WINDOW_DAYS = 90;
 function maxBookingDateStr(){
-  var d=new Date();
-  d.setDate(d.getDate()+BOOKING_WINDOW_DAYS);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return addDaysStr(todayStr(), BOOKING_WINDOW_DAYS);
 }
 function formatDateForHumans(dateStr){
   var d=new Date(dateStr+'T00:00:00');
-  return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  return d.toLocaleDateString(isAr()?'ar-EG-u-nu-latn':'en-GB',{day:'numeric',month:'long',year:'numeric'});
 }
 function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-function nowMinutes(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function nowMinutes(){ var c=cairoNow(); return c.h*60+c.min; }
 function timeToMin(t){ var p=t.split(':'); return (+p[0])*60+(+p[1]); }
 function minToTime(m){ var h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); }
-function fmt12(t){
+function fmt12(t, forceEn){
   var p=t.split(':'); var h=+p[0], m=p[1];
-  var ap=h>=12?'PM':'AM'; var h12=h%12; if(h12===0)h12=12;
+  var ar=isAr()&&!forceEn;
+  var ap=h>=12?(ar?'م':'PM'):(ar?'ص':'AM'); var h12=h%12; if(h12===0)h12=12;
   return h12+':'+m+' '+ap;
 }
 function getOpenHours(dateStr){
@@ -177,14 +329,15 @@ var WA_CONTACT = 'https://wa.me/201033104912';
 // ── Monthly package helpers: requests are always for next calendar month ──
 var PKG_WEEKDAY_LABELS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function getNextMonthInfo(){
-  var now=new Date();
-  var y=now.getFullYear(), m=now.getMonth()+1; // next month, 0-indexed input
+  var c=cairoNow();
+  var y=c.y, m=c.m; // next month, 0-indexed input (Cairo month is 1-indexed)
   if(m>11){ m=0; y+=1; }
   var last=new Date(y, m+1, 0);
   return {
     year:y, monthIndex:m,
     ym: y+'-'+String(m+1).padStart(2,'0'),
-    label: new Date(y,m,1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+    label: new Date(y,m,1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),      // sent to staff: English
+    labelLocal: new Date(y,m,1).toLocaleDateString(isAr()?'ar-EG-u-nu-latn':'en-US',{month:'long',year:'numeric'}),
     daysInMonth: last.getDate()
   };
 }
@@ -198,8 +351,9 @@ function expandLineDates(weekdays, info){
   }
   return dates;
 }
-function formatWeekdaysShort(arr){
-  return arr.slice().sort().map(function(d){return PKG_WEEKDAY_LABELS[d];}).join(', ');
+function formatWeekdaysShort(arr, forceEn){
+  var L = (isAr()&&!forceEn) ? PKG_WEEKDAY_LABELS_AR : PKG_WEEKDAY_LABELS;
+  return arr.slice().sort().map(function(d){return L[d];}).join(isAr()&&!forceEn ? '، ' : ', ');
 }
 
 // Everything goes through the public-booking server function: it returns busy
@@ -252,7 +406,7 @@ async function init(){
   startLiveSync();
 }
 function retryLoad(){
-  document.getElementById('app').innerHTML = '<div class="loading"><div class="spin"></div><div>Loading availability…</div></div>';
+  document.getElementById('app').innerHTML = '<div class="loading"><div class="spin"></div><div>'+T('Loading availability…')+'</div></div>';
   init();
 }
 
@@ -275,7 +429,7 @@ async function syncNow(){
       var busy = getBusyRanges(state.date, state.room, state.reservations, state.blocks);
       if(!rangeIsFree(state.selectedStart, state.selectedStart+state.duration, busy)){
         state.selectedStart = null;
-        state._syncMsg = 'The time you picked was just booked. Please choose another time.';
+        state._syncMsg = T('The time you picked was just booked. Please choose another time.');
       }
     }
     render();
@@ -303,8 +457,8 @@ function render(){
   }
 
   var modeTabs = '<div class="mode-tabs">'
-    + '<div class="mode-tab'+(state.mode==='single'?' active':'')+'" onclick="switchMode(\'single\')">🗓️ Single Booking</div>'
-    + '<div class="mode-tab'+(state.mode==='package'?' active':'')+'" onclick="switchMode(\'package\')">📦 Monthly Package</div>'
+    + '<div class="mode-tab'+(state.mode==='single'?' active':'')+'" onclick="switchMode(\'single\')">'+T('🗓️ Single Booking')+'</div>'
+    + '<div class="mode-tab'+(state.mode==='package'?' active':'')+'" onclick="switchMode(\'package\')">'+T('📦 Monthly Package')+'</div>'
     + '</div>';
 
   if(state.mode==='package'){
@@ -314,9 +468,9 @@ function render(){
 
   if(!state.loaded){
     app.innerHTML = modeTabs + '<div class="card" style="text-align:center;">'
-      + '<div class="error-box" style="margin-bottom:14px;">We couldn’t load room availability. Please check your connection and try again.</div>'
-      + '<button class="btn" style="max-width:220px;" onclick="retryLoad()">Try again</button>'
-      + '<div class="hint" style="margin-top:14px;">Or <a href="'+WA_CONTACT+'" target="_blank" rel="noopener" style="color:var(--accent);">message us on WhatsApp</a> to book.</div>'
+      + '<div class="error-box" style="margin-bottom:14px;">'+T('We couldn’t load room availability. Please check your connection and try again.')+'</div>'
+      + '<button class="btn" style="max-width:220px;" onclick="retryLoad()">'+T('Try again')+'</button>'
+      + '<div class="hint" style="margin-top:14px;">'+T('Or {link} to book.',{link:'<a href="'+WA_CONTACT+'" target="_blank" rel="noopener" style="color:var(--accent);">'+T('message us on WhatsApp')+'</a>'})+'</div>'
       + '</div>';
     return;
   }
@@ -326,23 +480,23 @@ function render(){
 
   var html = '';
   html += '<div class="room-tabs">' + ROOM_LIST.map(function(r){
-    return '<div class="room-tab'+(r===state.room?' active':'')+'" onclick="selectRoom(\''+r.replace(/'/g,"\\'")+'\')">'+r+'</div>';
+    return '<div class="room-tab'+(r===state.room?' active':'')+'" onclick="selectRoom(\''+r.replace(/'/g,"\\'")+'\')">'+roomLabel(r)+'</div>';
   }).join('') + '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Choose a date</div>';
+  html += '<div class="card-title">'+T('Choose a date')+'</div>';
   html += '<div class="date-nav">';
-  html += '<button onclick="shiftDate(-1)">&#8249;</button>';
+  html += '<button onclick="shiftDate(-1)">'+(isAr()?'&#8250;':'&#8249;')+'</button>';
   html += '<input type="date" id="date-input" value="'+state.date+'" min="'+todayStr()+'" max="'+maxBookingDateStr()+'" onchange="onDateChange(this.value)">';
-  html += '<button onclick="shiftDate(1)">&#8250;</button>';
+  html += '<button onclick="shiftDate(1)">'+(isAr()?'&#8249;':'&#8250;')+'</button>';
   html += '</div>';
-  html += '<div class="hint">Open '+fmt12(oh.start)+' – '+fmt12(oh.end)+' on this date</div>';
+  html += '<div class="hint">'+T('Open {a} – {b} on this date',{a:fmt12(oh.start),b:fmt12(oh.end)})+'</div>';
   if(state._dateError) html += '<div class="error-box" style="margin-top:10px;">'+state._dateError+'</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Available times — '+state.room+'</div>';
-  html += '<div class="slot-legend"><span><span class="legend-dot" style="background:var(--green);"></span>Available</span><span><span class="legend-dot" style="background:var(--text3);"></span>Booked</span></div>';
+  html += '<div class="card-title">'+T('Available times — {room}',{room:roomLabel(state.room)})+'</div>';
+  html += '<div class="slot-legend"><span><span class="legend-dot" style="background:var(--green);"></span>'+T('Available')+'</span><span><span class="legend-dot" style="background:var(--text3);"></span>'+T('Booked')+'</span></div>';
   html += '<div class="slots-grid">';
   var isToday = state.date===todayStr(), shown = 0;
   for(var m=startMin; m<endMin; m+=60){
@@ -356,8 +510,8 @@ function render(){
       + (free?('onclick="selectStart('+m+')"'):'')+'>'+fmt12(minToTime(m))+'</div>';
   }
   html += '</div>';
-  if(!shown) html += '<div class="hint">No more times today — please pick another date.</div>';
-  else if(isToday && startMin < nowMinutes()) html += '<div class="hint" style="margin-top:10px;">Earlier times today have passed.</div>';
+  if(!shown) html += '<div class="hint">'+T('No more times today — please pick another date.')+'</div>';
+  else if(isToday && startMin < nowMinutes()) html += '<div class="hint" style="margin-top:10px;">'+T('Earlier times today have passed.')+'</div>';
   if(state._syncMsg) html += '<div class="error-box" style="margin-top:10px;">'+state._syncMsg+'</div>';
   html += '</div>';
 
@@ -385,30 +539,30 @@ function renderBookingForm(busy, dayEndMin){
   var endMin = start + state.duration;
 
   var html = '<div class="card">';
-  html += '<div class="card-title">Your details</div>';
+  html += '<div class="card-title">'+T('Your details')+'</div>';
   html += '<div class="row"><div>';
   html += '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true"><label>Website</label><input type="text" id="f-website" tabindex="-1" autocomplete="off"></div>';
-  html += '<label>Full name *</label><input type="text" id="f-name" placeholder="e.g. Nour Ahmed" value="'+esc(state._name)+'">';
+  html += '<label>'+T('Full name *')+'</label><input type="text" id="f-name" placeholder="'+esc(T('e.g. Nour Ahmed'))+'" value="'+esc(state._name)+'">';
   html += '</div><div>';
-  html += '<label>Phone number *</label><input type="tel" id="f-phone" placeholder="e.g. 01012345678" value="'+esc(state._phone)+'">';
+  html += '<label>'+T('Phone number *')+'</label><input type="tel" id="f-phone" placeholder="'+esc(T('e.g. 01012345678'))+'" value="'+esc(state._phone)+'">';
   html += '</div></div>';
 
   html += '<div class="row"><div>';
-  html += '<label>Start time</label><input type="text" value="'+fmt12(minToTime(start))+'" disabled style="opacity:0.6;">';
+  html += '<label>'+T('Start time')+'</label><input type="text" value="'+fmt12(minToTime(start))+'" disabled style="opacity:0.6;">';
   html += '</div><div>';
-  html += '<label>Duration</label><select id="f-duration" onchange="onDurationChange(this.value)">';
+  html += '<label>'+T('Duration')+'</label><select id="f-duration" onchange="onDurationChange(this.value)">';
   for(var d=60; d<=maxDur; d+=60){
-    html += '<option value="'+d+'" '+(d===state.duration?'selected':'')+'>'+(d===60?'1 hour':(d/60)+' hours')+'</option>';
+    html += '<option value="'+d+'" '+(d===state.duration?'selected':'')+'>'+hoursLabel(d/60)+'</option>';
   }
   html += '</select></div></div>';
 
-  html += '<label>Notes (optional)</label><textarea id="f-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+esc(state._notes)+'</textarea>';
+  html += '<label>'+T('Notes (optional)')+'</label><textarea id="f-notes" rows="2" placeholder="'+esc(T('Anything staff should know'))+'" style="margin-bottom:14px;">'+esc(state._notes)+'</textarea>';
 
-  html += '<div class="hint" style="margin-bottom:14px;">You\'re requesting <strong style="color:var(--text);">'+state.room+'</strong> on <strong style="color:var(--text);">'+formatDateForHumans(state.date)+'</strong>, '+fmt12(minToTime(start))+' – '+fmt12(minToTime(endMin))+'. This will be sent to SpaceCo staff for confirmation.</div>';
+  html += '<div class="hint" style="margin-bottom:14px;">'+T("You're requesting {room} on {date}, {a} – {b}. This will be sent to SpaceCo staff for confirmation.",{room:'<strong style="color:var(--text);">'+roomLabel(state.room)+'</strong>',date:'<strong style="color:var(--text);">'+formatDateForHumans(state.date)+'</strong>',a:fmt12(minToTime(start)),b:fmt12(minToTime(endMin))})+'</div>';
 
   if(state._error) html += '<div class="error-box">'+state._error+'</div>';
 
-  html += '<button class="btn" onclick="submitBooking()" '+(state.submitting?'disabled':'')+'>'+(state.submitting?'Submitting…':'Request this slot')+'</button>';
+  html += '<button class="btn" onclick="submitBooking()" '+(state.submitting?'disabled':'')+'>'+(state.submitting?T('Submitting…'):T('Request this slot'))+'</button>';
   html += '</div>';
   return html;
 }
@@ -416,11 +570,11 @@ function renderBookingForm(busy, dayEndMin){
 function renderSuccess(){
   return '<div class="card success-box">'
     + '<div class="success-icon">✅</div>'
-    + '<div class="success-title">Request submitted!</div>'
-    + '<div class="success-text">Thanks'+(state._name?', '+esc(state._name):'')+'. We\'ve received your request for <strong style="color:var(--text);">'+state.room+'</strong> on '+formatDateForHumans(state.date)+' from '+fmt12(minToTime(state.selectedStart))+' to '+fmt12(minToTime(state.selectedStart+state.duration))+'.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.</div>'
+    + '<div class="success-title">'+T('Request submitted!')+'</div>'
+    + '<div class="success-text">'+T("Thanks{name}. We've received your request for {room} on {date} from {a} to {b}.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.",{name:(state._name?(isAr()?' ':', ')+esc(state._name):''),room:'<strong style="color:var(--text);">'+roomLabel(state.room)+'</strong>',date:formatDateForHumans(state.date),a:fmt12(minToTime(state.selectedStart)),b:fmt12(minToTime(state.selectedStart+state.duration))})+'</div>'
     + '<div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
-    + '<a class="btn" style="max-width:220px;text-decoration:none;display:inline-block;" href="'+WA_CONTACT+'" target="_blank" rel="noopener">Questions? WhatsApp us</a>'
-    + '<button class="btn" style="max-width:220px;" onclick="resetFlow()">Book another slot</button>'
+    + '<a class="btn" style="max-width:220px;text-decoration:none;display:inline-block;" href="'+WA_CONTACT+'" target="_blank" rel="noopener">'+T('Questions? WhatsApp us')+'</a>'
+    + '<button class="btn" style="max-width:220px;" onclick="resetFlow()">'+T('Book another slot')+'</button>'
     + '</div>'
     + '</div>';
 }
@@ -435,55 +589,55 @@ function renderPackageFlow(){
   var html = '';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Monthly package request</div>';
-  html += '<div class="hint" style="margin-bottom:10px;">Requesting for <strong style="color:var(--text);">'+info.label+'</strong> (next month only — that\'s the maximum in advance). Add one or more rooms/schedules below, then submit. Nothing is held until SpaceCo prices your request and you confirm on WhatsApp — so it\'s first come, first served.</div>';
+  html += '<div class="card-title">'+T('Monthly package request')+'</div>';
+  html += '<div class="hint" style="margin-bottom:10px;">'+T("Requesting for {month} (next month only — that's the maximum in advance). Add one or more rooms/schedules below, then submit. Nothing is held until SpaceCo prices your request and you confirm on WhatsApp — so it's first come, first served.",{month:'<strong style="color:var(--text);">'+info.labelLocal+'</strong>'})+'</div>';
   html += '</div>';
 
   html += '<div class="card">';
-  html += '<div class="card-title">Add a schedule</div>';
-  html += '<label>Room *</label><select id="pkg-line-room" style="margin-bottom:14px;"><option value="">Select room</option>'
-    + ROOM_LIST.map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join('') + '</select>';
-  html += '<label>Which days of the week? *</label>';
-  html += '<div class="day-picker" id="pkg-day-picker">' + PKG_WEEKDAY_LABELS.map(function(lbl,i){
+  html += '<div class="card-title">'+T('Add a schedule')+'</div>';
+  html += '<label>'+T('Room *')+'</label><select id="pkg-line-room" style="margin-bottom:14px;"><option value="">'+T('Select room')+'</option>'
+    + ROOM_LIST.map(function(r){return '<option value="'+r+'">'+roomLabel(r)+'</option>';}).join('') + '</select>';
+  html += '<label>'+T('Which days of the week? *')+'</label>';
+  html += '<div class="day-picker" id="pkg-day-picker">' + (isAr()?PKG_WEEKDAY_LABELS_AR:PKG_WEEKDAY_LABELS).map(function(lbl,i){
     return '<div class="day-pill" data-day="'+i+'" onclick="toggleDayPill(this)">'+lbl+'</div>';
   }).join('') + '</div>';
   html += '<div class="row"><div>';
-  html += '<label>From *</label><input type="time" id="pkg-line-from" value="09:00">';
+  html += '<label>'+T('From *')+'</label><input type="time" id="pkg-line-from" value="09:00">';
   html += '</div><div>';
-  html += '<label>To *</label><input type="time" id="pkg-line-to" value="11:00">';
+  html += '<label>'+T('To *')+'</label><input type="time" id="pkg-line-to" value="11:00">';
   html += '</div></div>';
   html += '<div id="pkg-line-error" class="error-box" style="display:none;"></div>';
-  html += '<button class="btn" onclick="addPkgLine()">+ Add to request</button>';
+  html += '<button class="btn" onclick="addPkgLine()">'+T('+ Add to request')+'</button>';
   html += '</div>';
 
   if(state.pkgLines.length){
-    html += '<div class="card-title" style="padding:0 4px;">Your schedules ('+state.pkgLines.length+')</div>';
+    html += '<div class="card-title" style="padding:0 4px;">'+T('Your schedules ({n})',{n:state.pkgLines.length})+'</div>';
     state.pkgLines.forEach(function(line){
       html += '<div class="card pkg-line-card">'
         + '<div>'
-          + '<div style="font-weight:600;font-size:13.5px;">'+line.room+'</div>'
+          + '<div style="font-weight:600;font-size:13.5px;">'+roomLabel(line.room)+'</div>'
           + '<div style="font-size:12.5px;color:var(--text2);margin-top:2px;">'+formatWeekdaysShort(line.weekdays)+' · '+fmt12(line.from)+'–'+fmt12(line.to)+'</div>'
-          + '<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+line.dates.length+' session'+(line.dates.length!==1?'s':'')+' in '+info.label
-          + (line.busyCount>0?' · <span style="color:var(--red);">⚠ '+line.busyCount+' of these already look taken</span>':'')
+          + '<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+sessionsIn(line.dates.length, info.labelLocal)
+          + (line.busyCount>0?' · <span style="color:var(--red);">'+T('⚠ {n} of these already look taken',{n:line.busyCount})+'</span>':'')
           + '</div>'
         + '</div>'
-        + '<button class="pkg-line-remove" onclick="removePkgLine(\''+line.id+'\')" title="Remove">✕</button>'
+        + '<button class="pkg-line-remove" onclick="removePkgLine(\''+line.id+'\')" title="'+T('Remove')+'">✕</button>'
         + '</div>';
     });
   }
 
   html += '<div class="card">';
-  html += '<div class="card-title">Your details</div>';
+  html += '<div class="card-title">'+T('Your details')+'</div>';
   html += '<div class="row"><div>';
   html += '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true"><label>Website</label><input type="text" id="pkg-website" tabindex="-1" autocomplete="off"></div>';
-  html += '<label>Full name *</label><input type="text" id="pkg-name" placeholder="e.g. Nour Ahmed" value="'+esc(state._pkgName)+'">';
+  html += '<label>'+T('Full name *')+'</label><input type="text" id="pkg-name" placeholder="'+esc(T('e.g. Nour Ahmed'))+'" value="'+esc(state._pkgName)+'">';
   html += '</div><div>';
-  html += '<label>Phone number *</label><input type="tel" id="pkg-phone" placeholder="e.g. 01012345678" value="'+esc(state._pkgPhone)+'">';
+  html += '<label>'+T('Phone number *')+'</label><input type="tel" id="pkg-phone" placeholder="'+esc(T('e.g. 01012345678'))+'" value="'+esc(state._pkgPhone)+'">';
   html += '</div></div>';
-  html += '<label>Notes (optional)</label><textarea id="pkg-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+esc(state._pkgNotes)+'</textarea>';
+  html += '<label>'+T('Notes (optional)')+'</label><textarea id="pkg-notes" rows="2" placeholder="'+esc(T('Anything staff should know'))+'" style="margin-bottom:14px;">'+esc(state._pkgNotes)+'</textarea>';
   if(state._pkgError) html += '<div class="error-box">'+state._pkgError+'</div>';
-  html += '<button class="btn" onclick="submitPackageRequest()" '+(state.pkgSubmitting||!state.pkgLines.length?'disabled':'')+'>'+(state.pkgSubmitting?'Submitting…':'Send package request')+'</button>';
-  if(!state.pkgLines.length) html += '<div class="hint">Add at least one schedule above first.</div>';
+  html += '<button class="btn" onclick="submitPackageRequest()" '+(state.pkgSubmitting||!state.pkgLines.length?'disabled':'')+'>'+(state.pkgSubmitting?T('Submitting…'):T('Send package request'))+'</button>';
+  if(!state.pkgLines.length) html += '<div class="hint">'+T('Add at least one schedule above first.')+'</div>';
   html += '</div>';
 
   return html;
@@ -501,12 +655,12 @@ function addPkgLine(){
   var from = document.getElementById('pkg-line-from').value;
   var to = document.getElementById('pkg-line-to').value;
 
-  if(!room){ errEl.textContent='Please choose a room.'; errEl.style.display='block'; return; }
-  if(!weekdays.length){ errEl.textContent='Please choose at least one day of the week.'; errEl.style.display='block'; return; }
-  if(!from||!to){ errEl.textContent='Please set a from and to time.'; errEl.style.display='block'; return; }
-  if(timeToMin(to)<=timeToMin(from)){ errEl.textContent='End time must be after start time.'; errEl.style.display='block'; return; }
+  if(!room){ errEl.textContent=T('Please choose a room.'); errEl.style.display='block'; return; }
+  if(!weekdays.length){ errEl.textContent=T('Please choose at least one day of the week.'); errEl.style.display='block'; return; }
+  if(!from||!to){ errEl.textContent=T('Please set a from and to time.'); errEl.style.display='block'; return; }
+  if(timeToMin(to)<=timeToMin(from)){ errEl.textContent=T('End time must be after start time.'); errEl.style.display='block'; return; }
   if(weekdays.indexOf(5)!==-1 && timeToMin(from)<timeToMin(OPEN_START_FRIDAY)){
-    errEl.textContent='Friday opens at 11:00 AM — please adjust the start time or remove Friday from this schedule.';
+    errEl.textContent=T('Friday opens at 11:00 AM — please adjust the start time or remove Friday from this schedule.');
     errEl.style.display='block'; return;
   }
 
@@ -532,7 +686,7 @@ function removePkgLine(id){
 function buildPackageRequestMessage(r){
   var msg = '📦 New Package Request\n\nClient: '+r.client+'\nPhone: '+r.phone+'\nMonth: '+r.monthLabel+'\n';
   r.lines.forEach(function(l){
-    msg += '\n• '+l.room+' — '+formatWeekdaysShort(l.weekdays)+' · '+fmt12(l.from)+'–'+fmt12(l.to)+' ('+l.dates.length+' sessions)';
+    msg += '\n• '+l.room+' — '+formatWeekdaysShort(l.weekdays,true)+' · '+fmt12(l.from,true)+'–'+fmt12(l.to,true)+' ('+l.dates.length+' sessions)';
   });
   if(r.notes) msg += '\n\nNotes: '+r.notes;
   msg += '\n\nOpen the dashboard to price this request.';
@@ -545,9 +699,9 @@ async function submitPackageRequest(){
   var notes=(document.getElementById('pkg-notes').value||'').trim();
   state._pkgName=name; state._pkgPhone=phone; state._pkgNotes=notes;
 
-  if(!state.pkgLines.length){ state._pkgError='Please add at least one room/schedule to your request.'; render(); return; }
-  if(!name || !phone){ state._pkgError='Please enter your name and phone number.'; render(); return; }
-  if(!phoneLooksValid(phone)){ state._pkgError='Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).'; render(); return; }
+  if(!state.pkgLines.length){ state._pkgError=T('Please add at least one room/schedule to your request.'); render(); return; }
+  if(!name || !phone){ state._pkgError=T('Please enter your name and phone number.'); render(); return; }
+  if(!phoneLooksValid(phone)){ state._pkgError=T('Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).'); render(); return; }
 
   state._pkgError=null; state.pkgSubmitting=true;
   // Open the WhatsApp tab synchronously (tied to this click) so popup blockers
@@ -571,7 +725,7 @@ async function submitPackageRequest(){
     if(!pr.ok){
       if(waWindow) waWindow.close();
       state.pkgSubmitting=false;
-      state._pkgError=(pr.body && pr.body.error) || 'Something went wrong submitting your request. Please try again.';
+      state._pkgError=T((pr.body && pr.body.error) || 'Something went wrong submitting your request. Please try again.');
       render(); return;
     }
     if(pr.body && pr.body.request) reqObj = pr.body.request;
@@ -588,7 +742,7 @@ async function submitPackageRequest(){
   }catch(e){
     if(waWindow) waWindow.close();
     state.pkgSubmitting=false;
-    state._pkgError='Something went wrong submitting your request. Please try again.';
+    state._pkgError=T('Something went wrong submitting your request. Please try again.');
     render();
   }
 }
@@ -596,12 +750,12 @@ async function submitPackageRequest(){
 function renderPackageSuccess(){
   return '<div class="card success-box">'
     + '<div class="success-icon">📦</div>'
-    + '<div class="success-title">Request submitted!</div>'
-    + '<div class="success-text">Thanks'+(state._pkgName?', '+esc(state._pkgName):'')+'! We\'re calculating fees for your request with SpaceCo Management — we\'ll follow up on WhatsApp shortly with the price.<br><br>Your slots aren\'t held yet — once you confirm the price on WhatsApp and we accept, we\'ll book everything and send you a confirmation.</div>'
-    + '<div class="hint" style="margin-top:14px;">Your request is saved with SpaceCo. If WhatsApp didn’t open, tap below to send us the details.</div>'
+    + '<div class="success-title">'+T('Request submitted!')+'</div>'
+    + '<div class="success-text">'+T("Thanks{name}! We're calculating fees for your request with SpaceCo Management — we'll follow up on WhatsApp shortly with the price.<br><br>Your slots aren't held yet — once you confirm the price on WhatsApp and we accept, we'll book everything and send you a confirmation.",{name:(state._pkgName?(isAr()?' ':', ')+esc(state._pkgName):'')})+'</div>'
+    + '<div class="hint" style="margin-top:14px;">'+T('Your request is saved with SpaceCo. If WhatsApp didn’t open, tap below to send us the details.')+'</div>'
     + '<div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
-    + '<a class="btn" style="max-width:260px;text-decoration:none;display:inline-block;" href="'+esc(state._pkgWaUrl||WA_CONTACT)+'" target="_blank" rel="noopener">Send on WhatsApp</a>'
-    + '<button class="btn" style="max-width:260px;" onclick="resetPackageFlow()">Start another request</button>'
+    + '<a class="btn" style="max-width:260px;text-decoration:none;display:inline-block;" href="'+esc(state._pkgWaUrl||WA_CONTACT)+'" target="_blank" rel="noopener">'+T('Send on WhatsApp')+'</a>'
+    + '<button class="btn" style="max-width:260px;" onclick="resetPackageFlow()">'+T('Start another request')+'</button>'
     + '</div>'
     + '</div>';
 }
@@ -615,12 +769,10 @@ function resetPackageFlow(){
 
 function selectRoom(r){ state.room=r; state.selectedStart=null; state._syncMsg=null; render(); syncNow(); }
 function shiftDate(delta){
-  var d=new Date(state.date+'T00:00:00');
-  d.setDate(d.getDate()+delta);
-  var nd = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var nd = addDaysStr(state.date, delta);
   if(nd<todayStr()) return;
   if(nd>maxBookingDateStr()){
-    state._dateError='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
+    state._dateError=T('Bookings can only be made up to {n} days in advance. Please select a date before {date}.',{n:BOOKING_WINDOW_DAYS,date:formatDateForHumans(maxBookingDateStr())});
     render(); return;
   }
   state._dateError=null;
@@ -629,7 +781,7 @@ function shiftDate(delta){
 function onDateChange(v){
   if(v<todayStr())v=todayStr();
   if(v>maxBookingDateStr()){
-    state._dateError='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
+    state._dateError=T('Bookings can only be made up to {n} days in advance. Please select a date before {date}.',{n:BOOKING_WINDOW_DAYS,date:formatDateForHumans(maxBookingDateStr())});
     render(); return;
   }
   state._dateError=null;
@@ -645,15 +797,15 @@ async function submitBooking(){
   state._name=name; state._phone=phone; state._notes=notes;
 
   if(!name || !phone){
-    state._error='Please enter your name and phone number.';
+    state._error=T('Please enter your name and phone number.');
     render(); return;
   }
   if(!phoneLooksValid(phone)){
-    state._error='Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).';
+    state._error=T('Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).');
     render(); return;
   }
   if(state.date>maxBookingDateStr()){
-    state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
+    state._error=T('Bookings can only be made up to {n} days in advance. Please select a date before {date}.',{n:BOOKING_WINDOW_DAYS,date:formatDateForHumans(maxBookingDateStr())});
     render(); return;
   }
   // The booking service re-checks the window with its own (Cairo) clock.
@@ -665,13 +817,13 @@ async function submitBooking(){
     if(!r.ok){
       state.submitting=false;
       if(r.status===409){
-        state._error='Sorry, this slot was just taken. Please pick another time.';
+        state._error=T('Sorry, this slot was just taken. Please pick another time.');
         state.selectedStart=null;
         try{ var av = await pbAvailability(); state.reservations=av[0]; state.blocks=av[1]; }catch(e2){}
       } else if(r.body && r.body.error==='window'){
-        state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(r.body.maxDate||maxBookingDateStr())+'.';
+        state._error=T('Bookings can only be made up to {n} days in advance. Please select a date before {date}.',{n:BOOKING_WINDOW_DAYS,date:formatDateForHumans(r.body.maxDate||maxBookingDateStr())});
       } else {
-        state._error=(r.body && r.body.error) || 'Something went wrong submitting your request. Please try again.';
+        state._error=T((r.body && r.body.error) || 'Something went wrong submitting your request. Please try again.');
       }
       render(); return;
     }
@@ -680,7 +832,7 @@ async function submitBooking(){
     render();
   }catch(e){
     state.submitting=false;
-    state._error='Something went wrong submitting your request. Please try again.';
+    state._error=T('Something went wrong submitting your request. Please try again.');
     render();
   }
 }
@@ -713,6 +865,7 @@ function toggleTheme(){
   }
   applyTheme(saved);
 })();
+applyLang(LANG);
 
 init();
 </script>
