@@ -105,7 +105,6 @@
 <script>
 const SUPABASE_URL = 'https://vfevpvfaeiwltixgdmln.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZXZwdmZhZWl3bHRpeGdkbWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzk1OTksImV4cCI6MjA5MzE1NTU5OX0.6cdMfW5rfVD_vA7nI-K6OjLKQrnsTJZflT7QXG4uyF4';
-const TABLE = 'spaceco_kv';
 
 const ROOM_LIST = ['Room 4 Persons (1)','Room 4 Persons (2)','Room 6 Persons','Room 8 Persons','Class Room','Shared Space','Drawing Room'];
 const OPEN_START_WEEKDAY='09:00', OPEN_END='23:00', OPEN_START_FRIDAY='11:00';
@@ -141,6 +140,8 @@ function formatDateForHumans(dateStr){
   var d=new Date(dateStr+'T00:00:00');
   return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
 }
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function nowMinutes(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
 function timeToMin(t){ var p=t.split(':'); return (+p[0])*60+(+p[1]); }
 function minToTime(m){ var h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); }
 function fmt12(t){
@@ -207,16 +208,6 @@ async function pbAvailability(){
   var r = await pbCall('availability');
   if(!r.ok) throw new Error('availability failed');
   return [r.body.reservations || [], r.body.blocks || []];
-}
-async function sbFetchKey(key){
-  try{
-    var res = await fetch(SUPABASE_URL+'/rest/v1/'+TABLE+'?key=eq.'+encodeURIComponent(key)+'&select=value', {
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
-    });
-    var rows = await res.json();
-    if(rows && rows.length && rows[0].value!==null) return JSON.parse(rows[0].value);
-  }catch(e){ console.warn('fetch error',key,e); }
-  return null;
 }
 
 function getBusyRanges(dateStr, room, reservations, blocks){
@@ -308,7 +299,8 @@ function render(){
   html += '<div class="slots-grid">';
   for(var m=startMin; m<endMin; m+=60){
     var slotEnd = m+60;
-    var free = rangeIsFree(m, slotEnd, busy);
+    // Times that have already started today can't be booked.
+    var free = rangeIsFree(m, slotEnd, busy) && !(state.date===todayStr() && m < nowMinutes());
     var isSel = state.selectedStart===m;
     html += '<div class="slot-pill '+(free?('slot-free'+(isSel?' selected':'')):'slot-busy')+'" '
       + (free?('onclick="selectStart('+m+')"'):'')+'>'+fmt12(minToTime(m))+'</div>';
@@ -342,9 +334,10 @@ function renderBookingForm(busy, dayEndMin){
   var html = '<div class="card">';
   html += '<div class="card-title">Your details</div>';
   html += '<div class="row"><div>';
-  html += '<label>Full name *</label><input type="text" id="f-name" placeholder="e.g. Nour Ahmed" value="'+(state._name||'')+'">';
+  html += '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true"><label>Website</label><input type="text" id="f-website" tabindex="-1" autocomplete="off"></div>';
+  html += '<label>Full name *</label><input type="text" id="f-name" placeholder="e.g. Nour Ahmed" value="'+esc(state._name)+'">';
   html += '</div><div>';
-  html += '<label>Phone number *</label><input type="tel" id="f-phone" placeholder="e.g. 01012345678" value="'+(state._phone||'')+'">';
+  html += '<label>Phone number *</label><input type="tel" id="f-phone" placeholder="e.g. 01012345678" value="'+esc(state._phone)+'">';
   html += '</div></div>';
 
   html += '<div class="row"><div>';
@@ -356,7 +349,7 @@ function renderBookingForm(busy, dayEndMin){
   }
   html += '</select></div></div>';
 
-  html += '<label>Notes (optional)</label><textarea id="f-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;"></textarea>';
+  html += '<label>Notes (optional)</label><textarea id="f-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+esc(state._notes)+'</textarea>';
 
   html += '<div class="hint" style="margin-bottom:14px;">You\'re requesting <strong style="color:var(--text);">'+state.room+'</strong> on <strong style="color:var(--text);">'+state.date+'</strong>, '+fmt12(minToTime(start))+' – '+fmt12(minToTime(endMin))+'. This will be sent to SpaceCo staff for confirmation.</div>';
 
@@ -371,7 +364,7 @@ function renderSuccess(){
   return '<div class="card success-box">'
     + '<div class="success-icon">✅</div>'
     + '<div class="success-title">Request submitted!</div>'
-    + '<div class="success-text">Thanks'+(state._name?', '+state._name:'')+'. We\'ve received your request for <strong style="color:var(--text);">'+state.room+'</strong> on '+state.date+' from '+fmt12(minToTime(state.selectedStart))+' to '+fmt12(minToTime(state.selectedStart+state.duration))+'.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.</div>'
+    + '<div class="success-text">Thanks'+(state._name?', '+esc(state._name):'')+'. We\'ve received your request for <strong style="color:var(--text);">'+state.room+'</strong> on '+state.date+' from '+fmt12(minToTime(state.selectedStart))+' to '+fmt12(minToTime(state.selectedStart+state.duration))+'.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.</div>'
     + '<button class="btn" style="margin-top:20px;max-width:220px;" onclick="resetFlow()">Book another slot</button>'
     + '</div>';
 }
@@ -426,11 +419,12 @@ function renderPackageFlow(){
   html += '<div class="card">';
   html += '<div class="card-title">Your details</div>';
   html += '<div class="row"><div>';
-  html += '<label>Full name *</label><input type="text" id="pkg-name" placeholder="e.g. Nour Ahmed" value="'+(state._pkgName||'')+'">';
+  html += '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true"><label>Website</label><input type="text" id="pkg-website" tabindex="-1" autocomplete="off"></div>';
+  html += '<label>Full name *</label><input type="text" id="pkg-name" placeholder="e.g. Nour Ahmed" value="'+esc(state._pkgName)+'">';
   html += '</div><div>';
-  html += '<label>Phone number *</label><input type="tel" id="pkg-phone" placeholder="e.g. 01012345678" value="'+(state._pkgPhone||'')+'">';
+  html += '<label>Phone number *</label><input type="tel" id="pkg-phone" placeholder="e.g. 01012345678" value="'+esc(state._pkgPhone)+'">';
   html += '</div></div>';
-  html += '<label>Notes (optional)</label><textarea id="pkg-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+(state._pkgNotes||'')+'</textarea>';
+  html += '<label>Notes (optional)</label><textarea id="pkg-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+esc(state._pkgNotes)+'</textarea>';
   if(state._pkgError) html += '<div class="error-box">'+state._pkgError+'</div>';
   html += '<button class="btn" onclick="submitPackageRequest()" '+(state.pkgSubmitting||!state.pkgLines.length?'disabled':'')+'>'+(state.pkgSubmitting?'Submitting…':'Send package request')+'</button>';
   if(!state.pkgLines.length) html += '<div class="hint">Add at least one schedule above first.</div>';
@@ -516,7 +510,7 @@ async function submitPackageRequest(){
   };
 
   try{
-    var pr = await pbCall('package', {name:reqObj.client, phone:reqObj.phone, notes:reqObj.notes, month:reqObj.month, monthLabel:reqObj.monthLabel, lines:reqObj.lines});
+    var pr = await pbCall('package', {hp:((document.getElementById('pkg-website')||{}).value||''), name:reqObj.client, phone:reqObj.phone, notes:reqObj.notes, month:reqObj.month, monthLabel:reqObj.monthLabel, lines:reqObj.lines});
     if(!pr.ok){
       if(waWindow) waWindow.close();
       state.pkgSubmitting=false;
@@ -545,7 +539,7 @@ function renderPackageSuccess(){
   return '<div class="card success-box">'
     + '<div class="success-icon">📦</div>'
     + '<div class="success-title">Request submitted!</div>'
-    + '<div class="success-text">Thanks'+(state._pkgName?', '+state._pkgName:'')+'! We\'re calculating fees for your request with SpaceCo Management — we\'ll follow up on WhatsApp shortly with the price.<br><br>Your slots aren\'t held yet — once you confirm the price on WhatsApp and we accept, we\'ll book everything and send you a confirmation.</div>'
+    + '<div class="success-text">Thanks'+(state._pkgName?', '+esc(state._pkgName):'')+'! We\'re calculating fees for your request with SpaceCo Management — we\'ll follow up on WhatsApp shortly with the price.<br><br>Your slots aren\'t held yet — once you confirm the price on WhatsApp and we accept, we\'ll book everything and send you a confirmation.</div>'
     + '<button class="btn" style="margin-top:20px;max-width:260px;" onclick="resetPackageFlow()">Start another request</button>'
     + '</div>';
 }
@@ -586,7 +580,7 @@ async function submitBooking(){
   var name=(document.getElementById('f-name').value||'').trim();
   var phone=(document.getElementById('f-phone').value||'').trim();
   var notes=(document.getElementById('f-notes').value||'').trim();
-  state._name=name; state._phone=phone;
+  state._name=name; state._phone=phone; state._notes=notes;
 
   if(!name || !phone){
     state._error='Please enter your name and phone number.';
@@ -596,28 +590,12 @@ async function submitBooking(){
     state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(maxBookingDateStr())+'.';
     render(); return;
   }
-  // Server-side re-check using the Edge Function's own clock, so a client
-  // with its system clock set wrong can't bypass the check above. Fails
-  // open on a network/function error rather than blocking every booking
-  // sitewide over an unrelated outage — the client-side checks already
-  // covering the normal case.
-  try{
-    var winRes = await fetch(SUPABASE_URL+'/functions/v1/validate-booking-window',{
-      method:'POST',
-      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({date:state.date})
-    });
-    var winData = await winRes.json();
-    if(winData && winData.valid===false){
-      state._error='Bookings can only be made up to '+BOOKING_WINDOW_DAYS+' days in advance. Please select a date before '+formatDateForHumans(winData.maxDate||maxBookingDateStr())+'.';
-      render(); return;
-    }
-  }catch(e){ console.warn('validate-booking-window check failed, proceeding on client-side check only',e); }
+  // The booking service re-checks the window with its own (Cairo) clock.
   state._error=null; state.submitting=true; render();
 
   var start=state.selectedStart, end=start+state.duration;
   try{
-    var r = await pbCall('book', {name:name, phone:phone, room:state.room, date:state.date, from:minToTime(start), to:minToTime(end), notes:notes});
+    var r = await pbCall('book', {hp:((document.getElementById('f-website')||{}).value||''), name:name, phone:phone, room:state.room, date:state.date, from:minToTime(start), to:minToTime(end), notes:notes});
     if(!r.ok){
       state.submitting=false;
       if(r.status===409){

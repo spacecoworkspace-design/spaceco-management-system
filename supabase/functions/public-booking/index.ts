@@ -60,6 +60,11 @@ async function putKey(key: string, val: unknown) {
 function cairoToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
+function cairoNowMin(): number {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+  const g = (t: string) => Number(p.find((x) => x.type === t)?.value || 0);
+  return (g('hour') % 24) * 60 + g('minute');
+}
 function addDays(d: string, n: number) {
   const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10);
 }
@@ -83,6 +88,22 @@ function busy(date: string, room: string, resv: R[], blocks: R[]) {
 }
 const free = (s: number, e: number, b: { from: number; to: number }[]) => !b.some((x) => s < x.to && e > x.from);
 
+// Per-device flood guard. The caller's address is never stored: only a short
+// one-way tag that changes every day, so it cannot be traced back or reused.
+const PER_DEVICE_PER_HOUR = 8;
+async function deviceTag(req: Request): Promise<string> {
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('cf-connecting-ip') || 'unknown';
+  const data = new TextEncoder().encode(ip + '|' + cairoToday() + '|' + SERVICE.slice(-16));
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+  return Array.from(h.slice(0, 8)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+const recentFromDevice = (list: Record<string, unknown>[], tag: string) => {
+  const hourAgo = Date.now() - 3600_000;
+  return list.filter((r) => r.dev === tag && Date.parse(String(r.createdAt || '')) > hourAgo).length;
+};
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const FAKE_OK = (id: string) => json({ ok: true, id });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -92,6 +113,10 @@ Deno.serve(async (req) => {
   try { b = await req.json(); } catch { return json({ error: 'bad request' }, 400); }
 
   try {
+    // Bots fill the hidden "website" box; people never see it. Pretend it worked.
+    if ((b.action === 'book' || b.action === 'package') && String(b.hp || '').trim()) {
+      return b.action === 'book' ? FAKE_OK('ol_' + Date.now()) : json({ ok: true, request: { id: 'pkg_' + Date.now(), status: 'pending' } });
+    }
     if (b.action === 'availability') {
       const today = cairoToday();
       const strip = (x: R) => ({ date: x.date, room: x.room, from: x.from, to: x.to, status: x.status });
@@ -113,22 +138,34 @@ Deno.serve(async (req) => {
       const s = toMin(from), e = toMin(to);
       const open = new Date(date + 'T12:00:00Z').getUTCDay() === 5 ? OPEN_FRIDAY : OPEN_WEEKDAY;
       if (e <= s || s < toMin(open) || e > toMin(OPEN_END)) return json({ error: 'Outside opening hours.' }, 400);
+      if (date === today && s < cairoNowMin() - 15) return json({ error: 'That time has already passed. Please pick a later time.' }, 400);
 
-      const [resv, blocks] = await Promise.all([getKey('reservations'), getKey('roomBlocks')]);
-      if (!free(s, e, busy(date, room, resv as R[], blocks as R[]))) return json({ error: 'taken' }, 409);
-      // Simple flood guard: at most 5 pending online requests per phone number.
+      const dev = await deviceTag(req);
       const digits = phone.replace(/\D/g, '').slice(-10);
-      const pendingSame = (resv as Record<string, unknown>[]).filter((r) => r.source === 'online' && r.status === 'pending' && String(r.phone || '').replace(/\D/g, '').slice(-10) === digits).length;
-      if (pendingSame >= 5) return json({ error: 'You already have several requests waiting. We will contact you on WhatsApp.' }, 429);
-
       const newRes = {
         id: 'ol_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6),
         client: name, phone, room, date, from, to, notes,
         created_by: 'online', source: 'online', status: 'pending',
+        createdAt: new Date().toISOString(), dev,
       };
-      (resv as unknown[]).push(newRes);
-      await putKey('reservations', resv);
-      return json({ ok: true, id: newRes.id });
+      // Read, check, add, save -- then read back to make sure the booking is really
+      // there (another save at the same moment could have replaced the list).
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const [resv, blocks] = await Promise.all([getKey('reservations'), getKey('roomBlocks')]);
+        const list = resv as Record<string, unknown>[];
+        if (list.some((r) => r.id === newRes.id)) return json({ ok: true, id: newRes.id });
+        if (!free(s, e, busy(date, room, resv as R[], blocks as R[]))) return json({ error: 'taken' }, 409);
+        // Flood guards: per phone number, and per device per hour.
+        const pendingSame = list.filter((r) => r.source === 'online' && r.status === 'pending' && String(r.phone || '').replace(/\D/g, '').slice(-10) === digits).length;
+        if (pendingSame >= 5) return json({ error: 'You already have several requests waiting. We will contact you on WhatsApp.' }, 429);
+        if (recentFromDevice(list, dev) >= PER_DEVICE_PER_HOUR) return json({ error: 'Too many requests from this device. Please try again later or message us on WhatsApp.' }, 429);
+        list.push(newRes);
+        await putKey('reservations', list);
+        await sleep(400 + Math.floor(Math.random() * 300));
+        const check = (await getKey('reservations')) as Record<string, unknown>[];
+        if (check.some((r) => r.id === newRes.id)) return json({ ok: true, id: newRes.id });
+      }
+      return json({ error: 'Something went wrong. Please try again.' }, 503);
     }
 
     if (b.action === 'package') {
@@ -148,13 +185,22 @@ Deno.serve(async (req) => {
         client: name, phone, month: /^\d{4}-\d{2}$/.test(String(b.month)) ? String(b.month) : '', monthLabel: clean(b.monthLabel, 40),
         lines: okLines, notes, createdAt: new Date().toISOString(), status: 'pending', fee: null,
       };
-      const list = await getKey('packageRequests');
+      const dev = await deviceTag(req);
       const digits = phone.replace(/\D/g, '').slice(-10);
-      if ((list as Record<string, unknown>[]).filter((r) => r.status === 'pending' && String(r.phone || '').replace(/\D/g, '').slice(-10) === digits).length >= 3)
-        return json({ error: 'You already have requests waiting. We will contact you on WhatsApp.' }, 429);
-      (list as unknown[]).push(reqObj);
-      await putKey('packageRequests', list);
-      return json({ ok: true, request: reqObj });
+      (reqObj as Record<string, unknown>).dev = dev;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const list = (await getKey('packageRequests')) as Record<string, unknown>[];
+        if (list.some((r) => r.id === reqObj.id)) return json({ ok: true, request: reqObj });
+        if (list.filter((r) => r.status === 'pending' && String(r.phone || '').replace(/\D/g, '').slice(-10) === digits).length >= 3)
+          return json({ error: 'You already have requests waiting. We will contact you on WhatsApp.' }, 429);
+        if (recentFromDevice(list, dev) >= 3) return json({ error: 'Too many requests from this device. Please try again later or message us on WhatsApp.' }, 429);
+        list.push(reqObj);
+        await putKey('packageRequests', list);
+        await sleep(400 + Math.floor(Math.random() * 300));
+        const check = (await getKey('packageRequests')) as Record<string, unknown>[];
+        if (check.some((r) => r.id === reqObj.id)) return json({ ok: true, request: reqObj });
+      }
+      return json({ error: 'Something went wrong. Please try again.' }, 503);
     }
 
     return json({ error: 'Unknown action.' }, 400);
