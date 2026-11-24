@@ -238,18 +238,35 @@ async function init(){
 // Keep availability current with what staff see in the SpaceCo system (and other
 // visitors' bookings) without a manual refresh. Paused once the visitor has picked
 // a time slot and is filling in their details, so we never wipe out what they typed.
-var _liveSyncTimer = null;
+var _liveSyncTimer = null, _syncing = false;
+async function syncNow(){
+  if(_syncing || state.mode!=='single' || state.submitted || state.submitting) return;
+  _syncing = true;
+  try{
+    var res = await pbAvailability();
+    if(state.submitted || state.submitting) return;
+    state.reservations = res[0] || [];
+    state.blocks = res[1] || [];
+    // Keep whatever the visitor has typed so far.
+    ['name','phone','notes'].forEach(function(k){ var el=document.getElementById('f-'+k); if(el) state['_'+k]=el.value; });
+    if(state.selectedStart!==null){
+      var busy = getBusyRanges(state.date, state.room, state.reservations, state.blocks);
+      if(!rangeIsFree(state.selectedStart, state.selectedStart+state.duration, busy)){
+        state.selectedStart = null;
+        state._syncMsg = 'The time you picked was just booked. Please choose another time.';
+      }
+    }
+    render();
+  }catch(e){ console.warn('live sync failed', e); }
+  finally{ _syncing = false; }
+}
 function startLiveSync(){
   if(_liveSyncTimer) return;
-  _liveSyncTimer = setInterval(async function(){
-    if(state.mode!=='single' || state.submitted || state.submitting || state.selectedStart !== null) return;
-    try{
-      var res = await pbAvailability();
-      state.reservations = res[0] || [];
-      state.blocks = res[1] || [];
-      render();
-    }catch(e){ console.warn('live sync failed', e); }
-  }, 30000);
+  _liveSyncTimer = setInterval(function(){ if(!document.hidden) syncNow(); }, 20000);
+  // Coming back to the page (e.g. from WhatsApp) refreshes straight away.
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) syncNow(); });
+  window.addEventListener('focus', syncNow);
+  window.addEventListener('pageshow', function(e){ if(e.persisted) syncNow(); });
 }
 
 function render(){
@@ -297,15 +314,21 @@ function render(){
   html += '<div class="card-title">Available times — '+state.room+'</div>';
   html += '<div class="slot-legend"><span><span class="legend-dot" style="background:var(--green);"></span>Available</span><span><span class="legend-dot" style="background:var(--text3);"></span>Booked</span></div>';
   html += '<div class="slots-grid">';
+  var isToday = state.date===todayStr(), shown = 0;
   for(var m=startMin; m<endMin; m+=60){
     var slotEnd = m+60;
-    // Times that have already started today can't be booked.
-    var free = rangeIsFree(m, slotEnd, busy) && !(state.date===todayStr() && m < nowMinutes());
+    // Times that have already started today are not shown at all (not "booked").
+    if(isToday && m < nowMinutes()) continue;
+    shown++;
+    var free = rangeIsFree(m, slotEnd, busy);
     var isSel = state.selectedStart===m;
     html += '<div class="slot-pill '+(free?('slot-free'+(isSel?' selected':'')):'slot-busy')+'" '
       + (free?('onclick="selectStart('+m+')"'):'')+'>'+fmt12(minToTime(m))+'</div>';
   }
   html += '</div>';
+  if(!shown) html += '<div class="hint">No more times today — please pick another date.</div>';
+  else if(isToday && startMin < nowMinutes()) html += '<div class="hint" style="margin-top:10px;">Earlier times today have passed.</div>';
+  if(state._syncMsg) html += '<div class="error-box" style="margin-top:10px;">'+state._syncMsg+'</div>';
   html += '</div>';
 
   if(state.selectedStart!==null){
@@ -551,7 +574,7 @@ function resetPackageFlow(){
   render();
 }
 
-function selectRoom(r){ state.room=r; state.selectedStart=null; render(); }
+function selectRoom(r){ state.room=r; state.selectedStart=null; state._syncMsg=null; render(); syncNow(); }
 function shiftDate(delta){
   var d=new Date(state.date+'T00:00:00');
   d.setDate(d.getDate()+delta);
@@ -562,7 +585,7 @@ function shiftDate(delta){
     render(); return;
   }
   state._dateError=null;
-  state.date=nd; state.selectedStart=null; render();
+  state.date=nd; state.selectedStart=null; state._syncMsg=null; render(); syncNow();
 }
 function onDateChange(v){
   if(v<todayStr())v=todayStr();
@@ -571,9 +594,9 @@ function onDateChange(v){
     render(); return;
   }
   state._dateError=null;
-  state.date=v; state.selectedStart=null; render();
+  state.date=v; state.selectedStart=null; state._syncMsg=null; render(); syncNow();
 }
-function selectStart(m){ state.selectedStart=m; state.duration=60; render(); }
+function selectStart(m){ state.selectedStart=m; state.duration=60; state._syncMsg=null; render(); }
 function onDurationChange(v){ state.duration=parseInt(v,10); render(); }
 
 async function submitBooking(){
