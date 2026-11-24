@@ -8896,6 +8896,103 @@ function formatPkgWeekdays(arr){
 function pkgTotalSessions(pr){
   return (pr.lines||[]).reduce(function(s,l){return s+(l.dates?l.dates.length:0);},0);
 }
+// ============================================================
+// ONLINE BOOKING REQUESTS — every pending request from the public booking
+// page in one list (any date), so staff don't have to hunt for them day by day.
+// ============================================================
+function _escH(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function _niceDate(d){
+  if(!d)return '—';
+  var dt=new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function renderOnlineRequestsCard(){
+  var pend=(reservations||[]).filter(function(r){return r.status==='pending';})
+    .sort(function(a,b){return a.date===b.date?timeToMin(a.from)-timeToMin(b.from):(a.date<b.date?-1:1);});
+  if(!pend.length)return '';
+  var td=today();
+  var rows=pend.map(function(r){
+    var received=r.createdAt?new Date(r.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    var past=r.date<td;
+    return '<tr'+(past?' style="opacity:0.6;"':'')+'>'
+      +'<td style="white-space:nowrap;"><strong>'+_niceDate(r.date)+'</strong>'+(past?' <span class="badge badge-red" style="font-size:10px;">past</span>':'')+'</td>'
+      +'<td style="white-space:nowrap;">'+fmt12(r.from)+' – '+fmt12(r.to)+'</td>'
+      +'<td><span class="badge badge-purple">'+_escH(r.room)+'</span></td>'
+      +'<td><strong>'+_escH(r.client)+'</strong></td>'
+      +'<td style="white-space:nowrap;">'+_escH(r.phone||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text2);max-width:220px;">'+(r.notes?'📝 '+_escH(r.notes):'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text3);white-space:nowrap;">'+received+'</td>'
+      +'<td style="white-space:nowrap;">'
+        +'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button>'
+        +'<button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="rejectReservation(\''+r.id+'\')" title="Reject and free the slot">✖ Reject</button>'
+        +'<button class="btn btn-outline btn-sm" onclick="goToReservationDay(\''+r.date+'\')" title="Show this day on the timeline">📅 View day</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:16px;border:2px solid var(--amber);">'
+    +'<div class="card-title" style="display:flex;align-items:center;gap:8px;">🌐 Online booking requests '
+    +'<span class="badge" style="background:var(--amber);color:#1a1305;">'+pend.length+' waiting</span></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin:-4px 0 10px;">Booked by clients on the online booking page. The slot is held until you accept or reject.</div>'
+    +'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Time</th><th>Room</th><th>Client</th><th>Phone</th><th>Notes</th><th>Received</th><th></th></tr></thead><tbody>'
+    +rows+'</tbody></table></div></div>';
+}
+function goToReservationDay(d){
+  var inp=document.getElementById('res-filter-date');
+  if(inp)inp.value=d;
+  renderReservations();
+  var board=document.getElementById('reservations-board');
+  if(board)setTimeout(function(){
+    var cards=board.querySelectorAll(':scope > .card');
+    var target=cards.length>1?cards[1]:board;
+    target.scrollIntoView({behavior:'smooth',block:'start'});
+  },50);
+}
+
+// ============================================================
+// PACKAGE REQUEST — detailed times: every session with its date, and whether
+// the room is free at that time right now.
+// ============================================================
+var _pkgOpen={};
+function togglePkgDetails(id){_pkgOpen[id]=!_pkgOpen[id];renderPackageRequests();}
+function pkgSlotClash(date,room,from,to){
+  var fs=timeToMin(from),fe=timeToMin(to);
+  var r=(reservations||[]).find(function(x){
+    if(x.date!==date||x.room!==room)return false;
+    if(x.status==='no_show'||x.status==='cancelled'||x.status==='rejected')return false;
+    return fs<timeToMin(x.to)&&fe>timeToMin(x.from);
+  });
+  if(r)return (r.status==='pending'?'⏳ ':'')+r.client+' '+fmt12(r.from)+'–'+fmt12(r.to);
+  var b=(roomBlocks||[]).find(function(x){return x.date===date&&x.room===room&&fs<timeToMin(x.to)&&fe>timeToMin(x.from);});
+  if(b)return '🚫 Blocked'+(b.reason?' ('+b.reason+')':'');
+  return null;
+}
+function renderPkgDetails(pr){
+  var sessions=[];
+  (pr.lines||[]).forEach(function(l){
+    (l.dates||[]).forEach(function(d){sessions.push({date:d,room:l.room,from:l.from,to:l.to});});
+  });
+  sessions.sort(function(a,b){return a.date===b.date?timeToMin(a.from)-timeToMin(b.from):(a.date<b.date?-1:1);});
+  if(!sessions.length)return '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No dates in this request.</div>';
+  var totalMin=0,clashes=0;
+  var checkFree=(pr.status==='pending'||pr.status==='priced');
+  var rows=sessions.map(function(x,i){
+    var mins=timeToMin(x.to)-timeToMin(x.from); totalMin+=mins;
+    var clash=checkFree?pkgSlotClash(x.date,x.room,x.from,x.to):null;
+    if(clash)clashes++;
+    var st=!checkFree?'—':clash?'<span style="color:var(--red);font-weight:600;">⚠ Taken: '+_escH(clash)+'</span>':'<span style="color:var(--green);font-weight:600;">✔ Free</span>';
+    return '<tr><td style="color:var(--text3);">'+(i+1)+'</td><td style="white-space:nowrap;"><strong>'+_niceDate(x.date)+'</strong></td>'
+      +'<td style="white-space:nowrap;">'+fmt12(x.from)+' – '+fmt12(x.to)+'</td>'
+      +'<td><span class="badge badge-purple">'+_escH(x.room)+'</span></td>'
+      +'<td style="white-space:nowrap;">'+(mins%60?(mins/60).toFixed(1):(mins/60))+' h</td><td>'+st+'</td></tr>';
+  }).join('');
+  var hrs=totalMin/60;
+  var summary='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:10px 0 8px;">'
+    +'<span>📅 <strong>'+sessions.length+'</strong> session'+(sessions.length!==1?'s':'')+'</span>'
+    +'<span>⏱ <strong>'+(hrs%1?hrs.toFixed(1):hrs)+'</strong> hours in total</span>'
+    +(checkFree?(clashes?'<span style="color:var(--red);font-weight:600;">⚠ '+clashes+' clash'+(clashes!==1?'es':'')+' with existing bookings</span>'
+      :'<span style="color:var(--green);font-weight:600;">✔ All times currently free</span>'):'')
+    +'</div>';
+  return summary+'<div class="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Time</th><th>Room</th><th>Length</th><th>Availability now</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
 function renderPackageRequests(){
   var container=document.getElementById('package-requests-list');
   if(!container)return;
@@ -8944,6 +9041,8 @@ function renderPackageRequestCard(pr){
       +statusBadge
     +'</div>'
     +'<div style="margin-top:10px;">'+linesHtml+'</div>'
+    +'<button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="togglePkgDetails(\''+pr.id+'\')">'+(_pkgOpen[pr.id]?'▲ Hide all times':'📋 Show all times')+'</button>'
+    +(_pkgOpen[pr.id]?'<div style="margin-top:6px;">'+renderPkgDetails(pr)+'</div>':'')
     +(pr.notes?'<div style="margin-top:8px;font-size:12px;color:var(--text3);">📝 '+pr.notes+'</div>':'')
     +actionsHtml
     +'</div>';
@@ -9353,7 +9452,7 @@ function renderReservations(){
   }
   html+='</div>';
 
-  document.getElementById('reservations-board').innerHTML=html;
+  document.getElementById('reservations-board').innerHTML=renderOnlineRequestsCard()+html;
   updatePendingResBadge();
   populateResSearchAcademies();
   renderResSearch();
