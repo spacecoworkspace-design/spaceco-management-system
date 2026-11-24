@@ -101,6 +101,7 @@
     <div class="loading"><div class="spin"></div><div>Loading availability…</div></div>
   </div>
 </div>
+<div style="text-align:center;font-size:12px;color:var(--text3);margin:24px 0 32px;">Questions? <a href="https://wa.me/201033104912" target="_blank" rel="noopener" style="color:var(--accent);">WhatsApp SpaceCo</a></div>
 
 <script>
 const SUPABASE_URL = 'https://vfevpvfaeiwltixgdmln.supabase.co';
@@ -156,6 +157,13 @@ function getOpenHours(dateStr){
 }
 
 // ── WhatsApp click-to-chat (no backend/API keys — opens a pre-filled chat) ──
+function phoneLooksValid(p){
+  var t=String(p||'').trim(), d=t.replace(/\D/g,'');
+  if(/^\+/.test(t) || /^00/.test(t)) return d.length>=10 && d.length<=15;   // international
+  if(/^01[0125]\d{8}$/.test(d)) return true;                              // Egyptian mobile 01x xxxx xxxx
+  if(/^201[0125]\d{8}$/.test(d)) return true;                             // same, written with 20
+  return false;
+}
 function formatPhoneForWhatsApp(phone){
   var digits=(phone||'').replace(/\D/g,'');
   if(!digits)return '';
@@ -163,6 +171,8 @@ function formatPhoneForWhatsApp(phone){
   if(digits.indexOf('0')===0)return '20'+digits.substring(1);
   return digits;
 }
+
+var WA_CONTACT = 'https://wa.me/201033104912';
 
 // ── Monthly package helpers: requests are always for next calendar month ──
 var PKG_WEEKDAY_LABELS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -214,7 +224,7 @@ function getBusyRanges(dateStr, room, reservations, blocks){
   var ranges=[];
   // A no-show'd reservation still exists as a row (only a full cancellation
   // removes it), but must not keep blocking the slot from being rebooked.
-  reservations.filter(function(r){return r.date===dateStr && r.room===room && r.status!=='no_show';}).forEach(function(r){
+  reservations.filter(function(r){return r.date===dateStr && r.room===room && r.status!=='no_show' && r.status!=='cancelled' && r.status!=='rejected';}).forEach(function(r){
     ranges.push({from:timeToMin(r.from), to:timeToMin(r.to)});
   });
   (blocks||[]).filter(function(b){return b.date===dateStr && b.room===room;}).forEach(function(b){
@@ -227,12 +237,23 @@ function rangeIsFree(startMin, endMin, busyRanges){
 }
 
 async function init(){
-  var res = [[], []];
-  try{ res = await pbAvailability(); }catch(e){ console.warn('availability load failed', e); }
-  state.reservations = res[0] || [];
-  state.blocks = res[1] || [];
+  state.loadFailed = false;
+  try{
+    var res = await pbAvailability();
+    state.reservations = res[0] || [];
+    state.blocks = res[1] || [];
+    state.loaded = true;
+  }catch(e){
+    console.warn('availability load failed', e);
+    // Never show slots as free when we could not check them.
+    if(!state.loaded) state.loadFailed = true;
+  }
   render();
   startLiveSync();
+}
+function retryLoad(){
+  document.getElementById('app').innerHTML = '<div class="loading"><div class="spin"></div><div>Loading availability…</div></div>';
+  init();
 }
 
 // Keep availability current with what staff see in the SpaceCo system (and other
@@ -247,6 +268,7 @@ async function syncNow(){
     if(state.submitted || state.submitting) return;
     state.reservations = res[0] || [];
     state.blocks = res[1] || [];
+    state.loaded = true; state.loadFailed = false;
     // Keep whatever the visitor has typed so far.
     ['name','phone','notes'].forEach(function(k){ var el=document.getElementById('f-'+k); if(el) state['_'+k]=el.value; });
     if(state.selectedStart!==null){
@@ -290,6 +312,14 @@ function render(){
     return;
   }
 
+  if(!state.loaded){
+    app.innerHTML = modeTabs + '<div class="card" style="text-align:center;">'
+      + '<div class="error-box" style="margin-bottom:14px;">We couldn’t load room availability. Please check your connection and try again.</div>'
+      + '<button class="btn" style="max-width:220px;" onclick="retryLoad()">Try again</button>'
+      + '<div class="hint" style="margin-top:14px;">Or <a href="'+WA_CONTACT+'" target="_blank" rel="noopener" style="color:var(--accent);">message us on WhatsApp</a> to book.</div>'
+      + '</div>';
+    return;
+  }
   var oh = getOpenHours(state.date);
   var busy = getBusyRanges(state.date, state.room, state.reservations, state.blocks);
   var startMin = timeToMin(oh.start), endMin = timeToMin(oh.end);
@@ -374,7 +404,7 @@ function renderBookingForm(busy, dayEndMin){
 
   html += '<label>Notes (optional)</label><textarea id="f-notes" rows="2" placeholder="Anything staff should know" style="margin-bottom:14px;">'+esc(state._notes)+'</textarea>';
 
-  html += '<div class="hint" style="margin-bottom:14px;">You\'re requesting <strong style="color:var(--text);">'+state.room+'</strong> on <strong style="color:var(--text);">'+state.date+'</strong>, '+fmt12(minToTime(start))+' – '+fmt12(minToTime(endMin))+'. This will be sent to SpaceCo staff for confirmation.</div>';
+  html += '<div class="hint" style="margin-bottom:14px;">You\'re requesting <strong style="color:var(--text);">'+state.room+'</strong> on <strong style="color:var(--text);">'+formatDateForHumans(state.date)+'</strong>, '+fmt12(minToTime(start))+' – '+fmt12(minToTime(endMin))+'. This will be sent to SpaceCo staff for confirmation.</div>';
 
   if(state._error) html += '<div class="error-box">'+state._error+'</div>';
 
@@ -387,8 +417,11 @@ function renderSuccess(){
   return '<div class="card success-box">'
     + '<div class="success-icon">✅</div>'
     + '<div class="success-title">Request submitted!</div>'
-    + '<div class="success-text">Thanks'+(state._name?', '+esc(state._name):'')+'. We\'ve received your request for <strong style="color:var(--text);">'+state.room+'</strong> on '+state.date+' from '+fmt12(minToTime(state.selectedStart))+' to '+fmt12(minToTime(state.selectedStart+state.duration))+'.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.</div>'
-    + '<button class="btn" style="margin-top:20px;max-width:220px;" onclick="resetFlow()">Book another slot</button>'
+    + '<div class="success-text">Thanks'+(state._name?', '+esc(state._name):'')+'. We\'ve received your request for <strong style="color:var(--text);">'+state.room+'</strong> on '+formatDateForHumans(state.date)+' from '+fmt12(minToTime(state.selectedStart))+' to '+fmt12(minToTime(state.selectedStart+state.duration))+'.<br><br>SpaceCo staff will confirm shortly by phone. This slot is held as pending until then.</div>'
+    + '<div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    + '<a class="btn" style="max-width:220px;text-decoration:none;display:inline-block;" href="'+WA_CONTACT+'" target="_blank" rel="noopener">Questions? WhatsApp us</a>'
+    + '<button class="btn" style="max-width:220px;" onclick="resetFlow()">Book another slot</button>'
+    + '</div>'
     + '</div>';
 }
 
@@ -514,6 +547,7 @@ async function submitPackageRequest(){
 
   if(!state.pkgLines.length){ state._pkgError='Please add at least one room/schedule to your request.'; render(); return; }
   if(!name || !phone){ state._pkgError='Please enter your name and phone number.'; render(); return; }
+  if(!phoneLooksValid(phone)){ state._pkgError='Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).'; render(); return; }
 
   state._pkgError=null; state.pkgSubmitting=true;
   // Open the WhatsApp tab synchronously (tied to this click) so popup blockers
@@ -544,7 +578,8 @@ async function submitPackageRequest(){
 
     var msg = buildPackageRequestMessage(reqObj);
     var num = formatPhoneForWhatsApp('01033104912');
-    if(waWindow && num){ waWindow.location.href = 'https://wa.me/'+num+'?text='+encodeURIComponent(msg); }
+    state._pkgWaUrl = 'https://wa.me/'+num+'?text='+encodeURIComponent(msg);
+    if(waWindow && num){ waWindow.location.href = state._pkgWaUrl; }
     else if(waWindow){ waWindow.close(); }
 
     state.pkgSubmitting=false;
@@ -563,7 +598,11 @@ function renderPackageSuccess(){
     + '<div class="success-icon">📦</div>'
     + '<div class="success-title">Request submitted!</div>'
     + '<div class="success-text">Thanks'+(state._pkgName?', '+esc(state._pkgName):'')+'! We\'re calculating fees for your request with SpaceCo Management — we\'ll follow up on WhatsApp shortly with the price.<br><br>Your slots aren\'t held yet — once you confirm the price on WhatsApp and we accept, we\'ll book everything and send you a confirmation.</div>'
-    + '<button class="btn" style="margin-top:20px;max-width:260px;" onclick="resetPackageFlow()">Start another request</button>'
+    + '<div class="hint" style="margin-top:14px;">Your request is saved with SpaceCo. If WhatsApp didn’t open, tap below to send us the details.</div>'
+    + '<div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    + '<a class="btn" style="max-width:260px;text-decoration:none;display:inline-block;" href="'+esc(state._pkgWaUrl||WA_CONTACT)+'" target="_blank" rel="noopener">Send on WhatsApp</a>'
+    + '<button class="btn" style="max-width:260px;" onclick="resetPackageFlow()">Start another request</button>'
+    + '</div>'
     + '</div>';
 }
 
@@ -607,6 +646,10 @@ async function submitBooking(){
 
   if(!name || !phone){
     state._error='Please enter your name and phone number.';
+    render(); return;
+  }
+  if(!phoneLooksValid(phone)){
+    state._error='Please enter a valid mobile number, e.g. 01012345678 (or +country code for numbers outside Egypt).';
     render(); return;
   }
   if(state.date>maxBookingDateStr()){
