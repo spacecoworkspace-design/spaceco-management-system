@@ -2494,29 +2494,100 @@ async function sbGet(key, def) {
   return def;
 }
 
-async function sbSet(key, val) {
-  _sbCache[key] = val;
-  // Also keep localStorage as offline fallback
-  try { localStorage.setItem('spaceco_' + key, JSON.stringify(val)); } catch(e){}
-  // Visual indicator
+// ============================================================
+// SAVING TO spaceco_kv — one request per save.
+// An upsert (POST ?on_conflict=key, merge-duplicates) inserts the row or
+// replaces its value in a single atomic step, so there is never a moment
+// when the row is missing. `key` is the table's primary key.
+// The signed-in user's token is added by the fetch wrapper (_mgRawFetch).
+// ============================================================
+async function kvUpsert(key, val) {
+  var f = (typeof _mgRawFetch === 'function') ? _mgRawFetch : fetch;
+  var r = await f(SUPABASE_URL + '/rest/v1/spaceco_kv?on_conflict=key', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+               'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: key, value: JSON.stringify(val) })
+  });
+  if (!r.ok) console.warn('save refused', key, r.status);
+  return r.ok;
+}
+
+// Saves that did not reach the database. The data stays in memory and on this
+// device, a banner says so, and the save is retried until it goes through.
+var _kvFailed = {}, _kvRetryTimer = null, _kvRetryStep = 0;
+var KV_RETRY_SECONDS = [5, 15, 30, 60];
+function kvUnsavedKeys() { return Object.keys(_kvFailed); }
+function kvShowSaveStatus() {
+  var keys = kvUnsavedKeys();
   var ss = document.getElementById('sync-status');
-  if (ss) { ss.style.background = '#f5a623'; ss.title = 'Saving…'; }
-  try {
-    var body = JSON.stringify({ key: key, value: JSON.stringify(val) });
-    await fetch(SUPABASE_URL + '/rest/v1/spaceco_kv?key=eq.' + encodeURIComponent(key), {
-      method: 'DELETE',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    });
-    await fetch(SUPABASE_URL + '/rest/v1/spaceco_kv', {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: body
-    });
-    if (ss) { ss.style.background = '#34d88b'; ss.title = 'Saved'; setTimeout(function(){ if(ss) { ss.style.background='#34d88b'; ss.title='Cloud sync active'; } }, 1500); }
-  } catch(e) {
-    console.warn('sbSet error', key, e);
-    if (ss) { ss.style.background = '#ff5c5c'; ss.title = 'Offline (local only)'; }
+  var bar = document.getElementById('kv-unsaved-bar');
+  if (!keys.length) {
+    if (ss) { ss.style.background = '#34d88b'; ss.title = 'Saved'; }
+    if (bar) bar.remove();
+    return;
   }
+  if (ss) { ss.style.background = '#ff5c5c'; ss.title = 'Not saved to the cloud yet (kept on this device, retrying)'; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'kv-unsaved-bar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:10000;max-width:calc(100% - 32px);'
+      + 'background:#ff5c5c;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;'
+      + 'box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;gap:12px;align-items:center;flex-wrap:wrap;';
+    document.body.appendChild(bar);
+  }
+  bar.textContent = '';
+  var msg = document.createElement('span');
+  msg.textContent = '⚠ Not saved to the cloud yet (' + keys.length + ' item' + (keys.length === 1 ? '' : 's')
+    + '). Your changes are kept on this device and will be saved automatically. Do not sign out or close this page.';
+  var btn = document.createElement('button');
+  btn.textContent = 'Retry now';
+  btn.style.cssText = 'background:#fff;color:#c62828;border:none;border-radius:6px;padding:5px 10px;font-weight:700;cursor:pointer;';
+  btn.onclick = function () { kvRetryNow(); };
+  bar.appendChild(msg); bar.appendChild(btn);
+}
+function kvScheduleRetry() {
+  if (_kvRetryTimer || !kvUnsavedKeys().length) return;
+  var s = KV_RETRY_SECONDS[Math.min(_kvRetryStep, KV_RETRY_SECONDS.length - 1)];
+  _kvRetryStep++;
+  _kvRetryTimer = setTimeout(function () { _kvRetryTimer = null; kvRetryNow(); }, s * 1000);
+}
+function kvRetryNow() {
+  if (_kvRetryTimer) { clearTimeout(_kvRetryTimer); _kvRetryTimer = null; }
+  // sbSet saves the newest copy in memory (and merges other devices' changes first).
+  kvUnsavedKeys().forEach(function (k) { if (k in _sbCache) sbSet(k, _sbCache[k]); });
+}
+function kvNoteResult(key, ok) {
+  var had = kvUnsavedKeys().length;
+  if (ok) delete _kvFailed[key]; else _kvFailed[key] = true;
+  var left = kvUnsavedKeys().length;
+  kvShowSaveStatus();
+  if (left) { kvScheduleRetry(); return; }
+  _kvRetryStep = 0;
+  if (had && typeof showToast === 'function') showToast('All changes are saved to the cloud ✓');
+}
+window.addEventListener('online', function () { if (kvUnsavedKeys().length) kvRetryNow(); });
+window.addEventListener('beforeunload', function (e) {
+  if (!kvUnsavedKeys().length) return;
+  e.preventDefault(); e.returnValue = 'Some changes are not saved to the cloud yet.'; return e.returnValue;
+});
+
+// Write one key: memory + this device first, then the database. True only when
+// the database confirmed it.
+async function kvSaveOne(key, val) {
+  _sbCache[key] = val;
+  try { localStorage.setItem('spaceco_' + key, JSON.stringify(val)); } catch(e){}
+  var ss = document.getElementById('sync-status');
+  if (ss && !kvUnsavedKeys().length) { ss.style.background = '#f5a623'; ss.title = 'Saving…'; }
+  var ok = false;
+  try { ok = await kvUpsert(key, val); } catch(e) { console.warn('save failed', key, e); }
+  kvNoteResult(key, ok);
+  return ok;
+}
+
+async function sbSet(key, val) {
+  return kvSaveOne(key, val);
 }
 
 // ── Sync wrappers used throughout existing code ──
@@ -15072,24 +15143,9 @@ function mgMergeMap(base,local,remote){
   return {map:out,added:added,removed:removed};
 }
 
-// Write a value; true only when the database confirmed both steps.
+// Write a value (one upsert); true only when the database confirmed it.
 async function mgWrite(key,val){
-  _sbCache[key]=val;
-  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
-  var ss=document.getElementById('sync-status');
-  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
-  try{
-    var h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY};
-    var d=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key),{method:'DELETE',headers:h});
-    var p=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv',{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:'return=minimal'},h),body:JSON.stringify({key:key,value:JSON.stringify(val)})});
-    var ok=d.ok&&p.ok;
-    if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
-    return ok;
-  }catch(e){
-    console.warn('save failed',key,e);
-    if(ss){ss.style.background='#ff5c5c';ss.title='Offline (local only)';}
-    return false;
-  }
+  return kvSaveOne(key,val);
 }
 
 var _mgQueue={};
@@ -15101,7 +15157,7 @@ sbSet=function(key,val){
   return run;
 };
 async function mgReadRemote(key){
-  // A missing row can just mean another device is in the middle of saving (it removes, then writes): look again.
+  // Saves are single upserts now, but older app versions on other devices may still be mid-save: look again.
   for(var i=0;i<3;i++){
     try{
       var r=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key)+'&select=value',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
@@ -16304,6 +16360,12 @@ logoutToLogin=async function(){
   showToast('Signing out…');
   // let any save that is still running finish first (max 5 seconds)
   try{await Promise.race([Promise.all(Object.keys(_mgQueue).map(function(k){return _mgQueue[k];})),new Promise(function(r){setTimeout(r,5000);})]);}catch(e){}
+  // signing out wipes this device's copy: never do that while changes are still unsaved
+  if(kvUnsavedKeys().length){
+    var n=kvUnsavedKeys().length;
+    if(!confirm(n+' change'+(n===1?' is':'s are')+' not saved to the cloud yet. If you sign out now '+(n===1?'it':'they')+' will be lost.\n\nPress Cancel to stay signed in while the app keeps retrying.')){kvRetryNow();return;}
+    _kvFailed={};   // they chose to sign out anyway: no second "leave page?" prompt
+  }
   try{auditLog('logout','Signed out');}catch(e){}
   var t=_acSession&&_acSession.access_token;
   if(t){try{await _acRawFetch(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+t}});}catch(e){}}
@@ -16328,43 +16390,6 @@ openAdminLogin=function(){
 };
 
 
-// ============================================================
-// SAFE SAVING — a save updates the record in place and only creates it when it
-// does not exist yet. Nothing is ever deleted first, so a failed or interrupted
-// save can never make a record disappear. Returns true only when the database
-// confirmed the save.
-// ============================================================
-async function kvSafeWrite(key,val){
-  var h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
-  var body=JSON.stringify({value:JSON.stringify(val)});
-  var u=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv?key=eq.'+encodeURIComponent(key)+'&select=key',{method:'PATCH',headers:Object.assign({Prefer:'return=representation'},h),body:body});
-  if(!u.ok)return false;
-  var rows=[];try{rows=await u.json();}catch(e){}
-  if(Array.isArray(rows)&&rows.length)return true;
-  var p=await _mgRawFetch(SUPABASE_URL+'/rest/v1/spaceco_kv',{method:'POST',headers:Object.assign({Prefer:'return=minimal'},h),body:JSON.stringify({key:key,value:JSON.stringify(val)})});
-  return p.ok;
-}
-mgWrite=async function(key,val){
-  _sbCache[key]=val;
-  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
-  var ss=document.getElementById('sync-status');
-  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
-  var ok=false;
-  try{ok=await kvSafeWrite(key,val);}catch(e){console.warn('save failed',key,e);}
-  if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
-  return ok;
-};
-// keys that are not merged (the older save path) use the same safe writer
-_mgPrevSbSet=async function(key,val){
-  _sbCache[key]=val;
-  try{localStorage.setItem('spaceco_'+key,JSON.stringify(val));}catch(e){}
-  var ss=document.getElementById('sync-status');
-  if(ss){ss.style.background='#f5a623';ss.title='Saving…';}
-  var ok=false;
-  try{ok=await kvSafeWrite(key,val);}catch(e){console.warn('sbSet error',key,e);}
-  if(ss){ss.style.background=ok?'#34d88b':'#ff5c5c';ss.title=ok?'Saved':'Not saved to the cloud (kept on this device)';}
-  return ok;
-};
 
 // ---------- Staff accounts (Admin Panel → Security) ----------
 var _acUsers={};
