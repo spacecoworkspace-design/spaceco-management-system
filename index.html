@@ -966,6 +966,7 @@
         <div class="money" style="font-size:20px;color:var(--green);" id="settle-grand">0 LE</div>
       </div>
     </div>
+    <div id="settle-exp" style="margin-top:16px;"></div>
   </div>
 
   <!-- DRINKS ORDER LOGGER -->
@@ -16617,6 +16618,100 @@ function biPreview(){
 var _biPrevShowPage=showPage;
 showPage=function(id,btn){var r=_biPrevShowPage.apply(this,arguments);if(id==='bizinfo'){try{biRender();}catch(e){console.warn(e);document.getElementById('bi-root').innerHTML='<div class="alert alert-danger">This page could not be built: '+_escH(e.message)+'</div>';}}return r;};
 
+
+// ============================================================
+// DAILY EXPENSES IN THE SHIFT SETTLEMENT — one shared list ('expenses').
+// An expense added in the settlement appears on the Expenses page and one added on
+// the Expenses page appears in the settlement for its date (and cashier). Expenses
+// now record which cashier paid them. "Cash in drawer" = cash collected − expenses
+// paid in cash. Investments (admin only) are never shown here.
+// ============================================================
+function seNum(id){var el=document.getElementById(id);return el?(parseFloat(String(el.textContent).replace(/[^\d.-]/g,''))||0):0;}
+function seCashierNames(){var n=[];(staff||[]).forEach(function(x){if(x&&x.name&&n.indexOf(x.name)===-1)n.push(x.name);});if(currentStaffName&&n.indexOf(currentStaffName)===-1)n.push(currentStaffName);return n;}
+function seCats(){return (typeof VAULT_NORMAL_CATS!=='undefined'&&VAULT_NORMAL_CATS.length)?VAULT_NORMAL_CATS:['Supplies','Maintenance','Food & Drinks Stock','Other'];}
+function seRender(){
+  var box=document.getElementById('settle-exp');if(!box)return;
+  var d=(document.getElementById('settle-date')||{}).value||today();
+  var who=(document.getElementById('settle-cashier')||{}).value||'all';
+  var list=loadData('expenses',[]).filter(function(e){return e.date===d&&e.type!=='investment'&&(who==='all'||e.cashier===who);})
+    .sort(function(a,b){return (a.id||0)-(b.id||0);});
+  var total=0,cashExp=0;
+  list.forEach(function(e){total+=+e.amount||0;if((e.paidFrom||e.paid_from||e.payment)==='cash')cashExp+=+e.amount||0;});
+  var cashIn=seNum('settle-cash'),drawer=cashIn-cashExp;
+  var esc=_escH;
+  var rows=list.length?list.map(function(e){
+    var pf=e.paidFrom||e.paid_from||e.payment||'-';
+    return '<tr><td><strong>'+esc(e.desc||e.description||'-')+'</strong>'+(e.note?'<div style="font-size:11px;color:var(--text3);">'+esc(e.note)+'</div>':'')+'</td>'
+      +'<td><span class="badge badge-amber">'+esc(e.category||'-')+'</span></td>'
+      +'<td><span class="badge '+(pf==='cash'?'badge-green':'badge-blue')+'">'+esc(pf)+'</span></td>'
+      +'<td style="font-size:12px;color:var(--text3);">'+esc(e.cashier||'—')+'</td>'
+      +'<td class="money" style="color:var(--red);white-space:nowrap;">'+(+e.amount||0)+' LE</td>'
+      +'<td><button class="btn btn-danger btn-sm" onclick="deleteExpense('+e.id+')">Del</button></td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="6">No expenses for this '+(who==='all'?'day':'shift')+' yet</td></tr>';
+  var cats=seCats().map(function(c){return '<option>'+esc(c)+'</option>';}).join('');
+  box.innerHTML='<div style="border-top:1px solid var(--border);padding-top:14px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'
+    +'<div style="font-weight:700;">🧾 Daily expenses <span style="font-weight:400;font-size:12px;color:var(--text3);">— '+esc(formatDate(d))+(who==='all'?' · all cashiers':' · '+esc(who))+' · also on the Expenses page</span></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    +'<div style="background:var(--red-bg,rgba(224,85,85,.1));border-radius:var(--radius-sm);padding:8px 12px;text-align:center;"><div style="font-size:11px;color:var(--text3);">Expenses</div><div class="money" id="settle-exp-total" style="color:var(--red);font-size:16px;">'+total+' LE</div></div>'
+    +'<div style="background:rgba(46,201,126,0.12);border:1px solid rgba(46,201,126,0.3);border-radius:var(--radius-sm);padding:8px 12px;text-align:center;"><div style="font-size:11px;color:var(--text3);">💵 Cash in drawer <span title="Cash collected minus expenses paid in cash">ⓘ</span></div><div class="money" id="settle-drawer" style="color:'+(drawer<0?'var(--red)':'var(--green)')+';font-size:16px;">'+drawer+' LE</div></div>'
+    +'</div></div>'
+    +'<div class="table-wrap"><table><thead><tr><th>Description</th><th>Category</th><th>Paid from</th><th>Cashier</th><th>Amount</th><th></th></tr></thead><tbody id="settle-exp-tbody">'+rows+'</tbody></table></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;margin-top:10px;">'
+    +'<div><label>Amount (LE)</label><input type="number" id="se-amount" min="0" step="1" placeholder="0"></div>'
+    +'<div style="grid-column:span 2;"><label>Description</label><input type="text" id="se-desc" maxlength="120" placeholder="e.g. Water bottles, cleaning supplies"></div>'
+    +'<div><label>Category</label><select id="se-cat">'+cats+'</select></div>'
+    +'<div><label>Paid from</label><select id="se-pay"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select></div>'
+    +'<div><button class="btn btn-primary btn-full" onclick="seAdd()">+ Add expense</button></div>'
+    +'</div></div>';
+  var cs=document.getElementById('se-cat');if(cs&&seCats().indexOf('Supplies')!==-1)cs.value='Supplies';
+}
+function seAdd(){
+  var d=(document.getElementById('settle-date')||{}).value||today();
+  var who=(document.getElementById('settle-cashier')||{}).value||'all';
+  var amount=parseFloat(document.getElementById('se-amount').value);
+  var desc=document.getElementById('se-desc').value.trim();
+  if(!desc){showToast('Enter a description',true);return;}
+  if(!(amount>0)){showToast('Enter an amount',true);return;}
+  var e={id:Date.now(),date:d,amount:Math.round(amount*100)/100,desc:desc,category:document.getElementById('se-cat').value,
+    paidFrom:document.getElementById('se-pay').value,note:'',type:'normal',cashier:who!=='all'?who:currentStaffName,
+    createdBy:currentStaffName,createdAt:new Date().toISOString(),source:'settlement'};
+  var list=loadData('expenses',[]);list.push(e);expenses=list;saveData('expenses',list);
+  try{auditLog('expense_added','Added the expense "'+desc+'" ('+e.amount+' LE, '+e.paidFrom+') on '+d+' from the Shift Settlement');}catch(x){}
+  seRender();try{if(document.getElementById('page-expenses').classList.contains('active'))renderExpenses();}catch(x){}
+  showToast('Expense saved — '+e.amount+' LE');
+}
+var _sePrevCalc=calcSettlement;
+calcSettlement=function(){var r=_sePrevCalc.apply(this,arguments);try{seRender();}catch(x){console.warn(x);}return r;};
+// Expenses page: who paid it, shown in the list; any change refreshes the settlement
+var _sePrevOpenModal=openModal;
+openModal=function(id){
+  _sePrevOpenModal.apply(this,arguments);
+  if(id==='add-expense-modal'){var sel=document.getElementById('exp-cashier');if(sel){var n=seCashierNames();sel.innerHTML=n.map(function(x){return '<option'+(x===currentStaffName?' selected':'')+'>'+_escH(x)+'</option>';}).join('');}}
+};
+var _sePrevSaveExpense=saveExpense;
+saveExpense=function(){
+  var n0=loadData('expenses',[]).length,who=(document.getElementById('exp-cashier')||{}).value||currentStaffName;
+  var r=_sePrevSaveExpense.apply(this,arguments);
+  var list=loadData('expenses',[]);
+  if(list.length>n0){var e=list[list.length-1];if(!e.cashier){e.cashier=who;e.createdBy=e.createdBy||currentStaffName;saveData('expenses',list);expenses=list;}try{renderExpenses();}catch(x){}}
+  return r;
+};
+var _sePrevRenderExpenses=renderExpenses;
+renderExpenses=function(){
+  var r=_sePrevRenderExpenses.apply(this,arguments);
+  try{
+    var map={};loadData('expenses',[]).forEach(function(e){if(e.cashier)map[e.id]=e;});
+    document.querySelectorAll('#exp-tbody tr').forEach(function(tr){
+      var b=tr.querySelector('button[onclick^="deleteExpense("]');if(!b)return;
+      var id=+String(b.getAttribute('onclick')).replace(/\D+/g,'');var e=map[id];if(!e)return;
+      var td=tr.children[2];if(td&&!td.querySelector('.se-by'))td.insertAdjacentHTML('beforeend','<div class="se-by" style="font-size:11px;color:var(--text3);font-weight:400;">by '+_escH(e.cashier)+(e.source==='settlement'?' · from Shift Settlement':'')+'</div>');
+    });
+  }catch(x){}
+  try{seRender();}catch(x){}
+  return r;
+};
+
 // ---------- Staff accounts (Admin Panel → Security) ----------
 var _acUsers={};
 function acTempPassword(){
@@ -17017,6 +17112,7 @@ logoutAdmin=function(){closeModal('admin-panel-modal');};
         <select id="exp-paid-from"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option><option value="bank">Bank / savings</option></select>
       </div>
     </div>
+    <div class="form-group"><label>Cashier (who paid it)</label><select id="exp-cashier"></select></div>
     <div class="form-group"><label>Note (optional)</label><input type="text" id="exp-note" placeholder="Any extra details..."></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
       <button class="btn btn-outline" onclick="closeModal(&#39;add-expense-modal&#39;)">Cancel</button>
