@@ -16627,7 +16627,7 @@ showPage=function(id,btn){var r=_biPrevShowPage.apply(this,arguments);if(id==='b
 // paid in cash. Investments (admin only) are never shown here.
 // ============================================================
 function seNum(id){var el=document.getElementById(id);return el?(parseFloat(String(el.textContent).replace(/[^\d.-]/g,''))||0):0;}
-function seCashierNames(){var n=[];(staff||[]).forEach(function(x){if(x&&x.name&&n.indexOf(x.name)===-1)n.push(x.name);});if(currentStaffName&&n.indexOf(currentStaffName)===-1)n.push(currentStaffName);return n;}
+function seCashierNames(){var n=[];(staff||[]).forEach(function(x){if(x&&x.name&&n.indexOf(x.name)===-1)n.push(x.name);});var sc=(document.getElementById('settle-cashier')||{}).value;if(sc&&sc!=='all'&&n.indexOf(sc)===-1)n.push(sc);if(currentStaffName&&n.indexOf(currentStaffName)===-1)n.push(currentStaffName);return n;}
 function seCats(){return (typeof VAULT_NORMAL_CATS!=='undefined'&&VAULT_NORMAL_CATS.length)?VAULT_NORMAL_CATS:['Supplies','Maintenance','Food & Drinks Stock','Other'];}
 function seRender(){
   var box=document.getElementById('settle-exp');if(!box)return;
@@ -16662,6 +16662,7 @@ function seRender(){
     +'<div style="grid-column:span 2;"><label>Description</label><input type="text" id="se-desc" maxlength="120" placeholder="e.g. Water bottles, cleaning supplies"></div>'
     +'<div><label>Category</label><select id="se-cat">'+cats+'</select></div>'
     +'<div><label>Paid from</label><select id="se-pay"><option value="cash">Cash</option><option value="instapay">Instapay</option><option value="visa">Visa</option></select></div>'
+    +'<div><label>Cashier</label><select id="se-cashier">'+seCashierNames().map(function(n){return '<option'+(n===(who!=='all'?who:currentStaffName)?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></div>'
     +'<div><button class="btn btn-primary btn-full" onclick="seAdd()">+ Add expense</button></div>'
     +'</div></div>';
   var cs=document.getElementById('se-cat');if(cs&&seCats().indexOf('Supplies')!==-1)cs.value='Supplies';
@@ -16674,7 +16675,7 @@ function seAdd(){
   if(!desc){showToast('Enter a description',true);return;}
   if(!(amount>0)){showToast('Enter an amount',true);return;}
   var e={id:Date.now(),date:d,amount:Math.round(amount*100)/100,desc:desc,category:document.getElementById('se-cat').value,
-    paidFrom:document.getElementById('se-pay').value,note:'',type:'normal',cashier:who!=='all'?who:currentStaffName,
+    paidFrom:document.getElementById('se-pay').value,note:'',type:'normal',cashier:(document.getElementById('se-cashier')||{}).value||(who!=='all'?who:currentStaffName),
     createdBy:currentStaffName,createdAt:new Date().toISOString(),source:'settlement'};
   var list=loadData('expenses',[]);list.push(e);expenses=list;saveData('expenses',list);
   try{auditLog('expense_added','Added the expense "'+desc+'" ('+e.amount+' LE, '+e.paidFrom+') on '+d+' from the Shift Settlement');}catch(x){}
