@@ -121,6 +121,17 @@ const OPEN_START_WEEKDAY='09:00', OPEN_END='23:00', OPEN_START_FRIDAY='11:00';
 // Visitors switch with the button at the top. Everything sent to SpaceCo staff
 // (room names, WhatsApp text, month label) stays in English on purpose.
 var AR = {
+  "How did you hear about us? *": "عرفتنا منين؟ *",
+  "Choose one": "اختر",
+  "Please tell us how you heard about us.": "من فضلك قولنا عرفتنا منين.",
+  "Instagram": "إنستجرام",
+  "Facebook": "فيسبوك",
+  "TikTok": "تيك توك",
+  "Google / Google Maps": "جوجل / خرائط جوجل",
+  "A friend told me": "صديق رشّحه لي",
+  "Passed by the place": "مررت بالمكان",
+  "I've been here before": "زرتكم قبل كده",
+  "Other": "أخرى",
   "Book a room online — we'll confirm shortly": "احجز غرفتك أونلاين — وسنؤكد الحجز قريبًا",
   "Loading availability…": "جارٍ تحميل المواعيد المتاحة…",
   "Questions?": "عندك سؤال؟",
@@ -203,6 +214,14 @@ var AR = {
   "Drawing Room": "غرفة الرسم"
 };
 var PKG_WEEKDAY_LABELS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+// "How did you hear about us?" - asked on both booking forms, stored with the request.
+var HEARD_OPTS = [["instagram","Instagram"],["facebook","Facebook"],["tiktok","TikTok"],["google","Google / Google Maps"],["friend","A friend told me"],["passing","Passed by the place"],["returning","I've been here before"],["other","Other"]];
+function heardSelect(id, cur){
+  var h = '<label>'+T('How did you hear about us? *')+'</label><select id="'+id+'" style="margin-bottom:14px;"><option value="">'+T('Choose one')+'</option>';
+  HEARD_OPTS.forEach(function(o){ h += '<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+esc(T(o[1]))+'</option>'; });
+  return h + '</select>';
+}
 var LANG = 'en';
 function isAr(){ return LANG==='ar'; }
 // Translate a fixed English text; fill {placeholders} after translating.
@@ -556,6 +575,7 @@ function renderBookingForm(busy, dayEndMin){
   }
   html += '</select></div></div>';
 
+  html += heardSelect('f-heard', state._heard);
   html += '<label>'+T('Notes (optional)')+'</label><textarea id="f-notes" rows="2" placeholder="'+esc(T('Anything staff should know'))+'" style="margin-bottom:14px;">'+esc(state._notes)+'</textarea>';
 
   html += '<div class="hint" style="margin-bottom:14px;">'+T("You're requesting {room} on {date}, {a} – {b}. This will be sent to SpaceCo staff for confirmation.",{room:'<strong style="color:var(--text);">'+roomLabel(state.room)+'</strong>',date:'<strong style="color:var(--text);">'+formatDateForHumans(state.date)+'</strong>',a:fmt12(minToTime(start)),b:fmt12(minToTime(endMin))})+'</div>';
@@ -634,6 +654,7 @@ function renderPackageFlow(){
   html += '</div><div>';
   html += '<label>'+T('Phone number *')+'</label><input type="tel" id="pkg-phone" placeholder="'+esc(T('e.g. 01012345678'))+'" value="'+esc(state._pkgPhone)+'">';
   html += '</div></div>';
+  html += heardSelect('pkg-heard', state._pkgHeard);
   html += '<label>'+T('Notes (optional)')+'</label><textarea id="pkg-notes" rows="2" placeholder="'+esc(T('Anything staff should know'))+'" style="margin-bottom:14px;">'+esc(state._pkgNotes)+'</textarea>';
   if(state._pkgError) html += '<div class="error-box">'+state._pkgError+'</div>';
   html += '<button class="btn" onclick="submitPackageRequest()" '+(state.pkgSubmitting||!state.pkgLines.length?'disabled':'')+'>'+(state.pkgSubmitting?T('Submitting…'):T('Send package request'))+'</button>';
@@ -698,6 +719,8 @@ async function submitPackageRequest(){
   var phone=(document.getElementById('pkg-phone').value||'').trim();
   var notes=(document.getElementById('pkg-notes').value||'').trim();
   state._pkgName=name; state._pkgPhone=phone; state._pkgNotes=notes;
+  var pkgHeard=((document.getElementById('pkg-heard')||{}).value||''); state._pkgHeard=pkgHeard;
+  if(!pkgHeard){ state._pkgError=T('Please tell us how you heard about us.'); render(); return; }
 
   if(!state.pkgLines.length){ state._pkgError=T('Please add at least one room/schedule to your request.'); render(); return; }
   if(!name || !phone){ state._pkgError=T('Please enter your name and phone number.'); render(); return; }
@@ -721,7 +744,7 @@ async function submitPackageRequest(){
   };
 
   try{
-    var pr = await pbCall('package', {hp:((document.getElementById('pkg-website')||{}).value||''), name:reqObj.client, phone:reqObj.phone, notes:reqObj.notes, month:reqObj.month, monthLabel:reqObj.monthLabel, lines:reqObj.lines});
+    var pr = await pbCall('package', {hp:((document.getElementById('pkg-website')||{}).value||''), name:reqObj.client, phone:reqObj.phone, notes:reqObj.notes, month:reqObj.month, monthLabel:reqObj.monthLabel, lines:reqObj.lines, heardFrom:pkgHeard});
     if(!pr.ok){
       if(waWindow) waWindow.close();
       state.pkgSubmitting=false;
@@ -795,6 +818,8 @@ async function submitBooking(){
   var phone=(document.getElementById('f-phone').value||'').trim();
   var notes=(document.getElementById('f-notes').value||'').trim();
   state._name=name; state._phone=phone; state._notes=notes;
+  var heard=((document.getElementById('f-heard')||{}).value||''); state._heard=heard;
+  if(!heard){ state._error=T('Please tell us how you heard about us.'); render(); return; }
 
   if(!name || !phone){
     state._error=T('Please enter your name and phone number.');
@@ -813,7 +838,7 @@ async function submitBooking(){
 
   var start=state.selectedStart, end=start+state.duration;
   try{
-    var r = await pbCall('book', {hp:((document.getElementById('f-website')||{}).value||''), name:name, phone:phone, room:state.room, date:state.date, from:minToTime(start), to:minToTime(end), notes:notes});
+    var r = await pbCall('book', {hp:((document.getElementById('f-website')||{}).value||''), name:name, phone:phone, room:state.room, date:state.date, from:minToTime(start), to:minToTime(end), notes:notes, heardFrom:heard});
     if(!r.ok){
       state.submitting=false;
       if(r.status===409){

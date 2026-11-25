@@ -18,6 +18,8 @@ const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const ROOMS = ['Room 4 Persons (1)', 'Room 4 Persons (2)', 'Room 6 Persons', 'Room 8 Persons', 'Class Room', 'Shared Space', 'Drawing Room'];
 const WINDOW_DAYS = 90;
+const HEARD = ['instagram', 'facebook', 'tiktok', 'google', 'friend', 'passing', 'returning', 'other'];
+const heardOf = (v: unknown) => (HEARD.includes(String(v)) ? String(v) : '');
 const OPEN_END = '23:00', OPEN_WEEKDAY = '09:00', OPEN_FRIDAY = '11:00';
 
 const CORS = {
@@ -144,7 +146,7 @@ Deno.serve(async (req) => {
       const digits = phone.replace(/\D/g, '').slice(-10);
       const newRes = {
         id: 'ol_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6),
-        client: name, phone, room, date, from, to, notes,
+        client: name, phone, room, date, from, to, notes, heardFrom: heardOf(b.heardFrom),
         created_by: 'online', source: 'online', status: 'pending',
         createdAt: new Date().toISOString(), dev,
       };
@@ -182,7 +184,7 @@ Deno.serve(async (req) => {
       if (okLines.some((l) => !ROOMS.includes(l.room) || !isTime(l.from) || !isTime(l.to) || !l.weekdays.length)) return json({ error: 'Invalid schedule.' }, 400);
       const reqObj = {
         id: 'pkg_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6),
-        client: name, phone, month: /^\d{4}-\d{2}$/.test(String(b.month)) ? String(b.month) : '', monthLabel: clean(b.monthLabel, 40),
+        client: name, phone, heardFrom: heardOf(b.heardFrom), month: /^\d{4}-\d{2}$/.test(String(b.month)) ? String(b.month) : '', monthLabel: clean(b.monthLabel, 40),
         lines: okLines, notes, createdAt: new Date().toISOString(), status: 'pending', fee: null,
       };
       const dev = await deviceTag(req);

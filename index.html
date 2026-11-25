@@ -668,6 +668,7 @@
     <div class="nav-group" data-category="system">
       <div class="nav-section">System</div>
       <button class="nav-item admin-only" data-page="auditlog" id="nav-auditlog" onclick="showPage('auditlog',this)"><span class="nav-icon">🧾</span> Activity Log</button>
+      <button class="nav-item admin-only" data-page="bizinfo" id="nav-bizinfo" onclick="showPage('bizinfo',this)"><span class="nav-icon">🤖</span> Business Info</button>
       <button class="nav-item" data-page="recyclebin" id="nav-bin" onclick="showPage(&#39;recyclebin&#39;,this);renderRecycleBin();"><span class="nav-icon">🗑️</span> Recycle Bin <span id="bin-badge" style="display: inline; background: var(--red); color: white; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px;">3</span></button>
     </div>
   </div>
@@ -707,7 +708,7 @@
   <div class="grid-2" style="gap:16px;">
     <div class="card">
       <div class="card-title">Today's Shifts</div>
-      <div style="display:grid;gap:10px;" id="dash-staff-cards"><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:14px;font-weight:600;">Aya</div><div style="font-size:12px;color:var(--text3);">9:00 AM – 4:00 PM</div></div><div style="text-align:right;"><div class="money" style="font-size:16px;color:var(--accent);">100 LE</div><div style="font-size:11px;color:var(--text3);">💵 100 + 📱 0</div></div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:14px;font-weight:600;">Youssef</div><div style="font-size:12px;color:var(--text3);">4:00 PM – 11:00 PM</div></div><div style="text-align:right;"><div class="money" style="font-size:16px;color:var(--teal);">11230 LE</div><div style="font-size:11px;color:var(--text3);">💵 10500 + 📱 730</div></div></div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:14px;font-weight:600;">Nour</div><div style="font-size:12px;color:var(--text3);">Fri &amp; Sat both shifts</div></div><div style="text-align:right;"><div class="money" style="font-size:16px;color:var(--pink);">0 LE</div><div style="font-size:11px;color:var(--text3);">💵 0 + 📱 0</div></div></div></div>
+      <div style="display:grid;gap:10px;" id="dash-staff-cards"></div>
     </div>
     <div class="card">
       <div class="card-title">Recent Clients</div>
@@ -1091,7 +1092,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr><th>Date</th><th>Day</th><th>Cashier</th><th>Cash (LE)</th><th>Instapay (LE)</th><th>Visa (LE)</th><th>Other (LE)</th><th>Total (LE)</th><th>Action</th></tr></thead>
-        <tbody id="shifts-tbody"><tr><td>09/07/2026</td><td>Thu</td><td><span class="badge badge-blue">Youssef</span></td><td>10500 LE</td><td>0 LE</td><td>0 LE</td><td class="money money-green">10500 LE</td><td></td><td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditShift(1783612619653)" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteShift(1783612619653)">Del</button></td></tr></tbody>
+        <tbody id="shifts-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -1535,6 +1536,7 @@
 </div>
 
 <!-- ACTIVITY LOG PAGE -->
+<div id="page-bizinfo" class="page"><div id="bi-root"></div></div>
 <div id="page-auditlog" class="page">
   <div class="page-header flex-between">
     <div><div class="page-title">🧾 Activity Log</div><div class="page-sub">Who did what, and when — payments, deletions, price changes, voided check-ins, sign-ins</div></div>
@@ -5277,7 +5279,7 @@ function renderShifts(){
       +'<td>'+(s.rooms||0)+' LE</td><td>'+(s.instapay||0)+' LE</td><td>'+(s.visa||0)+' LE</td><td>'+(s.other||0)+' LE</td>'
       +'<td class="money money-green">'+(s.total||0)+' LE</td>'
       +'<td>'+(s.academyPayments?'<span class="badge badge-purple" title="Academy Package Payment">🎓 '+s.academyPayments+' LE</span>':'')+(s.note?'<span style="font-size:11px;color:var(--text3);">&nbsp;'+s.note+'</span>':'')+'</td>'
-      +'<td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openEditShift('+s.id+')" style="margin-right:4px;">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteShift('+s.id+')">Del</button></td></tr>';
+      +'<td style="white-space:nowrap;">'+(isAdmin?'<button class="btn btn-outline btn-sm" onclick="openEditShift('+s.id+')" style="margin-right:4px;" title="Edit this line">✏️</button>':'')+'<button class="btn btn-danger btn-sm" onclick="deleteShift('+s.id+')">Del</button></td></tr>';
   }).join('');
 }
 
@@ -8977,6 +8979,8 @@ function _niceDate(d){
   var dt=new Date(d+'T00:00:00');
   return dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 }
+var HEARD_LABELS={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',google:'Google / Maps',friend:'A friend',passing:'Passed by',returning:'Been here before',other:'Other'};
+function heardLabel(k){return HEARD_LABELS[k]||'';}
 function renderOnlineRequestsCard(){
   var pend=(reservations||[]).filter(function(r){return r.status==='pending';})
     .sort(function(a,b){return a.date===b.date?timeToMin(a.from)-timeToMin(b.from):(a.date<b.date?-1:1);});
@@ -8991,7 +8995,7 @@ function renderOnlineRequestsCard(){
       +'<td><span class="badge badge-purple">'+_escH(r.room)+'</span></td>'
       +'<td><strong>'+_escH(r.client)+'</strong></td>'
       +'<td style="white-space:nowrap;">'+_escH(r.phone||'—')+'</td>'
-      +'<td style="font-size:12px;color:var(--text2);max-width:220px;">'+(r.notes?'📝 '+_escH(r.notes):'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text2);max-width:220px;">'+(r.notes?'📝 '+_escH(r.notes):'—')+(r.heardFrom?'<div style="font-size:11px;color:var(--text3);">📣 '+heardLabel(r.heardFrom)+'</div>':'')+'</td>'
       +'<td style="font-size:11px;color:var(--text3);white-space:nowrap;">'+received+'</td>'
       +'<td style="white-space:nowrap;">'
         +'<button class="btn btn-sm" style="background:var(--green);color:#fff;margin-right:4px;" onclick="acceptReservation(\''+r.id+'\')" title="Confirm this booking">✔ Accept</button>'
@@ -9115,6 +9119,7 @@ function renderPackageRequestCard(pr){
     +'<button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="togglePkgDetails(\''+pr.id+'\')">'+(_pkgOpen[pr.id]?'▲ Hide all times':'📋 Show all times')+'</button>'
     +(_pkgOpen[pr.id]?'<div style="margin-top:6px;">'+renderPkgDetails(pr)+'</div>':'')
     +(pr.notes?'<div style="margin-top:8px;font-size:12px;color:var(--text3);">📝 '+pr.notes+'</div>':'')
+    +(pr.heardFrom?'<div style="margin-top:4px;font-size:12px;color:var(--text3);">📣 Heard about us: '+heardLabel(pr.heardFrom)+'</div>':'')
     +actionsHtml
     +'</div>';
 }
@@ -12796,7 +12801,7 @@ logoutToLogin=function(){if(currentRole)auditLog('logout','Signed out');_logoutA
 // ── the activity log ──
 var AUDIT_RING='spaceco_auditRing';
 var AUDIT_LABELS={login:'Signed in',login_failed:'Wrong PIN',logout:'Signed out',checkout:'Checkout',checkin_void:'Voided check-in',visit_deleted:'Visit deleted',
-  shift_payment:'Payment entered',shift_deleted:'Payment deleted',payment_reversed:'Payment reversed',expense_added:'Expense added',expense_deleted:'Expense deleted',
+  shift_payment:'Payment entered',business_info:'Business info updated',shift_payment_edited:'Payment line edited',shift_deleted:'Payment deleted',payment_reversed:'Payment reversed',expense_added:'Expense added',expense_deleted:'Expense deleted',
   reservation_deleted:'Reservation deleted',reservation_noshow:'Reservation no-show',package_renewed:'Academy package renewed',package_sold:'Shared-space package',
   prices_changed:'Prices changed',academy_changed:'Academy settings changed',staff_changed:'Staff changed',password_changed:'Admin password changed',team_changed:'Team / roles changed',
   locker_booked:'Locker booked',locker_payment:'Locker payment',locker_changed:'Locker action',locker_prices:'Locker prices changed',bin_emptied:'Recycle Bin emptied'};
@@ -16390,6 +16395,227 @@ openAdminLogin=function(){
 };
 
 
+
+
+// ============================================================
+// EDIT A SHIFT PAYMENT LINE (✏️ on Shift Payments). Admin/owner only.
+// Normal lines: date, cashier, cash/Instapay/Visa/Other and note (total recalculates).
+// Academy / package / locker lines: amounts are locked (they feed academy balances
+// and reports; fix those with payment reversal) - only date, cashier and note change.
+// Every edit keeps the old values on the line and is written to the Activity Log.
+// ============================================================
+function esIsLocked(sh){return !!(sh.academyPayments||sh.academyKey||/^(Locker|Shared Space)/i.test(String(sh.note||''))||/Shared Space/i.test(String(sh.note||'')));}
+function openEditShift(id){
+  if(!isAdmin){showToast('Only the admin can edit payment lines',true);return;}
+  var sh=(shiftPayments||[]).find(function(x){return x.id===id;});
+  if(!sh){showToast('This line was not found (it may have been deleted)',true);return;}
+  var locked=esIsLocked(sh);
+  var names=[];(staff||[]).forEach(function(x){if(x&&x.name&&names.indexOf(x.name)===-1)names.push(x.name);});
+  if(sh.cashier&&names.indexOf(sh.cashier)===-1)names.push(sh.cashier);
+  var esc=function(t){return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+  var num=function(lbl,id,v){return '<div class="form-group"><label>'+lbl+'</label><input type="number" min="0" step="1" id="'+id+'" value="'+(v||0)+'"'+(locked?' disabled':'')+'></div>';};
+  var ov=document.createElement('div');ov.id='es-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML='<div class="login-box" style="max-width:100%;width:440px;text-align:left;max-height:92vh;overflow:auto;">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:4px;">✏️ Edit payment line</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">'+(locked?'This is an academy / package / locker payment, so its amounts are locked. To correct an amount, use payment reversal.':'Correct the details below. The total recalculates.')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+    +'<div class="form-group"><label>Date</label><input type="date" id="es-date" value="'+esc(sh.date)+'"></div>'
+    +'<div class="form-group"><label>Cashier</label><select id="es-cashier">'+names.map(function(n){return '<option'+(n===sh.cashier?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select></div>'
+    +num('Cash (rooms)','es-rooms',sh.rooms)+num('Instapay','es-ip',sh.instapay)+num('Visa','es-visa',sh.visa)+num('Other / Bank','es-other',sh.other)
+    +'</div>'
+    +'<div class="form-group"><label>Note</label><input type="text" id="es-note" maxlength="200" value="'+esc(sh.note||'')+'"></div>'
+    +'<div id="es-total" style="font-weight:700;margin:6px 0 12px;"></div>'
+    +'<div id="es-err" class="login-err"></div>'
+    +'<div style="display:flex;gap:8px;"><button class="btn btn-outline btn-full" id="es-cancel">Cancel</button><button class="btn btn-amber btn-full" id="es-save">Save changes</button></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  var g=function(i){return document.getElementById(i);};
+  var val=function(i){var v=g(i).value;return v===''?0:Number(v);};
+  var upd=function(){g('es-total').textContent='Total: '+(locked?(sh.total||0):(val('es-rooms')+val('es-ip')+val('es-visa')+val('es-other')))+' LE';};
+  ['es-rooms','es-ip','es-visa','es-other'].forEach(function(i){g(i).oninput=upd;});upd();
+  g('es-cancel').onclick=function(){ov.remove();};
+  g('es-save').onclick=function(){
+    var err=function(t){g('es-err').textContent=t;g('es-err').style.display='block';};
+    var date=g('es-date').value,cashier=g('es-cashier').value,note=g('es-note').value.trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){err('Please choose a date.');return;}
+    var nv={date:date,cashier:cashier,note:note};
+    if(!locked){
+      var a=[val('es-rooms'),val('es-ip'),val('es-visa'),val('es-other')];
+      if(a.some(function(x){return !isFinite(x)||x<0||Math.floor(x)!==x;})){err('Amounts must be whole numbers, 0 or more.');return;}
+      nv.rooms=a[0];nv.instapay=a[1];nv.visa=a[2];nv.other=a[3];nv.total=a[0]+a[1]+a[2]+a[3];
+      if(!nv.total){err('The total is 0. To remove a line, use Del instead.');return;}
+    }
+    var before={};var changes=[];
+    Object.keys(nv).forEach(function(k){var o=sh[k]==null?(k==='note'?'':0):sh[k];if(String(o)!==String(nv[k])){before[k]=sh[k]==null?null:sh[k];changes.push(k+' '+(o===''?'—':o)+' → '+(nv[k]===''?'—':nv[k]));}});
+    if(!changes.length){ov.remove();showToast('Nothing changed');return;}
+    var fresh=loadData('shiftPayments',[]);var line=fresh.find(function(x){return x.id===id;});
+    if(!line){err('This line was deleted on another device.');return;}
+    Object.keys(nv).forEach(function(k){if(k==='note'&&!nv.note){delete line.note;}else line[k]=nv[k];});
+    line.editedAt=new Date().toISOString();line.editedBy=currentStaffName;
+    line.editHistory=(line.editHistory||[]).concat([{at:line.editedAt,by:currentStaffName,before:before}]);
+    shiftPayments=fresh;saveData('shiftPayments',shiftPayments);
+    try{auditLog('shift_payment_edited','Edited payment line of '+formatDate(sh.date)+' ('+sh.cashier+'): '+changes.join('; '),{id:id});}catch(e){}
+    ov.remove();renderShifts();renderShiftCards();try{calcSettlement();}catch(e){}
+    showToast('Payment line updated ✓');
+  };
+}
+
+
+// ============================================================
+// BUSINESS INFO (WhatsApp assistant, phase 1) — everything a customer may ask,
+// in English and Arabic. Facts the system already knows are read LIVE from it
+// (prices, packages, lockers, menu, hours, booking rules, contact), so they never
+// go stale. The owner only adds what the system cannot know and approves drafts.
+// Saved in kv 'businessInfo'. Later this text is the assistant's knowledge.
+// ============================================================
+PAGE_TO_CATEGORY.bizinfo='system';
+var BI_ROOMS={room1:{en:'Room 1',ar:'غرفة 1',cap:4},room2:{en:'Room 2',ar:'غرفة 2',cap:4},room3:{en:'Room 3',ar:'غرفة 3',cap:6},room4:{en:'Room 4',ar:'غرفة 4',cap:8},
+  drawingRoom:{en:'Drawing Room',ar:'غرفة الرسم',cap:null},classRoom:{en:'Class Room',ar:'قاعة المحاضرات',cap:null},sharedSpace:{en:'Shared Space',ar:'المساحة المشتركة',cap:null}};
+var BI_FIELDS=[
+  {k:'about',t:'About SpaceCo',hint:'One or two sentences customers should hear first.',en:'SpaceCo Workspace is a coworking space in El Shorouk with a shared space, private rooms, a class room and a drawing room, open every day.',ar:'سبيس كو مساحة عمل مشتركة في الشروق فيها مساحة مشتركة وغرف خاصة وقاعة محاضرات وغرفة رسم، ومفتوحين كل يوم.'},
+  {k:'directions',t:'Location & directions',hint:'Landmarks, floor, parking, a Google Maps link.',en:'',ar:''},
+  {k:'facilities',t:'Facilities',hint:'Wi-Fi, AC, printing, screens/projector, kitchen, prayer area, parking…',en:'',ar:''},
+  {k:'rules',t:'House rules',hint:'Quiet areas, food, smoking, guests, ID…',en:'',ar:''},
+  {k:'cancel',t:'Changes & cancellations',hint:'How a customer changes or cancels a booking.',en:'To change or cancel a booking, message us on WhatsApp as early as possible.',ar:'لو حابب تغيّر أو تلغي الحجز، ابعتلنا على واتساب في أقرب وقت.'},
+  {k:'events',t:'Events & academies',hint:'Workshops, courses, renting the space for events.',en:'',ar:''},
+  {k:'never',t:'Things the assistant must NOT promise',hint:'e.g. discounts, free hours, reserving without staff confirmation.',en:'Never promise discounts, free time or a confirmed booking. Staff confirm every booking.',ar:'ممنوع الوعد بخصومات أو وقت مجاني أو تأكيد حجز. فريق العمل هو اللي بيأكد كل حجز.'}
+];
+function biData(){var d=loadData('businessInfo',null);return d&&typeof d==='object'?d:{fields:{},faqs:[]};}
+function biPlanText(plan,ar){
+  if(!plan)return ar?'السعر حسب الطلب':'price on request';
+  var L=[];
+  if(plan.type==='steps'){
+    (plan.steps||[]).forEach(function(x){L.push(ar?('حتى '+x.upTo+' ساعة: '+x.price+' جنيه'):('up to '+x.upTo+' h: '+x.price+' LE'));});
+    if(+plan.maxPrice)L.push(ar?('أكثر من كده (اليوم كله): '+plan.maxPrice+' جنيه'):('longer (full day): '+plan.maxPrice+' LE'));
+  }else if(plan.type==='first_extra'){
+    L.push(ar?('أول ساعة '+plan.first+' جنيه، وكل ساعة زيادة '+plan.extra+' جنيه'):('first hour '+plan.first+' LE, each extra hour '+plan.extra+' LE'));
+  }else if(plan.type==='hourly'){
+    L.push(ar?(plan.perHour+' جنيه في الساعة'):(plan.perHour+' LE per hour'));
+  }
+  if(+plan.minHours)L.push(ar?('أقل مدة '+plan.minHours+' ساعة'):('minimum '+plan.minHours+' h'));
+  if(+plan.dailyCap)L.push(ar?('أقصى سعر في اليوم '+plan.dailyCap+' جنيه'):('max '+plan.dailyCap+' LE per day'));
+  return L.join(ar?'، ':', ');
+}
+function biAuto(){
+  var cfg=ppConfig(),F={en:[],ar:[]};
+  var add=function(en,ar){F.en.push(en);F.ar.push(ar);};
+  add('Opening hours: every day '+fmt12(OPEN_START_WEEKDAY)+' – '+fmt12(OPEN_END)+'; on Fridays from '+fmt12(OPEN_START_FRIDAY)+'.',
+      'مواعيد العمل: كل يوم من '+fmt12(OPEN_START_WEEKDAY)+' لحد '+fmt12(OPEN_END)+'، ويوم الجمعة من '+fmt12(OPEN_START_FRIDAY)+'.');
+  add('Address: '+BUSINESS_INFO.address+'. WhatsApp / phone: '+BUSINESS_INFO.phone+'.',
+      'العنوان: '+BUSINESS_INFO.address+'. واتساب / تليفون: '+BUSINESS_INFO.phone+'.');
+  var roomsEn=[],roomsAr=[];
+  Object.keys(BI_ROOMS).forEach(function(k){
+    var r=BI_ROOMS[k],plan=ppPlanFor(cfg,k);
+    roomsEn.push('- '+r.en+(r.cap?' (up to '+r.cap+' people)':'')+': '+biPlanText(plan,false));
+    roomsAr.push('- '+r.ar+(r.cap?' (لحد '+r.cap+' أفراد)':'')+': '+biPlanText(plan,true));
+  });
+  add('Spaces and prices:\n'+roomsEn.join('\n'),'الأماكن والأسعار:\n'+roomsAr.join('\n'));
+  add('Shared Space monthly packages: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return t.label+' '+t.cost+' LE';}).join(', ')+'. A package is used within one month of buying it.',
+      'باقات المساحة المشتركة الشهرية: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return (t.days?t.days+' يوم':'غير محدود لمدة شهر')+' بـ'+t.cost+' جنيه';}).join('، ')+'. الباقة تُستخدم خلال شهر من الشراء.');
+  try{
+    var lc=loadData('lockerConfig',{}),pr=lc.prices||{},sz={S:['Small','صغير'],M:['Medium','متوسط'],L:['Large','كبير'],XL:['Extra large','كبير جدًا']};
+    var le=[],la=[];
+    Object.keys(pr).forEach(function(s){var p=pr[s];
+      le.push(sz[s][0]+': '+['day','week','month'].filter(function(u){return p[u];}).map(function(u){return p[u]+' LE/'+u;}).join(', '));
+      la.push(sz[s][1]+': '+[['day','اليوم'],['week','الأسبوع'],['month','الشهر']].filter(function(u){return p[u[0]];}).map(function(u){return p[u[0]]+' جنيه/'+u[1];}).join('، '));});
+    var disc=lc.discounts||{},dk=Object.keys(disc).sort(function(a,b){return a-b;});
+    add('Lockers: '+le.join('; ')+'.'+(dk.length?' Paying several months ahead: '+dk.map(function(m){return m+' months -'+disc[m]+'%';}).join(', ')+'.':''),
+        'اللوكرز: '+la.join('؛ ')+'.'+(dk.length?' لو دفعت كذا شهر مقدم: '+dk.map(function(m){return m+' شهور خصم '+disc[m]+'%';}).join('، ')+'.':''));
+  }catch(e){}
+  try{
+    var items=(window.products||[]).filter(function(p){return p&&p.is_active!==false&&+p.sale_price>0;});
+    if(items.length){
+      var CAT={hot_drinks:['Hot drinks','مشروبات سخنة'],drinks:['Cold drinks','مشروبات ساقعة'],snacks:['Snacks','سناكس'],printing:['Printing','طباعة'],other:['Other','أخرى']};
+      var bycat={};items.forEach(function(p){(bycat[p.category||'other']=bycat[p.category||'other']||[]).push(p);});
+      var cn=function(c,i){return (CAT[c]||[String(c).replace(/_/g,' '),String(c).replace(/_/g,' ')])[i];};
+      add('Drinks, snacks & printing (paid at checkout):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,0)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' LE';}).join(', ');}).join('\n'),
+          'المشروبات والسناكس والطباعة (بتتحسب عند الخروج):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,1)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' جنيه';}).join('، ');}).join('\n'));
+    }
+  }catch(e){}
+  add('Booking: rooms can be requested online up to 90 days ahead at https://spacecoworkspace-design.github.io/spaceco-management-system/book.html or on WhatsApp. Every request is confirmed by staff. A booking is held for 20 minutes after its start time; after that it may be released.',
+      'الحجز: ممكن تطلب حجز أونلاين لحد ٩٠ يوم قدّام من https://spacecoworkspace-design.github.io/spaceco-management-system/book.html أو على واتساب. فريق العمل بيأكد كل طلب. الحجز بيتمسك ٢٠ دقيقة بعد ميعاده، وبعدها ممكن يتلغي.');
+  add('Payment: cash, Instapay or Visa.','الدفع: كاش أو إنستاباي أو فيزا.');
+  F.ar=F.ar.map(function(t){return t.replace(/(\d) AM(?![A-Za-z])/g,'$1 ص').replace(/(\d) PM(?![A-Za-z])/g,'$1 م');});
+  return F;
+}
+function biRender(){
+  var root=document.getElementById('bi-root');if(!root)return;
+  if(!isAdmin){root.innerHTML='<div class="card">Only the admin can open this page.</div>';return;}
+  var d=biData(),A=biAuto();
+  var box=function(lang,txt){return '<div style="white-space:pre-wrap;font-size:13px;line-height:1.6;'+(lang==='ar'?'direction:rtl;text-align:right;':'')+'">'+_escH(txt)+'</div>';};
+  var h='<div class="page-header"><div><div class="page-title">🤖 Business Info</div><div class="page-sub">What the WhatsApp assistant will know. Facts from the system update by themselves; you add the rest.</div></div></div>';
+  h+='<div class="card mb-16"><div class="card-title">✅ From the system (updates automatically)</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">'
+    +'<div>'+box('en',A.en.join('\n\n'))+'</div><div>'+box('ar',A.ar.join('\n\n'))+'</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:8px;">To change these, change the prices/packages/lockers/menu in the system itself.</div></div>';
+  h+='<div class="card mb-16"><div class="card-title">✏️ Added by you</div>';
+  BI_FIELDS.forEach(function(f){
+    var v=(d.fields||{})[f.k]||{},en=v.en!=null?v.en:f.en,ar=v.ar!=null?v.ar:f.ar,ok=!!v.checked;
+    h+='<div style="border-top:1px solid var(--border);padding:12px 0;">'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;"><strong>'+_escH(f.t)+'</strong>'
+      +(ok?'<span class="badge badge-green">✔ Checked</span>':(en||ar)?'<span class="badge" style="background:var(--amber-bg);color:var(--amber);">Draft — please check</span>':'<span class="badge">Empty</span>')+'</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin:2px 0 6px;">'+_escH(f.hint)+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;">'
+      +'<textarea id="bi-'+f.k+'-en" rows="3" placeholder="English">'+_escH(en)+'</textarea>'
+      +'<textarea id="bi-'+f.k+'-ar" rows="3" dir="rtl" placeholder="عربي">'+_escH(ar)+'</textarea></div>'
+      +'<label style="font-size:12px;display:flex;gap:6px;align-items:center;margin-top:6px;"><input type="checkbox" id="bi-'+f.k+'-ok"'+(ok?' checked':'')+' style="width:auto;"> I checked this</label></div>';
+  });
+  h+='</div>';
+  var faqs=(d.faqs||[]);
+  h+='<div class="card mb-16"><div class="card-title">❓ Extra questions & answers</div><div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Questions customers ask that are not covered above.</div><div id="bi-faqs">'
+    +faqs.map(function(q,i){return biFaqRow(q,i);}).join('')+'</div>'
+    +'<button class="btn btn-outline btn-sm" onclick="biAddFaq()">+ Add a question</button></div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><button class="btn btn-amber" onclick="biSave()">💾 Save</button>'
+    +'<button class="btn btn-outline" onclick="biPreview()">👁 Preview what the assistant will know</button></div>'
+    +(d.updatedAt?'<div style="font-size:12px;color:var(--text3);">Last saved '+new Date(d.updatedAt).toLocaleString('en-GB')+' by '+_escH(d.updatedBy||'')+'</div>':'')
+    +'<div id="bi-preview"></div>';
+  root.innerHTML=h;
+}
+function biFaqRow(q,i){
+  q=q||{};
+  return '<div class="bi-faq" style="border-top:1px solid var(--border);padding:10px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;">'
+    +'<input type="text" class="bi-q-en" placeholder="Question (English)" value="'+_escH(q.qEn||'')+'"><input type="text" class="bi-q-ar" dir="rtl" placeholder="السؤال (عربي)" value="'+_escH(q.qAr||'')+'">'
+    +'<textarea class="bi-a-en" rows="2" placeholder="Answer (English)">'+_escH(q.aEn||'')+'</textarea><textarea class="bi-a-ar" rows="2" dir="rtl" placeholder="الإجابة (عربي)">'+_escH(q.aAr||'')+'</textarea>'
+    +'<button class="btn btn-danger btn-sm" style="justify-self:start;" onclick="this.closest(\'.bi-faq\').remove()">Remove</button></div>';
+}
+function biAddFaq(){var w=document.getElementById('bi-faqs');w.insertAdjacentHTML('beforeend',biFaqRow({},w.children.length));}
+function biCollect(){
+  var d={fields:{},faqs:[]};
+  BI_FIELDS.forEach(function(f){d.fields[f.k]={en:document.getElementById('bi-'+f.k+'-en').value.trim(),ar:document.getElementById('bi-'+f.k+'-ar').value.trim(),checked:document.getElementById('bi-'+f.k+'-ok').checked};});
+  document.querySelectorAll('#bi-faqs .bi-faq').forEach(function(r){
+    var q={qEn:r.querySelector('.bi-q-en').value.trim(),qAr:r.querySelector('.bi-q-ar').value.trim(),aEn:r.querySelector('.bi-a-en').value.trim(),aAr:r.querySelector('.bi-a-ar').value.trim()};
+    if(q.qEn||q.qAr||q.aEn||q.aAr)d.faqs.push(q);
+  });
+  return d;
+}
+function biSave(){
+  if(!isAdmin){showToast('Only the admin can change this',true);return;}
+  var d=biCollect();d.updatedAt=new Date().toISOString();d.updatedBy=currentStaffName;
+  saveData('businessInfo',d);
+  try{auditLog('business_info','Updated the Business Info page');}catch(e){}
+  showToast('Business info saved ✓');biRender();
+}
+// the full text the assistant will be given (both languages)
+function biKnowledge(){
+  var d=biData(),A=biAuto(),out={en:[],ar:[]};
+  out.en=out.en.concat(A.en);out.ar=out.ar.concat(A.ar);
+  BI_FIELDS.forEach(function(f){var v=(d.fields||{})[f.k]||{};var en=v.en!=null?v.en:f.en,ar=v.ar!=null?v.ar:f.ar;
+    if(en)out.en.push(f.t+': '+en);if(ar)out.ar.push(f.t+': '+ar);});
+  (d.faqs||[]).forEach(function(q){if(q.qEn||q.aEn)out.en.push('Q: '+q.qEn+'\nA: '+q.aEn);if(q.qAr||q.aAr)out.ar.push('س: '+q.qAr+'\nج: '+q.aAr);});
+  return out;
+}
+function biPreview(){
+  var k=biKnowledge(),el=document.getElementById('bi-preview');
+  var unsaved=JSON.stringify(biCollect())!==JSON.stringify({fields:(biData().fields||{}),faqs:(biData().faqs||[])});
+  el.innerHTML='<div class="card" style="margin-top:12px;"><div class="card-title">👁 What the assistant will know'+(unsaved?' <span class="badge" style="background:var(--amber-bg);color:var(--amber);">save first to include your latest edits</span>':'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">'
+    +'<div style="white-space:pre-wrap;font-size:12.5px;">'+_escH(k.en.join('\n\n'))+'</div>'
+    +'<div style="white-space:pre-wrap;font-size:12.5px;direction:rtl;text-align:right;">'+_escH(k.ar.join('\n\n'))+'</div></div></div>';
+  el.scrollIntoView({behavior:'smooth'});
+}
+var _biPrevShowPage=showPage;
+showPage=function(id,btn){var r=_biPrevShowPage.apply(this,arguments);if(id==='bizinfo'){try{biRender();}catch(e){console.warn(e);document.getElementById('bi-root').innerHTML='<div class="alert alert-danger">This page could not be built: '+_escH(e.message)+'</div>';}}return r;};
 
 // ---------- Staff accounts (Admin Panel → Security) ----------
 var _acUsers={};
