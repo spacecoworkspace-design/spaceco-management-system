@@ -16511,8 +16511,8 @@ function biAuto(){
     roomsAr.push('- '+r.ar+(r.cap?' (لحد '+r.cap+' أفراد)':'')+': '+biPlanText(plan,true));
   });
   add('Spaces and prices:\n'+roomsEn.join('\n'),'الأماكن والأسعار:\n'+roomsAr.join('\n'));
-  add('Shared Space monthly packages: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return t.label+' '+t.cost+' LE';}).join(', ')+'. A package is used within one month of buying it.',
-      'باقات المساحة المشتركة الشهرية: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return (t.days?t.days+' يوم':'غير محدود لمدة شهر')+' بـ'+t.cost+' جنيه';}).join('، ')+'. الباقة تُستخدم خلال شهر من الشراء.');
+  add('Shared Space monthly packages: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return t.label+' '+t.cost+' LE';}).join(', ')+'. A package is used within one month of buying it. Customized packages can be requested from the booking link (Monthly Package).',
+      'باقات المساحة المشتركة الشهرية: '+SHARED_SPACE_PACKAGE_TIERS.map(function(t){return (t.days?t.days+' يوم':'غير محدود لمدة شهر')+' بـ'+t.cost+' جنيه';}).join('، ')+'. الباقة تُستخدم خلال شهر من الشراء. وممكن تطلب باقة مخصوصة ليك من لينك الحجز (الباقة الشهرية).');
   try{
     var lc=loadData('lockerConfig',{}),pr=lc.prices||{},sz={S:['Small','صغير'],M:['Medium','متوسط'],L:['Large','كبير'],XL:['Extra large','كبير جدًا']};
     var le=[],la=[];
@@ -16524,17 +16524,17 @@ function biAuto(){
         'اللوكرز: '+la.join('؛ ')+'.'+(dk.length?' لو دفعت كذا شهر مقدم: '+dk.map(function(m){return m+' شهور خصم '+disc[m]+'%';}).join('، ')+'.':''));
   }catch(e){}
   try{
-    var items=(window.products||[]).filter(function(p){return p&&p.is_active!==false&&+p.sale_price>0;});
+    var items=(window.products||[]).filter(function(p){return p&&p.is_active!==false&&+p.sale_price>0&&String(p.category||'').toLowerCase()!=='snacks';});
     if(items.length){
       var CAT={hot_drinks:['Hot drinks','مشروبات سخنة'],drinks:['Cold drinks','مشروبات ساقعة'],snacks:['Snacks','سناكس'],printing:['Printing','طباعة'],other:['Other','أخرى']};
       var bycat={};items.forEach(function(p){(bycat[p.category||'other']=bycat[p.category||'other']||[]).push(p);});
       var cn=function(c,i){return (CAT[c]||[String(c).replace(/_/g,' '),String(c).replace(/_/g,' ')])[i];};
-      add('Drinks, snacks & printing (paid at checkout):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,0)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' LE';}).join(', ');}).join('\n'),
-          'المشروبات والسناكس والطباعة (بتتحسب عند الخروج):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,1)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' جنيه';}).join('، ');}).join('\n'));
+      add('Drinks & printing (paid at checkout):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,0)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' LE';}).join(', ');}).join('\n'),
+          'المشروبات والطباعة (بتتحسب عند الخروج):\n'+Object.keys(bycat).map(function(c){return '- '+cn(c,1)+': '+bycat[c].map(function(p){return p.display_name+' '+p.sale_price+' جنيه';}).join('، ');}).join('\n'));
     }
   }catch(e){}
-  add('Booking: rooms can be requested online up to 90 days ahead at https://spacecoworkspace-design.github.io/spaceco-management-system/book.html or on WhatsApp. Every request is confirmed by staff. A booking is held for 20 minutes after its start time; after that it may be released.',
-      'الحجز: ممكن تطلب حجز أونلاين لحد ٩٠ يوم قدّام من https://spacecoworkspace-design.github.io/spaceco-management-system/book.html أو على واتساب. فريق العمل بيأكد كل طلب. الحجز بيتمسك ٢٠ دقيقة بعد ميعاده، وبعدها ممكن يتلغي.');
+  add('Booking: rooms can be requested online up to 90 days ahead at https://spacecoworkspace-design.github.io/spaceco-booking/ or on WhatsApp. Every request is confirmed by staff. A booking is held for 20 minutes after its start time; after that it may be released.',
+      'الحجز: ممكن تطلب حجز أونلاين لحد ٩٠ يوم قدّام من https://spacecoworkspace-design.github.io/spaceco-booking/ أو على واتساب. فريق العمل بيأكد كل طلب. الحجز بيتمسك ٢٠ دقيقة بعد ميعاده، وبعدها ممكن يتلغي.');
   add('Payment: cash, Instapay or Visa.','الدفع: كاش أو إنستاباي أو فيزا.');
   F.ar=F.ar.map(function(t){return t.replace(/(\d) AM(?![A-Za-z])/g,'$1 ص').replace(/(\d) PM(?![A-Za-z])/g,'$1 م');});
   return F;
